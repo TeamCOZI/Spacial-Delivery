@@ -48,6 +48,20 @@ public class Launcher : MonoBehaviour
 
     private void Update()
     {
+        if (TimeManager.Instance != null && TimeManager.Instance.IspausedOrRewinding())
+        {
+            if (isDragging)
+            {
+                isDragging = false;
+                HideAllDots();
+                if (currentPackage != null)
+                {
+                    Destroy(currentPackage);
+                    currentPackage = null;
+                }
+            }
+            return;
+        }
         if (Mouse.current == null) return;
 
         if (Mouse.current.leftButton.wasPressedThisFrame)

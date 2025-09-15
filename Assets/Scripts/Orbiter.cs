@@ -17,10 +17,20 @@ public class Orbiter : MonoBehaviour
     [Header("Initial Setup")]
     public float currentAngle = 0f;
 
+    [HideInInspector]
+    public float timeMultiplier = 1f;
+
+    private float baseOrbitSpeed;
     private Rigidbody rb;
     private void Start()
     {
         rb = GetComponent<Rigidbody>();
+        baseOrbitSpeed = orbitSpeed;
+
+        if (TimeManager.Instance != null)
+        {
+            TimeManager.Instance.Register(this);
+        }
 
         if (centralBody == null)
         {
@@ -43,10 +53,18 @@ public class Orbiter : MonoBehaviour
         if (centralBody != null)
         {
             float direction = clockwise ? -1f : 1f;
-            currentAngle += orbitSpeed * direction * Time.fixedDeltaTime;
+            currentAngle += baseOrbitSpeed * timeMultiplier * direction * Time.fixedDeltaTime;
             currentAngle %= 360f;
 
             UpdatePosition();
+        }
+    }
+
+    private void OnDestroy()
+    {
+        if (TimeManager.Instance != null)
+        {
+            TimeManager.Instance.Deregister(this);
         }
     }
 

@@ -14,6 +14,7 @@ GameObject:
   - component: {fileID: 800390543788203717}
   - component: {fileID: 2214038092345091803}
   - component: {fileID: 5391635196549653964}
+  - component: {fileID: -7660197740828746115}
   m_Layer: 0
   m_Name: PackagePrefab
   m_TagString: Untagged
@@ -135,10 +136,10 @@ Rigidbody:
     m_Bits: 0
   m_ImplicitCom: 1
   m_ImplicitTensor: 1
-  m_UseGravity: 1
+  m_UseGravity: 0
   m_IsKinematic: 0
   m_Interpolate: 0
-  m_Constraints: 0
+  m_Constraints: 8
   m_CollisionDetection: 0
 --- !u!114 &5391635196549653964
 MonoBehaviour:
@@ -152,3 +153,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 271bac2255f20cc4ca181cbbd9fab977, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Package
+--- !u!114 &-7660197740828746115
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7973281092498103026}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bea4ed58bb1b4d54a962faef055628e3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PhysicsTimeRecorder
+  interpolationSpeed: 15

@@ -22,6 +22,8 @@ public class OrbitVisualizer : MonoBehaviour
     private Vector3 lastCentralBodyPosition;
     private bool isInitialized = false;
 
+    private GameObject orbitContainer;
+
     private void Start()
     {
         orbiter = GetComponent<Orbiter>();
@@ -66,13 +68,15 @@ public class OrbitVisualizer : MonoBehaviour
             return;
         }
 
-        dotPool = new ObjectPool(dotPrefab, calculatedNumberOfDots, null);
+        orbitContainer = new GameObject(gameObject.name + "Orbit");
+        dotPool = new ObjectPool(dotPrefab, calculatedNumberOfDots, orbitContainer.transform);
 
         DrawOrbit();
         isInitialized = true;
     }
 
-    void Update() {
+    void Update()
+    {
         if (isInitialized && centralBody.position != lastCentralBodyPosition)
         {
             DrawOrbit();
@@ -80,7 +84,8 @@ public class OrbitVisualizer : MonoBehaviour
         }
     }
 
-    private void DrawOrbit() {
+    private void DrawOrbit()
+    {
         foreach (var dot in activeDots)
         {
             dotPool.Return(dot);
@@ -114,5 +119,10 @@ public class OrbitVisualizer : MonoBehaviour
             dot.transform.localScale = Vector3.one * dotScale;
             activeDots.Add(dot);
         }
+    }
+
+    private void OnDestroy()
+    {
+        Destroy(orbitContainer);
     }
 }
