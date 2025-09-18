@@ -53,7 +53,7 @@ public class Orbiter : MonoBehaviour
         if (centralBody != null)
         {
             float direction = clockwise ? -1f : 1f;
-            currentAngle += baseOrbitSpeed * timeMultiplier * direction * Time.fixedDeltaTime;
+            currentAngle += baseOrbitSpeed * timeMultiplier * direction * Time.unscaledDeltaTime;
             currentAngle %= 360f;
 
             UpdatePosition();
@@ -70,6 +70,11 @@ public class Orbiter : MonoBehaviour
 
     private void UpdatePosition()
     {
+        rb.MovePosition(GetPositionAngle(currentAngle));
+    }
+
+    public Vector3 GetPositionAngle(float angle)
+    {
         float focusDistance = Mathf.Sqrt(Mathf.Pow(semiMajorAxis, 2) - Mathf.Pow(semiMinorAxis, 2));
 
         float angleInRad = currentAngle * Mathf.Deg2Rad;
@@ -85,6 +90,6 @@ public class Orbiter : MonoBehaviour
 
         Vector3 orbitPosition = new Vector3(rotatedX, rotatedY, 0);
 
-        rb.MovePosition(centralBody.transform.position + orbitPosition);
+        return centralBody.transform.position + orbitPosition;
     }
 }

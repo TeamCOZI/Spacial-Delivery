@@ -18,7 +18,7 @@ GameObject:
   - component: {fileID: 4301152723167159072}
   m_Layer: 0
   m_Name: PlanetPrefab
-  m_TagString: Untagged
+  m_TagString: Prefab
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -177,6 +177,7 @@ MonoBehaviour:
   orbitSpeed: 30
   clockwise: 0
   currentAngle: 0
+  timeMultiplier: 1
 --- !u!114 &4301152723167159072
 MonoBehaviour:
   m_ObjectHideFlags: 0

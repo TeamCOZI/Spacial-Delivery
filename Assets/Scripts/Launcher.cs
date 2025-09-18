@@ -4,13 +4,18 @@ using System.Collections.Generic;
 
 public class Launcher : MonoBehaviour
 {
+    private enum LaunchState { Idle, Aiming }
+    private LaunchState currentState = LaunchState.Idle;
+
+    public CameraController cameraController;
+
     [Header("Prefabs")]
     public GameObject packagePrefab;
     public GameObject dotPrefab;
 
     [Header("Launch Settings")]
-    public float launchPowerMultiplier = 10f;
-    public float maxDragDistance = 1.5f;
+    public float launchPowerMultiplier = 0.1f;
+    public float maxDragDistance = 200f;
 
     [Header("Trajectory Dots")]
     public float trajectorySimulationDots = 50;
@@ -19,108 +24,154 @@ public class Launcher : MonoBehaviour
     public float dotAnimationSpeed = 1f;
     public float dotSpacingMultiplier = 0.5f;
 
+    [Header("UI")]
+    public GameObject aimingCircleUI;
+
     private GameObject currentPackage;
     private Vector3 launchCenter;
-    private bool isDragging = false;
-    private SphereCollider launchCollider;
+    private Vector3 aimingOriginScreenPos;
 
     private ObjectPool dotPool;
     private readonly List<GameObject> activeDots = new List<GameObject>();
     private float dotPathOffset = 0f;
+    private RectTransform aimingCircleRectTransform;
+    private bool isDragging = false;
 
     private void Start()
     {
-        launchCollider = GetComponent<SphereCollider>();
-        if (launchCollider != null)
-        {
-            launchCollider.radius = maxDragDistance;
-        }
-
-        launchCenter = transform.position;
-
         if (dotPrefab != null)
         {
             dotPool = new ObjectPool(dotPrefab, numberOfDots, transform);
         }
 
-        DrawLaunchAreaCircle(maxDragDistance);
+        if (aimingCircleUI != null)
+        {
+            aimingCircleRectTransform = aimingCircleUI.GetComponent<RectTransform>();
+            aimingCircleUI.SetActive(false);
+        }
     }
 
     private void Update()
     {
         if (TimeManager.Instance != null && TimeManager.Instance.IspausedOrRewinding())
         {
-            if (isDragging)
+            if (currentState == LaunchState.Aiming)
             {
-                isDragging = false;
-                HideAllDots();
-                if (currentPackage != null)
-                {
-                    Destroy(currentPackage);
-                    currentPackage = null;
-                }
+                CancelAiming();
             }
             return;
         }
+
         if (Mouse.current == null) return;
 
-        if (Mouse.current.leftButton.wasPressedThisFrame)
+        if (currentState == LaunchState.Aiming)
         {
-            Ray ray = Camera.main.ScreenPointToRay(Mouse.current.position.ReadValue());
-            if (Physics.Raycast(ray, out RaycastHit hit) && hit.collider == launchCollider)
+            if (cameraController.SelectedPrefab == null || !cameraController.SelectedPrefab.gameObject.activeInHierarchy)
+            {
+                CancelAiming();
+                return;
+            }
+
+            if (Mouse.current.leftButton.wasPressedThisFrame)
             {
                 isDragging = true;
-                currentPackage = Instantiate(packagePrefab, launchCenter, Quaternion.identity);
-
-                Collider packageCollider = currentPackage.GetComponent<Collider>();
-                if (packageCollider != null)
-                {
-                    Physics.IgnoreCollision(packageCollider, launchCollider, true);
-                }
-
-                Rigidbody rb = currentPackage.GetComponent<Rigidbody>();
-                if (rb != null)
-                {
-                    rb.isKinematic = true;
-                }
-
-                Package package = currentPackage.GetComponent<Package>();
-                if (package != null)
-                {
-                    package.enabled = false;
-                }
             }
-        }
 
-        if (isDragging && Mouse.current.leftButton.isPressed)
-        {
-            Vector3 currentPosition = GetMouseWorldPosition();
-            Vector3 dragVector = currentPosition - launchCenter;
-            dragVector.z = 0;
+            Vector3 finalLaunchVelocity = Vector3.zero;
 
-            if (dragVector.magnitude > maxDragDistance)
+            if (isDragging)
             {
-                dragVector = dragVector.normalized * maxDragDistance;
+                float prefabRadius = 0f;
+                Renderer prefabRenderer = cameraController.SelectedPrefab.GetComponent<Renderer>();
+                if (prefabRenderer != null)
+                {
+                    prefabRadius = prefabRenderer.bounds.extents.y;
+                }
+                launchCenter = cameraController.SelectedPrefab.position + new Vector3(0, 3f + prefabRadius, 0);
+
+                if (currentPackage != null)
+                {
+                    currentPackage.transform.position = launchCenter;
+                }
+
+                Vector3 currentMouseScreenPos = Mouse.current.position.ReadValue();
+                Vector3 screenDragVector = currentMouseScreenPos - aimingOriginScreenPos;
+                if (screenDragVector.magnitude > maxDragDistance)
+                {
+                    screenDragVector = screenDragVector.normalized * maxDragDistance;
+                }
+
+                Vector3 relativeLaunchVelocity = new Vector3(-screenDragVector.x, -screenDragVector.y, 0) * launchPowerMultiplier;
+
+                Vector3 prefabVelocity = Vector3.zero;
+                Rigidbody prefabRb = cameraController.SelectedPrefab.GetComponent<Rigidbody>();
+                if (prefabRb != null)
+                {
+                    prefabVelocity = prefabRb.linearVelocity;
+                }
+
+                finalLaunchVelocity = prefabVelocity + relativeLaunchVelocity;
+
+                UpdateTrajectoryDots(finalLaunchVelocity, packagePrefab.GetComponent<Rigidbody>().mass, launchCenter);
+
+                if (Mouse.current.leftButton.wasReleasedThisFrame)
+                {
+                    Launch(finalLaunchVelocity);
+                }
             }
+            else
+            {
+                HideAllDots();
+            }
+        }
+    }
 
-            currentPackage.transform.position = launchCenter + dragVector;
+    public void OnLaunchButtonPressed()
+    {
+        if (currentState != LaunchState.Idle || cameraController.SelectedPrefab == null) return;
 
-            Vector3 launchForce = (launchCenter - currentPackage.transform.position) * launchPowerMultiplier;
-            UpdateTrajectoryDots(launchForce, currentPackage.GetComponent<Rigidbody>().mass, currentPackage.transform.position, dragVector.magnitude);
+        currentState = LaunchState.Aiming;
+
+        if (aimingCircleUI != null)
+        {
+            aimingCircleUI.SetActive(true);
+            aimingCircleRectTransform.anchoredPosition = new Vector2(0, -150);
+
+            aimingOriginScreenPos = aimingCircleRectTransform.position;
         }
 
-        if (isDragging && Mouse.current.leftButton.wasReleasedThisFrame)
+        currentPackage = Instantiate(packagePrefab, Vector3.zero, Quaternion.identity);
+        Rigidbody rb = currentPackage.GetComponent<Rigidbody>();
+        if (rb != null)
         {
-            isDragging = false;
-            HideAllDots();
-            dotPathOffset = 0f;
+            rb.isKinematic = true;
+        }
+        Package package = currentPackage.GetComponent<Package>();
+        if (package != null)
+        {
+            package.enabled = false;
+        }
+    }
 
+    private void Launch(Vector3 initialVelocity)
+    {
+        isDragging = false;
+        currentState = LaunchState.Idle;
+        HideAllDots();
+        dotPathOffset = 0f;
+
+        if (aimingCircleUI != null)
+        {
+            aimingCircleUI.SetActive(false);
+        }
+
+        if (currentPackage != null)
+        {
             Rigidbody rb = currentPackage.GetComponent<Rigidbody>();
             if (rb != null)
             {
                 rb.isKinematic = false;
-                Vector3 launchForce = (launchCenter - currentPackage.transform.position) * launchPowerMultiplier;
-                rb.AddForce(launchForce, ForceMode.Impulse);
+                rb.linearVelocity = initialVelocity;
             }
 
             Package package = currentPackage.GetComponent<Package>();
@@ -128,56 +179,90 @@ public class Launcher : MonoBehaviour
             {
                 package.enabled = true;
             }
-
             currentPackage = null;
         }
     }
 
-    private void UpdateTrajectoryDots(Vector3 launchForce, float mass, Vector3 startPos, float dragMagnitude)
+    private void CancelAiming()
+    {
+        isDragging = false;
+        currentState = LaunchState.Idle;
+        HideAllDots();
+        if (aimingCircleUI != null)
+        {
+            aimingCircleUI.SetActive(false);
+        }
+        if (currentPackage != null)
+        {
+            Destroy(currentPackage);
+            currentPackage = null;
+        }
+    }
+
+    private void UpdateTrajectoryDots(Vector3 initialVelocity, float mass, Vector3 startPos)
     {
         HideAllDots();
 
-        Collider packageCollider = currentPackage.GetComponent<Collider>();
+        Dictionary<Gravity, float> simulatedAngles = new Dictionary<Gravity, float>();
+        foreach (var source in Gravity.AllSources)
+        {
+            Orbiter o = source.GetComponent<Orbiter>();
+            if (o != null)
+            {
+                simulatedAngles[source] = o.currentAngle;
+            }
+        }
 
         List<Vector3> pathPoints = new List<Vector3>();
         Vector3 currentPosition = startPos;
-        Vector3 previousPosition = startPos;
-        Vector3 currentVelocity = launchForce / mass;
+        Vector3 currentVelocity = initialVelocity;
         float timeStep = Time.fixedDeltaTime;
 
         for (int i = 0; i < trajectorySimulationDots; i++)
         {
             pathPoints.Add(currentPosition);
-            previousPosition = currentPosition;
 
             Vector3 gravityForce = Vector3.zero;
             foreach (var source in Gravity.AllSources)
             {
-                float dist = Vector3.Distance(currentPosition, source.transform.position);
-                if (dist > 0 && dist <= source.gravityRadius)
+                Orbiter o = source.GetComponent<Orbiter>();
+                if (o != null && simulatedAngles.ContainsKey(source))
                 {
-                    Vector3 dir = (source.transform.position - currentPosition).normalized;
-                    gravityForce += dir * (source.gravity * mass) / (dist * dist);
+                    Vector3 sourceFuturePosition = o.GetPositionAngle(simulatedAngles[source]);
+
+                    float dist = Vector3.Distance(currentPosition, sourceFuturePosition);
+                    if (dist > 0 && dist <= source.gravityRadius)
+                    {
+                        Vector3 dir = (sourceFuturePosition - currentPosition).normalized;
+                        gravityForce += dir * (source.gravity * mass) / (dist * dist);
+                    }
                 }
             }
 
-            currentVelocity += (gravityForce / mass) * timeStep;
+            currentVelocity += gravityForce / mass * timeStep;
             currentPosition += currentVelocity * timeStep;
 
-            if (Physics.Linecast(previousPosition, currentPosition, out RaycastHit hit))
+            foreach (var source in Gravity.AllSources)
             {
-                if (hit.collider != launchCollider && hit.collider != packageCollider)
+                Orbiter o = source.GetComponent<Orbiter>();
+                if (o != null && simulatedAngles.ContainsKey(source))
                 {
-                    pathPoints.Add(hit.point);
-                    break;
+                    float direction = o.clockwise ? -1f : 1f;
+                    simulatedAngles[source] += o.orbitSpeed * o.timeMultiplier * direction * timeStep;
                 }
+            }
+
+            if (i > 0 && Physics.Linecast(pathPoints[pathPoints.Count - 1], currentPosition, out RaycastHit hit))
+            {
+                pathPoints.Add(hit.point);
+                break;
             }
         }
 
         float pathLength = GetPathLength(pathPoints);
         if (pathLength < 0.1f) return;
 
-        float dotSpacing = dragMagnitude * dotSpacingMultiplier;
+        float dotSpacing = pathLength / numberOfDots;
         if (dotSpacing <= 0) return;
 
         dotPathOffset = (dotPathOffset + Time.deltaTime * dotAnimationSpeed) % dotSpacing;
@@ -231,47 +316,6 @@ public class Launcher : MonoBehaviour
             distanceCovered += segmentLength;
         }
         return points[points.Count - 1];
-    }
-
-    private Vector3 GetMouseWorldPosition()
-    {
-        Ray ray = Camera.main.ScreenPointToRay(Mouse.current.position.ReadValue());
-        Plane xyPlane = new Plane(Vector3.forward, Vector3.zero);
-        if (xyPlane.Raycast(ray, out float distance))
-        {
-            return ray.GetPoint(distance);
-        }
-        return Vector3.zero;
-    }
-
-    private void DrawLaunchAreaCircle(float radius)
-    {
-        GameObject circleObj = new GameObject("LaunchAreaCircle");
-        circleObj.transform.parent = transform;
-        circleObj.transform.position = launchCenter;
-
-        LineRenderer lineRenderer = circleObj.AddComponent<LineRenderer>();
-        lineRenderer.useWorldSpace = false;
-        lineRenderer.startWidth = 0.05f;
-        lineRenderer.endWidth = 0.05f;
-        lineRenderer.loop = true;
-
-        lineRenderer.material = new Material(Shader.Find("Universal Render Pipeline/Unlit"));
-        lineRenderer.startColor = Color.white;
-        lineRenderer.endColor = Color.white;
-
-        int segments = 100;
-        lineRenderer.positionCount = segments;
-
-        Vector3[] points = new Vector3[segments];
-        for (int i = 0; i < segments; i++)
-        {
-            float angle = (float)i / segments * 2f * Mathf.PI;
-            float x = Mathf.Cos(angle) * radius;
-            float y = Mathf.Sin(angle) * radius;
-            points[i] = new Vector3(x, y, 0);
-        }
-        lineRenderer.SetPositions(points);
     }
 
     private void OnDrawGizmos()

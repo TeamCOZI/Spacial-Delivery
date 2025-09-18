@@ -1,13 +1,21 @@
+using System;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
 public class CameraController : MonoBehaviour
 {
+    public Transform SelectedPrefab { get; private set; }
+    public event Action<Transform> OnSelectionChanged;
+
     [Header("Zoom Settings")]
     public float zoomSpeed = 100f;
     public float defaultZ = -30f;
     public float minZ = -50f;
     public float maxZ = -10f;
+
+    [Header("Follow Settings")]
+    public float followSpeed = 5.0f;
+    public string prefabTag = "Prefab";
 
     private bool isDragging = false;
     private Vector3 lastMouseScreenPos;
@@ -24,8 +32,48 @@ public class CameraController : MonoBehaviour
             return;
         }
 
-        HandleDrag();
+        if (SelectedPrefab != null && Mouse.current.rightButton.isPressed)
+        {
+            UpdateSelection(null);
+        }
+
+        if (Mouse.current.leftButton.wasPressedThisFrame)
+        {
+            Ray ray = Camera.main.ScreenPointToRay(Mouse.current.position.ReadValue());
+            if (Physics.Raycast(ray, out RaycastHit hit))
+            {
+                if (hit.collider.CompareTag(prefabTag))
+                {
+                    UpdateSelection(hit.transform);
+                }
+            }
+        }
+        
         HandleZoom();
+
+        if (SelectedPrefab == null)
+        {
+            HandleDrag();
+        }
+    }
+
+    private void LateUpdate()
+    {
+        if (SelectedPrefab != null)
+        {
+            Vector3 desiredPosition = new Vector3(SelectedPrefab.position.x, SelectedPrefab.position.y, transform.position.z);
+
+            transform.position = desiredPosition;
+        }
+    }
+
+    private void UpdateSelection(Transform newSelection)
+    {
+        if (SelectedPrefab != newSelection)
+        {
+            SelectedPrefab = newSelection;
+            OnSelectionChanged?.Invoke(SelectedPrefab);
+        }
     }
 
     private void HandleDrag()
