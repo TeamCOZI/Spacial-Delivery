@@ -3,7 +3,7 @@ using UnityEngine;
 [RequireComponent(typeof(Rigidbody))]
 public class Package : MonoBehaviour
 {
-    public static float destroyDistance = 100f;
+    public static float destroyDistance = 10000f;
 
     private Rigidbody rb;
 

@@ -16,6 +16,7 @@ public class Launcher : MonoBehaviour
     [Header("Launch Settings")]
     public float launchPowerMultiplier = 0.1f;
     public float maxDragDistance = 200f;
+    public float slowDown = 0.1f;
 
     [Header("Trajectory Dots")]
     public float trajectorySimulationDots = 50;
@@ -130,6 +131,11 @@ public class Launcher : MonoBehaviour
     {
         if (currentState != LaunchState.Idle || cameraController.SelectedPrefab == null) return;
 
+        if (TimeManager.Instance != null)
+        {
+            TimeManager.Instance.FastForward(slowDown);
+        }
+
         currentState = LaunchState.Aiming;
 
         if (aimingCircleUI != null)
@@ -155,6 +161,11 @@ public class Launcher : MonoBehaviour
 
     private void Launch(Vector3 initialVelocity)
     {
+        if (TimeManager.Instance != null)
+        {
+            TimeManager.Instance.Play();
+        }
+
         isDragging = false;
         currentState = LaunchState.Idle;
         HideAllDots();
@@ -185,6 +196,11 @@ public class Launcher : MonoBehaviour
 
     private void CancelAiming()
     {
+        if (TimeManager.Instance != null)
+        {
+            TimeManager.Instance.Play();
+        }
+
         isDragging = false;
         currentState = LaunchState.Idle;
         HideAllDots();

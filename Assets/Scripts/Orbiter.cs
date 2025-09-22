@@ -60,6 +60,22 @@ public class Orbiter : MonoBehaviour
         }
     }
 
+    private void OnEnable()
+    {
+        if (PeriodVisualizer.Instance != null)
+        {
+            PeriodVisualizer.Instance.RegisterOrbiter(this);
+        }
+    }
+
+    private void OnDisable()
+    {
+        if (PeriodVisualizer.Instance != null)
+        {
+            PeriodVisualizer.Instance.DeregisterOrbiter(this);
+        }
+    }
+
     private void OnDestroy()
     {
         if (TimeManager.Instance != null)
