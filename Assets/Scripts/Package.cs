@@ -1,9 +1,14 @@
 using UnityEngine;
+using System.Collections.Generic;
 
 [RequireComponent(typeof(Rigidbody))]
 public class Package : MonoBehaviour
 {
     public static float destroyDistance = 10000f;
+
+    public List<Vector3> pathPoints = new List<Vector3>();
+    private const float MinPathPointDistance = 0.5f;
+    private Vector3 lastPathPoint;
 
     private Rigidbody rb;
 
@@ -11,6 +16,12 @@ public class Package : MonoBehaviour
     {
         rb = GetComponent<Rigidbody>();
         rb.useGravity = false;
+
+        if (pathPoints.Count == 0)
+        {
+            pathPoints.Add(transform.position);
+            lastPathPoint = transform.position;
+        }
     }
 
     private void Update()
@@ -36,6 +47,12 @@ public class Package : MonoBehaviour
             Vector3 force = direction.normalized * forceMagnitude;
 
             rb.AddForce(force);
+        }
+
+        if (Vector3.Distance(transform.position, lastPathPoint) > MinPathPointDistance)
+        {
+            pathPoints.Add(transform.position);
+            lastPathPoint = transform.position;
         }
     }
 }

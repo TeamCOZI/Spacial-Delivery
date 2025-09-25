@@ -11,6 +11,7 @@ public class Launcher : MonoBehaviour
 
     [Header("Prefabs")]
     public GameObject packagePrefab;
+    public GameObject dummyPackagePrefab;
     public GameObject dotPrefab;
 
     [Header("Launch Settings")]
@@ -28,7 +29,7 @@ public class Launcher : MonoBehaviour
     [Header("UI")]
     public GameObject aimingCircleUI;
 
-    private GameObject currentPackage;
+    private GameObject dummyInstance;
     private Vector3 launchCenter;
     private Vector3 aimingOriginScreenPos;
 
@@ -90,9 +91,9 @@ public class Launcher : MonoBehaviour
                 }
                 launchCenter = cameraController.SelectedPrefab.position + new Vector3(0, 3f + prefabRadius, 0);
 
-                if (currentPackage != null)
+                if (dummyInstance != null)
                 {
-                    currentPackage.transform.position = launchCenter;
+                    dummyInstance.transform.position = launchCenter;
                 }
 
                 Vector3 currentMouseScreenPos = Mouse.current.position.ReadValue();
@@ -146,17 +147,7 @@ public class Launcher : MonoBehaviour
             aimingOriginScreenPos = aimingCircleRectTransform.position;
         }
 
-        currentPackage = Instantiate(packagePrefab, Vector3.zero, Quaternion.identity);
-        Rigidbody rb = currentPackage.GetComponent<Rigidbody>();
-        if (rb != null)
-        {
-            rb.isKinematic = true;
-        }
-        Package package = currentPackage.GetComponent<Package>();
-        if (package != null)
-        {
-            package.enabled = false;
-        }
+        dummyInstance = Instantiate(dummyPackagePrefab, Vector3.zero, Quaternion.identity);
     }
 
     private void Launch(Vector3 initialVelocity)
@@ -176,21 +167,19 @@ public class Launcher : MonoBehaviour
             aimingCircleUI.SetActive(false);
         }
 
-        if (currentPackage != null)
+        if (dummyInstance != null)
         {
-            Rigidbody rb = currentPackage.GetComponent<Rigidbody>();
+            Vector3 launchPosition = dummyInstance.transform.position;
+            Destroy(dummyInstance);
+            dummyInstance = null;
+
+            GameObject realPackage = Instantiate(packagePrefab, launchPosition, Quaternion.identity);
+            Rigidbody rb = realPackage.GetComponent<Rigidbody>();
             if (rb != null)
             {
                 rb.isKinematic = false;
                 rb.linearVelocity = initialVelocity;
             }
-
-            Package package = currentPackage.GetComponent<Package>();
-            if (package != null)
-            {
-                package.enabled = true;
-            }
-            currentPackage = null;
         }
     }
 
@@ -208,10 +197,10 @@ public class Launcher : MonoBehaviour
         {
             aimingCircleUI.SetActive(false);
         }
-        if (currentPackage != null)
+        if (dummyInstance != null)
         {
-            Destroy(currentPackage);
-            currentPackage = null;
+            Destroy(dummyInstance);
+            dummyInstance = null;
         }
     }
 

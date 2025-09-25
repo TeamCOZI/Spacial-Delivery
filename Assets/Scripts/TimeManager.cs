@@ -122,10 +122,6 @@ public class TimeManager : MonoBehaviour
         float orbiterMultiplier = 1f;
         if (newState == TimeState.Paused) orbiterMultiplier = 0f;
         else if (newState == TimeState.Rewinding) orbiterMultiplier = -1f;
-        else if (newState == TimeState.FastForward || newState == TimeState.Replaying)
-        {
-            orbiterMultiplier = newTimeScale;
-        }
 
         foreach (var orbiter in statelessOrbiters)
         {

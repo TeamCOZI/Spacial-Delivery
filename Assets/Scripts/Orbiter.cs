@@ -53,7 +53,7 @@ public class Orbiter : MonoBehaviour
         if (centralBody != null)
         {
             float direction = clockwise ? -1f : 1f;
-            currentAngle += baseOrbitSpeed * timeMultiplier * direction * Time.unscaledDeltaTime;
+            currentAngle += baseOrbitSpeed * timeMultiplier * direction * Time.fixedDeltaTime;
             currentAngle %= 360f;
 
             UpdatePosition();
