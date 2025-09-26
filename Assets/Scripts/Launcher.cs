@@ -174,12 +174,43 @@ public class Launcher : MonoBehaviour
             dummyInstance = null;
 
             GameObject realPackage = Instantiate(packagePrefab, launchPosition, Quaternion.identity);
+            Package packageComponent = realPackage.GetComponent<Package>();
+            if (packageComponent != null && TimeManager.Instance != null)
+            {
+                packageComponent.launchData = new LaunchData
+                {
+                    LaunchPosition = launchPosition,
+                    InitialVelocity = initialVelocity,
+                    RelativeLaunchFrame = TimeManager.Instance.GlobalFrame
+                };
+            }
+
             Rigidbody rb = realPackage.GetComponent<Rigidbody>();
             if (rb != null)
             {
                 rb.isKinematic = false;
                 rb.linearVelocity = initialVelocity;
             }
+        }
+    }
+
+    public void AutomatedLaunch(LaunchData data)
+    {
+        if (data == null) return;
+
+        GameObject realPackage = Instantiate(packagePrefab, data.LaunchPosition, Quaternion.identity);
+        Package packageComponent = realPackage.GetComponent<Package>();
+
+        if (packageComponent != null)
+        {
+            packageComponent.launchData = data;
+        }
+
+        Rigidbody rb = realPackage.GetComponent<Rigidbody>();
+        if (rb != null)
+        {
+            rb.isKinematic = false;
+            rb.linearVelocity = data.InitialVelocity;
         }
     }
 

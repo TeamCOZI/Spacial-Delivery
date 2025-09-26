@@ -7,6 +7,9 @@ public class ArtificialSatellite : MonoBehaviour
     [Header("Capture Settings")]
     public float captureRange = 3f;
 
+    [Header("Dependencies")]
+    public Launcher launcher;
+
     [Header("Visual Settings")]
     public Transform rangeVisualizer;
 
@@ -17,6 +20,9 @@ public class ArtificialSatellite : MonoBehaviour
     public GameObject pathVisualizerPrefab;
 
     private SphereCollider sphereCollider;
+    private LaunchData successfulLaunchData;
+
+    private bool waitingForLaunchWindow = false;
 
     private void Awake()
     {
@@ -27,6 +33,26 @@ public class ArtificialSatellite : MonoBehaviour
     private void Start()
     {
         UpdateRange();
+        TimeManager.OnGlobalPeriodCompleted += OnPeriodCompleted;
+    }
+
+    private void OnDestroy()
+    {
+        TimeManager.OnGlobalPeriodCompleted -= OnPeriodCompleted;
+    }
+
+    private void Update()
+    {
+        if (waitingForLaunchWindow && successfulLaunchData != null && launcher != null)
+        {
+            int currentPeriodFrame = TimeManager.Instance.GlobalFrame - TimeManager.Instance.PeriodStartFrame;
+
+            if (currentPeriodFrame >= successfulLaunchData.RelativeLaunchFrame)
+            {
+                launcher.AutomatedLaunch(successfulLaunchData);
+                waitingForLaunchWindow = false;
+            }
+        }
     }
 
     private void OnValidate()
@@ -36,6 +62,14 @@ public class ArtificialSatellite : MonoBehaviour
             sphereCollider = GetComponent<SphereCollider>();
         }
         UpdateRange();
+    }
+
+    private void OnPeriodCompleted()
+    {
+        if (successfulLaunchData != null)
+        {
+            waitingForLaunchWindow = true;
+        }
     }
 
     private void UpdateRange()
@@ -61,6 +95,11 @@ public class ArtificialSatellite : MonoBehaviour
         Package package = packageObject.GetComponent<Package>();
         if (package != null)
         {
+            if (package.launchData != null)
+            {
+                this.successfulLaunchData = package.launchData;
+                this.waitingForLaunchWindow = false;
+            }
             DrawPackagePath(package.pathPoints);
         }
 

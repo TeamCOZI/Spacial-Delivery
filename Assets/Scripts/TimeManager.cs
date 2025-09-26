@@ -1,10 +1,13 @@
 using UnityEngine;
 using System.Collections.Generic;
 using System.Linq;
+using System;
 
 public class TimeManager : MonoBehaviour
 {
     public static TimeManager Instance { get; private set; }
+
+    public static event Action OnGlobalPeriodCompleted;
 
     private List<BaseTimeRecorder> statefulRecorders = new List<BaseTimeRecorder>();
     private List<Orbiter> statelessOrbiters = new List<Orbiter>();
@@ -12,6 +15,11 @@ public class TimeManager : MonoBehaviour
     private TimeState currentState;
 
     public int GlobalFrame { get; private set; } = 0;
+    public int PeriodStartFrame { get; private set; } = 0;
+
+    private Orbiter mainOrbiter;
+    private float previousMainOrbiterAngle;
+    private bool mainOrbiterInitialized = false;
 
     private void Awake()
     {
@@ -76,6 +84,34 @@ public class TimeManager : MonoBehaviour
 
             case TimeState.Paused:
                 break;
+        }
+
+        CheckGlobalPeriod();
+    }
+
+    private void CheckGlobalPeriod()
+    {
+        if (statelessOrbiters.Count == 0) return;
+
+        if (!mainOrbiterInitialized)
+        {
+            mainOrbiter = statelessOrbiters.OrderBy(o => o.orbitSpeed).FirstOrDefault();
+            if (mainOrbiter != null)
+            {
+                previousMainOrbiterAngle = mainOrbiter.currentAngle;
+                mainOrbiterInitialized = true;
+            }
+            return;
+        }
+
+        if (mainOrbiter != null && (currentState == TimeState.Playing || currentState == TimeState.FastForward))
+        {
+            if (previousMainOrbiterAngle > mainOrbiter.currentAngle && Mathf.Abs(previousMainOrbiterAngle - mainOrbiter.currentAngle) > 180)
+            {
+                PeriodStartFrame = GlobalFrame;
+                OnGlobalPeriodCompleted?.Invoke();
+            }
+            previousMainOrbiterAngle = mainOrbiter.currentAngle;
         }
     }
 
@@ -175,6 +211,7 @@ public class TimeManager : MonoBehaviour
         if (!statelessOrbiters.Contains(orbiter))
         {
             statelessOrbiters.Add(orbiter);
+            mainOrbiterInitialized = false;
         }
     }
 
@@ -183,6 +220,7 @@ public class TimeManager : MonoBehaviour
         if (statelessOrbiters.Contains(orbiter))
         {
             statelessOrbiters.Remove(orbiter);
+            mainOrbiterInitialized = false;
         }
     }
 

@@ -10,6 +10,8 @@ public class Package : MonoBehaviour
     private const float MinPathPointDistance = 0.5f;
     private Vector3 lastPathPoint;
 
+    public LaunchData launchData;
+    
     private Rigidbody rb;
 
     private void Awake()
