@@ -1,5 +1,6 @@
 using UnityEngine;
 using System.Collections.Generic;
+using TMPro;
 
 [RequireComponent(typeof(SphereCollider))]
 public class ArtificialSatellite : MonoBehaviour
@@ -19,8 +20,13 @@ public class ArtificialSatellite : MonoBehaviour
     public float effectScale = 1f;
     public GameObject pathVisualizerPrefab;
 
+    [Header("UI Settings")]
+    public GameObject confirmationPanel;
+    public TextMeshProUGUI routeInfoText;
+
     private SphereCollider sphereCollider;
     private LaunchData successfulLaunchData;
+    private LaunchData pendingLaunchData;
 
     private bool waitingForLaunchWindow = false;
 
@@ -34,6 +40,10 @@ public class ArtificialSatellite : MonoBehaviour
     {
         UpdateRange();
         TimeManager.OnGlobalPeriodCompleted += OnPeriodCompleted;
+        if (confirmationPanel != null)
+        {
+            confirmationPanel.SetActive(false);
+        }
     }
 
     private void OnDestroy()
@@ -51,6 +61,20 @@ public class ArtificialSatellite : MonoBehaviour
             {
                 launcher.AutomatedLaunch(successfulLaunchData);
                 waitingForLaunchWindow = false;
+                if (routeInfoText != null)
+                {
+                    routeInfoText.text = "Waiting next period...";
+                }
+            }
+            else
+            {
+                if (routeInfoText != null)
+                {
+                    int remainingFrames = successfulLaunchData.RelativeLaunchFrame - currentPeriodFrame;
+                    float remainingSeconds = (remainingFrames * Time.fixedDeltaTime) / Time.timeScale;
+                    routeInfoText.text = $"Remaining time for next automated launch: {remainingSeconds:F1}s";
+                    routeInfoText.gameObject.SetActive(true);
+                }
             }
         }
     }
@@ -97,15 +121,59 @@ public class ArtificialSatellite : MonoBehaviour
         {
             if (package.launchData != null)
             {
-                this.successfulLaunchData = package.launchData;
-                this.waitingForLaunchWindow = false;
+                package.launchData.pathPoints = new List<Vector3>(package.pathPoints);
+                
+                pendingLaunchData = package.launchData;
+
+                if (confirmationPanel != null)
+                {
+                    confirmationPanel.SetActive(true);
+                }
+
+                TimeManager.Instance.Pause();
             }
-            DrawPackagePath(package.pathPoints);
         }
 
         Vector3 capturePosition = packageObject.transform.position;
         Destroy(packageObject);
         ShowSuccessEffect(capturePosition);
+    }
+
+    public void ConfirmRoute()
+    {
+        if (pendingLaunchData != null)
+        {
+            this.successfulLaunchData = pendingLaunchData;
+
+            if (pendingLaunchData.pathPoints != null)
+            {
+                DrawPackagePath(pendingLaunchData.pathPoints);
+            }
+
+            if (routeInfoText != null)
+            {
+                routeInfoText.text = "Waiting next period...";
+                routeInfoText.gameObject.SetActive(true);
+            }
+        }
+        pendingLaunchData = null;
+
+        if (confirmationPanel != null)
+        {
+            confirmationPanel.SetActive(false);
+        }
+        TimeManager.Instance.Play();
+    }
+
+    public void DeclineRoute()
+    {
+        pendingLaunchData = null;
+
+        if (confirmationPanel != null)
+        {
+            confirmationPanel.SetActive(false);
+        }
+        TimeManager.Instance.Play();
     }
 
     private void DrawPackagePath(List<Vector3> pathPoints)

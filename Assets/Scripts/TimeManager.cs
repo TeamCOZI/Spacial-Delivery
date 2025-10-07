@@ -2,9 +2,13 @@ using UnityEngine;
 using System.Collections.Generic;
 using System.Linq;
 using System;
+using TMPro;
 
 public class TimeManager : MonoBehaviour
 {
+    [Header("Debug")]
+    public TextMeshProUGUI globalFrameText;
+
     public static TimeManager Instance { get; private set; }
 
     public static event Action OnGlobalPeriodCompleted;
@@ -36,6 +40,14 @@ public class TimeManager : MonoBehaviour
     private void Start()
     {
         SetState(TimeState.Playing, 1f);
+    }
+
+    private void Update()
+    {
+        if (globalFrameText != null)
+        {
+            globalFrameText.text = "Global Frame: " + GlobalFrame.ToString();
+        }
     }
 
     private void FixedUpdate()
