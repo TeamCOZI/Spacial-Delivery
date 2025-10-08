@@ -2320,6 +2320,7 @@ MonoBehaviour:
   periodBarPrefab: {fileID: 1807039159986483848, guid: cd8c78857f7eb8b4faf8918acca4cc58, type: 3}
   rowHeight: 30
   labelWidth: 150
+  totalPeriodLcm: 0
 --- !u!4 &1299515284
 Transform:
   m_ObjectHideFlags: 0
@@ -3263,6 +3264,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::TimeManager
   globalFrameText: {fileID: 1063120001}
+  periodVisualizer: {fileID: 1299515283}
 --- !u!4 &1960995258
 Transform:
   m_ObjectHideFlags: 0

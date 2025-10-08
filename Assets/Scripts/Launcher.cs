@@ -204,6 +204,7 @@ public class Launcher : MonoBehaviour
         if (packageComponent != null)
         {
             packageComponent.launchData = data;
+            packageComponent.isAutomatedLaunch = true;
         }
 
         Rigidbody rb = realPackage.GetComponent<Rigidbody>();

@@ -12,6 +12,8 @@ public class PeriodVisualizer : MonoBehaviour
     public float rowHeight = 30f;
     public float labelWidth = 150f;
 
+    public int totalPeriodLcm = 0;
+
     private readonly List<Orbiter> registeredOrbiters = new List<Orbiter>();
 
     private void Awake()
@@ -79,7 +81,7 @@ public class PeriodVisualizer : MonoBehaviour
             Destroy(child.gameObject);
         }
 
-        int totalPeriodLcm = CalculateLCM(periods);
+        totalPeriodLcm = CalculateLCM(periods);
 
         CreatePeriodRow($"전체 주기: {totalPeriodLcm}", totalPeriodLcm, totalPeriodLcm, periodVisualizerContainer.transform);
 

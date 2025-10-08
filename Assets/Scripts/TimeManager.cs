@@ -8,7 +8,7 @@ public class TimeManager : MonoBehaviour
 {
     [Header("Debug")]
     public TextMeshProUGUI globalFrameText;
-
+    public PeriodVisualizer periodVisualizer;
     public static TimeManager Instance { get; private set; }
 
     public static event Action OnGlobalPeriodCompleted;
@@ -103,27 +103,17 @@ public class TimeManager : MonoBehaviour
 
     private void CheckGlobalPeriod()
     {
-        if (statelessOrbiters.Count == 0) return;
+        if (periodVisualizer == null) return;
+        if (currentState != TimeState.Playing && currentState != TimeState.FastForward) return;
 
-        if (!mainOrbiterInitialized)
-        {
-            mainOrbiter = statelessOrbiters.OrderBy(o => o.orbitSpeed).FirstOrDefault();
-            if (mainOrbiter != null)
-            {
-                previousMainOrbiterAngle = mainOrbiter.currentAngle;
-                mainOrbiterInitialized = true;
-            }
-            return;
-        }
+        int totalPeriodLcm = periodVisualizer.totalPeriodLcm * 100;
 
-        if (mainOrbiter != null && (currentState == TimeState.Playing || currentState == TimeState.FastForward))
+        if (totalPeriodLcm <= 0) return;
+
+        if (GlobalFrame >= PeriodStartFrame + totalPeriodLcm)
         {
-            if (previousMainOrbiterAngle > mainOrbiter.currentAngle && Mathf.Abs(previousMainOrbiterAngle - mainOrbiter.currentAngle) > 180)
-            {
-                PeriodStartFrame = GlobalFrame;
-                OnGlobalPeriodCompleted?.Invoke();
-            }
-            previousMainOrbiterAngle = mainOrbiter.currentAngle;
+            PeriodStartFrame += totalPeriodLcm;
+            OnGlobalPeriodCompleted?.Invoke();
         }
     }
 

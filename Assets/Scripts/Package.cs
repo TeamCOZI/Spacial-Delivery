@@ -11,7 +11,7 @@ public class Package : MonoBehaviour
     private Vector3 lastPathPoint;
 
     public LaunchData launchData;
-    
+    public bool isAutomatedLaunch = false;
     private Rigidbody rb;
 
     private void Awake()

@@ -25,10 +25,9 @@ public class ArtificialSatellite : MonoBehaviour
     public TextMeshProUGUI routeInfoText;
 
     private SphereCollider sphereCollider;
-    private LaunchData successfulLaunchData;
+    private readonly List<LaunchData> successfulLaunchRoutes = new List<LaunchData>();
+    private readonly List<LaunchData> pendingLaunchesThisPeriod = new List<LaunchData>();
     private LaunchData pendingLaunchData;
-
-    private bool waitingForLaunchWindow = false;
 
     private void Awake()
     {
@@ -53,29 +52,29 @@ public class ArtificialSatellite : MonoBehaviour
 
     private void Update()
     {
-        if (waitingForLaunchWindow && successfulLaunchData != null && launcher != null)
-        {
-            int currentPeriodFrame = TimeManager.Instance.GlobalFrame - TimeManager.Instance.PeriodStartFrame;
+        if (launcher == null) return;
 
-            if (currentPeriodFrame >= successfulLaunchData.RelativeLaunchFrame)
+        int currentPeriodFrame = TimeManager.Instance.GlobalFrame - TimeManager.Instance.PeriodStartFrame;
+        List<LaunchData> launchedRoutes = new List<LaunchData>();
+
+        foreach (var routeData in pendingLaunchesThisPeriod)
+        {
+            if (currentPeriodFrame >= routeData.RelativeLaunchFrame)
             {
-                launcher.AutomatedLaunch(successfulLaunchData);
-                waitingForLaunchWindow = false;
-                if (routeInfoText != null)
-                {
-                    routeInfoText.text = "Waiting next period...";
-                }
+                launcher.AutomatedLaunch(routeData);
+                launchedRoutes.Add(routeData);
             }
-            else
-            {
-                if (routeInfoText != null)
-                {
-                    int remainingFrames = successfulLaunchData.RelativeLaunchFrame - currentPeriodFrame;
-                    float remainingSeconds = (remainingFrames * Time.fixedDeltaTime) / Time.timeScale;
-                    routeInfoText.text = $"Remaining time for next automated launch: {remainingSeconds:F1}s";
-                    routeInfoText.gameObject.SetActive(true);
-                }
-            }
+        }
+
+        foreach (var launchedRoute in launchedRoutes)
+        {
+            pendingLaunchesThisPeriod.Remove(launchedRoute);
+        }
+
+        if (routeInfoText != null)
+        {
+            routeInfoText.text = $"Current Period Frame: {currentPeriodFrame}\nPeriodStartFrame: {TimeManager.Instance.PeriodStartFrame}";
+            routeInfoText.gameObject.SetActive(true);
         }
     }
 
@@ -90,9 +89,10 @@ public class ArtificialSatellite : MonoBehaviour
 
     private void OnPeriodCompleted()
     {
-        if (successfulLaunchData != null)
+        pendingLaunchesThisPeriod.Clear();
+        if (successfulLaunchRoutes.Count > 0)
         {
-            waitingForLaunchWindow = true;
+            pendingLaunchesThisPeriod.AddRange(successfulLaunchRoutes);
         }
     }
 
@@ -119,7 +119,7 @@ public class ArtificialSatellite : MonoBehaviour
         Package package = packageObject.GetComponent<Package>();
         if (package != null)
         {
-            if (package.launchData != null)
+            if (!package.isAutomatedLaunch && package.launchData != null)
             {
                 package.launchData.pathPoints = new List<Vector3>(package.pathPoints);
                 
@@ -143,17 +143,11 @@ public class ArtificialSatellite : MonoBehaviour
     {
         if (pendingLaunchData != null)
         {
-            this.successfulLaunchData = pendingLaunchData;
+            successfulLaunchRoutes.Add(pendingLaunchData);
 
             if (pendingLaunchData.pathPoints != null)
             {
                 DrawPackagePath(pendingLaunchData.pathPoints);
-            }
-
-            if (routeInfoText != null)
-            {
-                routeInfoText.text = "Waiting next period...";
-                routeInfoText.gameObject.SetActive(true);
             }
         }
         pendingLaunchData = null;
