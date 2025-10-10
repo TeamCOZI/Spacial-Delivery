@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
 using System.Collections.Generic;
+using UnityEditor;
 
 public class Launcher : MonoBehaviour
 {
@@ -11,6 +12,7 @@ public class Launcher : MonoBehaviour
 
     [Header("Prefabs")]
     public GameObject packagePrefab;
+    public GameObject playerSpaceshipPrefab;
     public GameObject dummyPackagePrefab;
     public GameObject dotPrefab;
 
@@ -114,11 +116,14 @@ public class Launcher : MonoBehaviour
 
                 finalLaunchVelocity = prefabVelocity + relativeLaunchVelocity;
 
-                UpdateTrajectoryDots(finalLaunchVelocity, packagePrefab.GetComponent<Rigidbody>().mass, launchCenter);
+                if (playerSpaceshipPrefab != null)
+                {
+                    UpdateTrajectoryDots(finalLaunchVelocity, playerSpaceshipPrefab.GetComponent<Rigidbody>().mass, launchCenter);
+                }
 
                 if (Mouse.current.leftButton.wasReleasedThisFrame)
                 {
-                    Launch(finalLaunchVelocity);
+                    LaunchPlayer(finalLaunchVelocity);
                 }
             }
             else
@@ -150,22 +155,10 @@ public class Launcher : MonoBehaviour
         dummyInstance = Instantiate(dummyPackagePrefab, Vector3.zero, Quaternion.identity);
     }
 
-    private void Launch(Vector3 initialVelocity)
+    public void LaunchPlayer(Vector3 initialVelocity)
     {
-        if (TimeManager.Instance != null)
-        {
-            TimeManager.Instance.Play();
-        }
-
-        isDragging = false;
-        currentState = LaunchState.Idle;
-        HideAllDots();
-        dotPathOffset = 0f;
-
-        if (aimingCircleUI != null)
-        {
-            aimingCircleUI.SetActive(false);
-        }
+        if (TimeManager.Instance != null) TimeManager.Instance.Play();
+        CleanupAimingState();
 
         if (dummyInstance != null)
         {
@@ -173,19 +166,20 @@ public class Launcher : MonoBehaviour
             Destroy(dummyInstance);
             dummyInstance = null;
 
-            GameObject realPackage = Instantiate(packagePrefab, launchPosition, Quaternion.identity);
-            Package packageComponent = realPackage.GetComponent<Package>();
+            GameObject launchedObject = Instantiate(playerSpaceshipPrefab, launchPosition, Quaternion.identity);
+            Package packageComponent = launchedObject.GetComponent<Package>();
+
             if (packageComponent != null && TimeManager.Instance != null)
             {
                 packageComponent.launchData = new LaunchData
                 {
                     LaunchPosition = launchPosition,
                     InitialVelocity = initialVelocity,
-                    RelativeLaunchFrame = TimeManager.Instance.GlobalFrame
+                    RelativeLaunchFrame = TimeManager.Instance.GlobalFrame - TimeManager.Instance.PeriodStartFrame
                 };
             }
 
-            Rigidbody rb = realPackage.GetComponent<Rigidbody>();
+            Rigidbody rb = launchedObject.GetComponent<Rigidbody>();
             if (rb != null)
             {
                 rb.isKinematic = false;
@@ -198,16 +192,15 @@ public class Launcher : MonoBehaviour
     {
         if (data == null) return;
 
-        GameObject realPackage = Instantiate(packagePrefab, data.LaunchPosition, Quaternion.identity);
-        Package packageComponent = realPackage.GetComponent<Package>();
+        GameObject launchedObject = Instantiate(packagePrefab, data.LaunchPosition, Quaternion.identity);
+        Package packageComponent = launchedObject.GetComponent<Package>();
 
         if (packageComponent != null)
         {
             packageComponent.launchData = data;
-            packageComponent.isAutomatedLaunch = true;
         }
 
-        Rigidbody rb = realPackage.GetComponent<Rigidbody>();
+        Rigidbody rb = launchedObject.GetComponent<Rigidbody>();
         if (rb != null)
         {
             rb.isKinematic = false;
@@ -234,6 +227,14 @@ public class Launcher : MonoBehaviour
             Destroy(dummyInstance);
             dummyInstance = null;
         }
+    }
+
+    private void CleanupAimingState()
+    {
+        isDragging = false;
+        currentState = LaunchState.Idle;
+        HideAllDots();
+        if (aimingCircleUI != null) aimingCircleUI.SetActive(false);
     }
 
     private void UpdateTrajectoryDots(Vector3 initialVelocity, float mass, Vector3 startPos)

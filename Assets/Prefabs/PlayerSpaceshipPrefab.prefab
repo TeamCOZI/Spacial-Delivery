@@ -13,11 +13,12 @@ GameObject:
   - component: {fileID: 1801253910793259479}
   - component: {fileID: 800390543788203717}
   - component: {fileID: 2214038092345091803}
-  - component: {fileID: 5391635196549653964}
+  - component: {fileID: 8674480195975256173}
   - component: {fileID: -7660197740828746115}
+  - component: {fileID: -1135191457277924151}
   m_Layer: 0
-  m_Name: PackagePrefab
-  m_TagString: Package
+  m_Name: PlayerSpaceshipPrefab
+  m_TagString: PlayerSpaceship
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -141,7 +142,7 @@ Rigidbody:
   m_Interpolate: 0
   m_Constraints: 8
   m_CollisionDetection: 0
---- !u!114 &5391635196549653964
+--- !u!114 &8674480195975256173
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -150,9 +151,9 @@ MonoBehaviour:
   m_GameObject: {fileID: 7973281092498103026}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 271bac2255f20cc4ca181cbbd9fab977, type: 3}
+  m_Script: {fileID: 11500000, guid: 84c82b96330b22f419a122053bc54198, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Package
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerSpaceship
   pathPoints: []
   launchData:
     LaunchPosition: {x: 0, y: 0, z: 0}
@@ -160,6 +161,10 @@ MonoBehaviour:
     RelativeLaunchFrame: 0
     pathPoints: []
     thrusts: []
+  thrustForce: 10
+  maxFuel: 100
+  fuelConsumeRate: 10
+  currentFuel: 0
 --- !u!114 &-7660197740828746115
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -172,3 +177,33 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: bea4ed58bb1b4d54a962faef055628e3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PhysicsTimeRecorder
+--- !u!114 &-1135191457277924151
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7973281092498103026}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 62899f850307741f2a39c98a8b639597, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.InputSystem::UnityEngine.InputSystem.PlayerInput
+  m_Actions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}
+  m_NotificationBehavior: 0
+  m_UIInputModule: {fileID: 0}
+  m_DeviceLostEvent:
+    m_PersistentCalls:
+      m_Calls: []
+  m_DeviceRegainedEvent:
+    m_PersistentCalls:
+      m_Calls: []
+  m_ControlsChangedEvent:
+    m_PersistentCalls:
+      m_Calls: []
+  m_ActionEvents: []
+  m_NeverAutoSwitchControlSchemes: 0
+  m_DefaultControlScheme: 
+  m_DefaultActionMap: 
+  m_SplitScreenIndex: -1
+  m_Camera: {fileID: 0}

@@ -20,8 +20,7 @@ public class TimeManager : MonoBehaviour
 
     public int GlobalFrame { get; private set; } = 0;
     public int PeriodStartFrame { get; private set; } = 0;
-
-    private Orbiter mainOrbiter;
+    
     private float previousMainOrbiterAngle;
     private bool mainOrbiterInitialized = false;
 

@@ -16,9 +16,15 @@ public class CameraController : MonoBehaviour
     [Header("Follow Settings")]
     public float followSpeed = 5.0f;
     public string prefabTag = "Prefab";
+    public float spaceshipFollowDistance = 10f;
+    public float spaceshipFollowHeight = 5f;
 
     private bool isDragging = false;
     private Vector3 lastMouseScreenPos;
+    private PlayerSpaceship targetSpaceship;
+
+    private Vector3 preSelectionPosition;
+    private Quaternion preSelectionRotation;
 
     public void Start()
     {
@@ -37,7 +43,7 @@ public class CameraController : MonoBehaviour
             UpdateSelection(null);
         }
 
-        if (Mouse.current.leftButton.wasPressedThisFrame)
+        if (targetSpaceship == null && Mouse.current.leftButton.wasPressedThisFrame)
         {
             Ray ray = Camera.main.ScreenPointToRay(Mouse.current.position.ReadValue());
             if (Physics.Raycast(ray, out RaycastHit hit))
@@ -62,18 +68,38 @@ public class CameraController : MonoBehaviour
         if (SelectedPrefab != null)
         {
             Vector3 desiredPosition = new Vector3(SelectedPrefab.position.x, SelectedPrefab.position.y, transform.position.z);
-
             transform.position = desiredPosition;
+            if (targetSpaceship != null)
+            {
+                transform.rotation = targetSpaceship.transform.rotation;
+            }
         }
     }
 
-    private void UpdateSelection(Transform newSelection)
+    public void UpdateSelection(Transform newSelection)
     {
-        if (SelectedPrefab != newSelection)
+        if (SelectedPrefab == newSelection) return;
+
+        if (SelectedPrefab == null && newSelection != null)
         {
-            SelectedPrefab = newSelection;
-            OnSelectionChanged?.Invoke(SelectedPrefab);
+            preSelectionPosition = transform.position;
+            preSelectionRotation = transform.rotation;
         }
+
+        SelectedPrefab = newSelection;
+
+        if (SelectedPrefab != null)
+        {
+            targetSpaceship = SelectedPrefab.GetComponent<PlayerSpaceship>();
+        }
+        else
+        {
+            targetSpaceship = null;
+            transform.position = preSelectionPosition;
+            transform.rotation = preSelectionRotation;
+        }
+
+        OnSelectionChanged?.Invoke(SelectedPrefab);
     }
 
     private void HandleDrag()

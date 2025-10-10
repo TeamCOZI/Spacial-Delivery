@@ -7,6 +7,8 @@ public class ArtificialSatellite : MonoBehaviour
 {
     [Header("Capture Settings")]
     public float captureRange = 3f;
+    public string playerSpaceshipTag = "PlayerSpaceship";
+    public string packageTag = "Package";
 
     [Header("Dependencies")]
     public Launcher launcher;
@@ -73,7 +75,7 @@ public class ArtificialSatellite : MonoBehaviour
 
         if (routeInfoText != null)
         {
-            routeInfoText.text = $"Current Period Frame: {currentPeriodFrame}\nPeriodStartFrame: {TimeManager.Instance.PeriodStartFrame}";
+            routeInfoText.text = $"Current Period Frame: {currentPeriodFrame}\nPeriod Start Frame: {TimeManager.Instance.PeriodStartFrame}";
             routeInfoText.gameObject.SetActive(true);
         }
     }
@@ -108,32 +110,48 @@ public class ArtificialSatellite : MonoBehaviour
 
     private void OnTriggerEnter(Collider other)
     {
-        if (other.CompareTag("Package"))
+        if (other.CompareTag(playerSpaceshipTag))
+        {
+            CapturePlayerSpaceship(other.gameObject);
+        }
+        if (other.CompareTag(packageTag))
         {
             CapturePackage(other.gameObject);
         }
     }
 
-    private void CapturePackage(GameObject packageObject)
+    private void CapturePlayerSpaceship(GameObject packageObject)
     {
         Package package = packageObject.GetComponent<Package>();
-        if (package != null)
+        if (package != null && package.launchData != null)
         {
-            if (!package.isAutomatedLaunch && package.launchData != null)
+            package.launchData.pathPoints = new List<Vector3>(package.pathPoints);
+            pendingLaunchData = package.launchData;
+
+            if (confirmationPanel != null)
             {
-                package.launchData.pathPoints = new List<Vector3>(package.pathPoints);
-                
-                pendingLaunchData = package.launchData;
+                confirmationPanel.SetActive(true);
+            }
 
-                if (confirmationPanel != null)
-                {
-                    confirmationPanel.SetActive(true);
-                }
+            TimeManager.Instance.Pause();
+        }
 
-                TimeManager.Instance.Pause();
+        if (Camera.main != null)
+        {
+            var cameraController = Camera.main.GetComponent<CameraController>();
+            if (cameraController != null && cameraController.SelectedPrefab == packageObject.transform)
+            {
+                cameraController.UpdateSelection(null);
             }
         }
 
+        Vector3 capturePosition = packageObject.transform.position;
+        Destroy(packageObject);
+        ShowSuccessEffect(capturePosition);
+    }
+    
+    private void CapturePackage(GameObject packageObject)
+    {
         Vector3 capturePosition = packageObject.transform.position;
         Destroy(packageObject);
         ShowSuccessEffect(capturePosition);
