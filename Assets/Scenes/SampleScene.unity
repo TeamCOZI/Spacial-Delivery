@@ -744,8 +744,10 @@ MonoBehaviour:
   maxZ: -10
   followSpeed: 5
   prefabTag: Prefab
-  spaceshipFollowDistance: 10
-  spaceshipFollowHeight: 5
+  spaceshipFollowDistance: 30
+  spaceshipFollowHeight: 30
+  angledOffset: {x: 0, y: 0, z: -30}
+  angledRotation: {x: 0, y: 0, z: 0}
 --- !u!1 &373555359
 GameObject:
   m_ObjectHideFlags: 0
