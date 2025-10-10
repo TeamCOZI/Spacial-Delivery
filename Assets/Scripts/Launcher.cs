@@ -175,7 +175,8 @@ public class Launcher : MonoBehaviour
                 {
                     LaunchPosition = launchPosition,
                     InitialVelocity = initialVelocity,
-                    RelativeLaunchFrame = TimeManager.Instance.GlobalFrame - TimeManager.Instance.PeriodStartFrame
+                    RelativeLaunchFrame = TimeManager.Instance.GlobalFrame - TimeManager.Instance.PeriodStartFrame,
+                    launchFrame = TimeManager.Instance.GlobalFrame
                 };
             }
 
@@ -198,6 +199,7 @@ public class Launcher : MonoBehaviour
         if (packageComponent != null)
         {
             packageComponent.launchData = data;
+            packageComponent.SetLaunchFrame(TimeManager.Instance.GlobalFrame);
         }
 
         Rigidbody rb = launchedObject.GetComponent<Rigidbody>();

@@ -4,6 +4,8 @@ using System.Collections.Generic;
 [RequireComponent(typeof(Rigidbody))]
 public class Package : MonoBehaviour
 {
+    [Header("Movement")]
+    public float thrustForce = 10f;
     public static float destroyDistance = 10000f;
 
     public List<Vector3> pathPoints = new List<Vector3>();
@@ -12,6 +14,9 @@ public class Package : MonoBehaviour
 
     public LaunchData launchData;
     protected Rigidbody rb;
+
+    private int automatedLaunchFrame;
+    private int thrustIndex = 0;
 
     protected virtual void Awake()
     {
@@ -25,6 +30,11 @@ public class Package : MonoBehaviour
         }
     }
 
+    public void SetLaunchFrame(int frame)
+    {
+        automatedLaunchFrame = frame;
+    }
+
     protected virtual void Update()
     {
         if (transform.position.magnitude > destroyDistance)
@@ -36,11 +46,30 @@ public class Package : MonoBehaviour
     protected virtual void FixedUpdate()
     {
         ApplyGravity();
+        ApplyRecordedThrust();
 
         if (Vector3.Distance(transform.position, lastPathPoint) > MinPathPointDistance)
         {
             pathPoints.Add(transform.position);
             lastPathPoint = transform.position;
+        }
+    }
+
+    private void ApplyRecordedThrust()
+    {
+        if (launchData == null || launchData.thrusts == null || thrustIndex >= launchData.thrusts.Count)
+        {
+            return;
+        }
+
+        int currentRelativeFrame = TimeManager.Instance.GlobalFrame - automatedLaunchFrame;
+
+        while (thrustIndex < launchData.thrusts.Count && currentRelativeFrame >= launchData.thrusts[thrustIndex].frame)
+        {
+            ThrustData currentThrust = launchData.thrusts[thrustIndex];
+            Vector3 thrustDirection = new Vector3(currentThrust.direction.x, currentThrust.direction.y, 0).normalized;
+            rb.AddForce(thrustDirection * thrustForce);
+            thrustIndex++;
         }
     }
 

@@ -31,10 +31,17 @@ public class ArtificialSatellite : MonoBehaviour
     private readonly List<LaunchData> pendingLaunchesThisPeriod = new List<LaunchData>();
     private LaunchData pendingLaunchData;
 
+    private CameraController cameraController;
+
     private void Awake()
     {
         sphereCollider = GetComponent<SphereCollider>();
         sphereCollider.isTrigger = true;
+
+        if (Camera.main != null)
+        {
+            cameraController = Camera.main.GetComponent<CameraController>();
+        }
     }
 
     private void Start()
@@ -136,15 +143,6 @@ public class ArtificialSatellite : MonoBehaviour
             TimeManager.Instance.Pause();
         }
 
-        if (Camera.main != null)
-        {
-            var cameraController = Camera.main.GetComponent<CameraController>();
-            if (cameraController != null && cameraController.SelectedPrefab == packageObject.transform)
-            {
-                cameraController.UpdateSelection(null);
-            }
-        }
-
         Vector3 capturePosition = packageObject.transform.position;
         Destroy(packageObject);
         ShowSuccessEffect(capturePosition);
@@ -159,6 +157,11 @@ public class ArtificialSatellite : MonoBehaviour
 
     public void ConfirmRoute()
     {
+        if (cameraController != null)
+        {
+            cameraController.UpdateSelection(null);
+        }
+
         if (pendingLaunchData != null)
         {
             successfulLaunchRoutes.Add(pendingLaunchData);
@@ -179,6 +182,11 @@ public class ArtificialSatellite : MonoBehaviour
 
     public void DeclineRoute()
     {
+        if (cameraController != null)
+        {
+            cameraController.UpdateSelection(null);
+        }
+        
         pendingLaunchData = null;
 
         if (confirmationPanel != null)

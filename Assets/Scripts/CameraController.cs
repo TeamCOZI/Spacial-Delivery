@@ -19,6 +19,10 @@ public class CameraController : MonoBehaviour
     public float spaceshipFollowDistance = 10f;
     public float spaceshipFollowHeight = 5f;
 
+    [Header("Angled Follow Settings")]
+    public Vector3 angledOffset = new Vector3(0, 0, -15);
+    public Vector3 angledRotation = new Vector3(30, 0, 0);
+
     private bool isDragging = false;
     private Vector3 lastMouseScreenPos;
     private PlayerSpaceship targetSpaceship;
@@ -65,14 +69,18 @@ public class CameraController : MonoBehaviour
 
     private void LateUpdate()
     {
-        if (SelectedPrefab != null)
+        if (targetSpaceship != null)
+        {
+            transform.position = targetSpaceship.transform.position;
+            transform.rotation = targetSpaceship.transform.rotation;
+
+            transform.Translate(angledOffset, Space.Self);
+            transform.Rotate(angledRotation, Space.Self);
+        }
+        else if (SelectedPrefab != null)
         {
             Vector3 desiredPosition = new Vector3(SelectedPrefab.position.x, SelectedPrefab.position.y, transform.position.z);
             transform.position = desiredPosition;
-            if (targetSpaceship != null)
-            {
-                transform.rotation = targetSpaceship.transform.rotation;
-            }
         }
     }
 

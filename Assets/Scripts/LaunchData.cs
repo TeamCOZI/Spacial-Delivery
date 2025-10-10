@@ -14,6 +14,7 @@ public class LaunchData
     public Vector3 LaunchPosition;
     public Vector3 InitialVelocity;
     public int RelativeLaunchFrame;
+    public int launchFrame;
     public List<Vector3> pathPoints;
     public List<ThrustData> thrusts = new List<ThrustData>();
 }

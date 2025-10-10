@@ -4,7 +4,6 @@ using UnityEngine.InputSystem;
 public class PlayerSpaceship : Package
 {
     [Header("Movement")]
-    public float thrustForce = 10f;
     public float maxFuel = 100f;
     public float fuelConsumeRate = 10f;
     public float currentFuel;
@@ -69,7 +68,13 @@ public class PlayerSpaceship : Package
 
     protected override void FixedUpdate()
     {
-        base.FixedUpdate();
+        ApplyGravity();
+
+        if (Vector3.Distance(transform.position, lastPathPoint) > MinPathPointDistance)
+        {
+            pathPoints.Add(transform.position);
+            lastPathPoint = transform.position;
+        }
 
         ApplyPlayerThrust();
     }
@@ -91,7 +96,8 @@ public class PlayerSpaceship : Package
 
             if (launchData != null)
             {
-                launchData.thrusts.Add(new ThrustData { frame = TimeManager.Instance.GlobalFrame, direction = moveInput });
+                int relativeFrame = TimeManager.Instance.GlobalFrame - launchData.launchFrame;
+                launchData.thrusts.Add(new ThrustData { frame = relativeFrame, direction = moveInput });
             }
         }
     }
