@@ -5,36 +5,33 @@ using UnityEngine.UI;
 public class LaunchButtonController : MonoBehaviour
 {
     public CameraController cameraController;
-    private CanvasGroup canvasGroup;
-
-    private void Awake()
-    {
-        canvasGroup = GetComponent<CanvasGroup>();
-    }
-
-    private void Start()
-    {
-        canvasGroup.interactable = false;
-    }
+    private bool isButtonShown = false;
 
     private void Update()
     {
-        bool shouldBeInteractable = cameraController != null && cameraController.SelectedPrefab != null && cameraController.SelectedPrefab.gameObject.activeInHierarchy;
+        if (cameraController == null || UIManager.Instance == null) return;
 
-        if (canvasGroup.interactable != shouldBeInteractable)
+        bool shouldShow = false;
+        if (cameraController.SelectedPrefab != null && cameraController.SelectedPrefab.gameObject.activeInHierarchy)
         {
-            if (shouldBeInteractable)
+            if (cameraController.SelectedPrefab.GetComponent<ArtificialSatellite>() != null)
             {
-                canvasGroup.alpha = 1f;
-                canvasGroup.interactable = true;
-                canvasGroup.blocksRaycasts = true;
+                shouldShow = true;
+            }
+        }
+
+        if (isButtonShown != shouldShow)
+        {
+            if (shouldShow)
+            {
+                UIManager.Instance.ShowLaunchButton();
             }
             else
             {
-                canvasGroup.alpha = 0f;
-                canvasGroup.interactable = false;
-                canvasGroup.blocksRaycasts = false;
+                UIManager.Instance.HideLaunchButton();
             }
+
+            isButtonShown = shouldShow;
         }
     }
 }

@@ -1,28 +1,64 @@
 using UnityEngine;
 using System.Collections.Generic;
+using JetBrains.Annotations;
 
 [RequireComponent(typeof(Orbiter))]
 public class OrbitVisualizer : MonoBehaviour
 {
-    [Header("Visualization Settings")]
+    public enum VisualizationMode { Dots, Line }
+
+    [Header("General Settings")]
+    public VisualizationMode mode = VisualizationMode.Line;
+
+    [Header("Dot Visualization Settings")]
     public GameObject dotPrefab;
     public float dotSpacing = 0.5f;
     public float dotScale = 0.1f;
 
+    [Header("Line Visualization Settings")]
+    public Color lineColor = Color.yellow;
+    public float staticLineWidth = 0.1f;
+    [Range(10, 200)]
+    public int lineResolution = 100;
+
+    [Header("Screen-Space Line Width")]
+    public bool useScreenSpaceWidth = true;
+    public float screenSpaceWidth = 1f;
+
     private Orbiter orbiter;
     private Transform centralBody;
-    private float semiMajorAxis;
-    private float semiMinorAxis;
-    private float orbitTiltDegrees;
+    private Vector3 lastCentralBodyPosition;
+    private bool isInitialized = false;
+    private Camera mainCamera;
+    private CameraController cameraController;
 
     private ObjectPool dotPool;
     private readonly List<GameObject> activeDots = new List<GameObject>();
-    private int calculatedNumberOfDots;
-
-    private Vector3 lastCentralBodyPosition;
-    private bool isInitialized = false;
-
     private GameObject orbitContainer;
+
+    private LineRenderer lineRenderer;
+
+    private void Awake()
+    {
+        orbiter = GetComponent<Orbiter>();
+        mainCamera = Camera.main;
+
+    if (mainCamera != null)
+        {
+            cameraController = mainCamera.GetComponent<CameraController>();
+        }
+
+        if (mode == VisualizationMode.Line)
+        {
+            lineRenderer = GetComponent<LineRenderer>();
+            if (lineRenderer == null)
+            {
+                lineRenderer = gameObject.AddComponent<LineRenderer>();
+            }
+            lineRenderer.useWorldSpace = true;
+            lineRenderer.loop = true;
+        }
+    }
 
     private void Start()
     {
@@ -34,42 +70,12 @@ public class OrbitVisualizer : MonoBehaviour
         }
 
         centralBody = orbiter.centralBody.transform;
-        semiMajorAxis = orbiter.semiMajorAxis;
-        semiMinorAxis = orbiter.semiMinorAxis;
-        orbitTiltDegrees = orbiter.orbitTiltDegrees;
         lastCentralBodyPosition = centralBody.position;
 
-        if (semiMajorAxis > 0 && semiMinorAxis > 0 && dotSpacing > 0)
+        if (mode == VisualizationMode.Dots)
         {
-            float a = semiMajorAxis;
-            float b = semiMinorAxis;
-            float circumference;
-
-            if (a == b)
-            {
-                circumference = 2 * Mathf.PI * a;
-            }
-            else
-            {
-                float h = Mathf.Pow(a - b, 2) / Mathf.Pow(a + b, 2);
-                circumference = Mathf.PI * (a + b) * (1 + (3 * h) / (10 + Mathf.Sqrt(4 - 3 * h)));
-            }
-
-            calculatedNumberOfDots = Mathf.RoundToInt(circumference / dotSpacing);
+            InitializeDots();
         }
-        else
-        {
-            calculatedNumberOfDots = 0;
-        }
-
-        if (calculatedNumberOfDots <= 0)
-        {
-            isInitialized = false;
-            return;
-        }
-
-        orbitContainer = new GameObject(gameObject.name + "Orbit");
-        dotPool = new ObjectPool(dotPrefab, calculatedNumberOfDots, orbitContainer.transform);
 
         DrawOrbit();
         isInitialized = true;
@@ -77,48 +83,127 @@ public class OrbitVisualizer : MonoBehaviour
 
     void Update()
     {
-        if (isInitialized && centralBody.position != lastCentralBodyPosition)
+        if (!isInitialized) return;
+
+        if (centralBody.position != lastCentralBodyPosition)
         {
             DrawOrbit();
             lastCentralBodyPosition = centralBody.position;
         }
+
+        if (mode == VisualizationMode.Line && useScreenSpaceWidth)
+        {
+            UpdateScreenSpaceWidth();
+        }
+    }
+
+    private void InitializeDots()
+    {
+        if (dotPrefab == null) return;
+
+        float a = orbiter.semiMajorAxis;
+        float b = orbiter.semiMinorAxis;
+        float circumference;
+
+        if (a == b)
+        {
+            circumference = 2 * Mathf.PI * a;
+        }
+        else
+        {
+            float h = Mathf.Pow(a - b, 2) / Mathf.Pow(a + b, 2);
+            circumference = Mathf.PI * (a + b) * (1 + (3 * h) / (10 + Mathf.Sqrt(4 - 3 * h)));
+        }
+
+        int calculatedNumberOfDots = (dotSpacing > 0) ? Mathf.RoundToInt(circumference / dotSpacing) : 0;
+        if (calculatedNumberOfDots <= 0) return;
+
+        orbitContainer = new GameObject(gameObject.name + " Orbit Dots");
+        dotPool = new ObjectPool(dotPrefab, calculatedNumberOfDots, orbitContainer.transform);
     }
 
     private void DrawOrbit()
     {
+        if (lineRenderer != null) lineRenderer.enabled = (mode == VisualizationMode.Line);
+        if (orbitContainer != null) orbitContainer.SetActive(mode == VisualizationMode.Dots);
+
+        switch (mode)
+        {
+            case VisualizationMode.Dots:
+                DrawOrbitWithDots();
+                break;
+            case VisualizationMode.Line:
+                DrawOrbitWithLine();
+                break;
+        }
+    }
+
+    private void DrawOrbitWithDots()
+    {
+        if (dotPool == null) return;
+
         foreach (var dot in activeDots)
         {
             dotPool.Return(dot);
         }
         activeDots.Clear();
 
-        if (calculatedNumberOfDots <= 0) return;
+        float a = orbiter.semiMajorAxis;
+        float b = orbiter.semiMinorAxis;
+        float circumference;
+        if (a == b) circumference = 2 * Mathf.PI * a;
+        else
+        {
+            float h = Mathf.Pow(a - b, 2) / Mathf.Pow(a + b, 2);
+            circumference = Mathf.PI * (a + b) * (1 + (3 * h) / (10 + Mathf.Sqrt(4 - 3 * h)));
+        }
+        int numberOfDots = (dotSpacing > 0) ? Mathf.RoundToInt(circumference / dotSpacing) : 0;
+        if (numberOfDots <= 0) return;
 
-        float angleStep = 360f / calculatedNumberOfDots;
+        float angleStep = 360f / numberOfDots;
 
-        float focusDistance = Mathf.Sqrt(Mathf.Pow(semiMajorAxis, 2) - Mathf.Pow(semiMinorAxis, 2));
-        float tiltInRad = orbitTiltDegrees * Mathf.Deg2Rad;
-
-        for (int i = 0; i < calculatedNumberOfDots; i++)
+        for (int i = 0; i < numberOfDots; i++)
         {
             float angle = i * angleStep;
-            float angleInRad = angle * Mathf.Deg2Rad;
-
-            float x = semiMajorAxis * Mathf.Cos(angleInRad);
-            float y = semiMinorAxis * Mathf.Sin(angleInRad);
-
-            x -= focusDistance;
-
-            float rotatedX = x * Mathf.Cos(tiltInRad) - y * Mathf.Sin(tiltInRad);
-            float rotatedY = x * Mathf.Sin(tiltInRad) + y * Mathf.Cos(tiltInRad);
-
-            Vector3 dotLocalPosition = new Vector3(rotatedX, rotatedY, 0);
+            Vector3 dotPosition = orbiter.GetPositionAngle(angle);
 
             GameObject dot = dotPool.Get();
-            dot.transform.position = centralBody.position + dotLocalPosition;
+            dot.transform.position = dotPosition;
             dot.transform.localScale = Vector3.one * dotScale;
             activeDots.Add(dot);
         }
+    }
+
+    private void DrawOrbitWithLine()
+    {
+        if (lineRenderer == null) return;
+
+        lineRenderer.startColor = lineColor;
+        lineRenderer.endColor = lineColor;
+        lineRenderer.startWidth = staticLineWidth;
+        lineRenderer.endWidth = staticLineWidth;
+
+        lineRenderer.positionCount = lineResolution + 1;
+
+        var points = new Vector3[lineResolution + 1];
+        for (int i = 0; i <= lineResolution; i++)
+        {
+            float angle = (float)i / lineResolution * 360f;
+            points[i] = orbiter.GetPositionAngle(angle);
+        }
+        lineRenderer.SetPositions(points);
+    }
+    
+    private void UpdateScreenSpaceWidth()
+    {
+        if (lineRenderer == null || mainCamera == null || centralBody == null) return;
+
+        float distance = Vector3.Distance(mainCamera.transform.position, centralBody.transform.position);
+
+        float newWorldWidth = distance * screenSpaceWidth * 0.005f;
+
+        lineRenderer.startWidth = newWorldWidth;
+        lineRenderer.endWidth = newWorldWidth;
     }
 
     private void OnDestroy()

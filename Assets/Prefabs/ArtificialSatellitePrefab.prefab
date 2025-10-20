@@ -14,11 +14,11 @@ GameObject:
   - component: {fileID: 2600039990415793598}
   - component: {fileID: 6006654585489330638}
   - component: {fileID: 6168921824087046230}
-  - component: {fileID: -5733487858235247973}
+  - component: {fileID: -8469202198271204161}
   - component: {fileID: 9182590517738302766}
   m_Layer: 0
   m_Name: ArtificialSatellitePrefab
-  m_TagString: Untagged
+  m_TagString: Prefab
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -163,7 +163,7 @@ MonoBehaviour:
   clockwise: 0
   currentAngle: 0
   timeMultiplier: 1
---- !u!114 &-5733487858235247973
+--- !u!114 &-8469202198271204161
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -175,9 +175,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 392dcb115b0ff5a4da4d4dc9fc8a6863, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::OrbitVisualizer
+  mode: 1
   dotPrefab: {fileID: 3269785430077223375, guid: 368effd9658aeeb4695ee102f5a051c9, type: 3}
   dotSpacing: 0.5
   dotScale: 0.1
+  lineColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
+  staticLineWidth: 0.1
+  lineResolution: 100
+  useScreenSpaceWidth: 1
+  screenSpaceWidth: 1
 --- !u!114 &9182590517738302766
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -191,11 +197,15 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ArtificialSatellite
   captureRange: 3
+  playerSpaceshipTag: PlayerSpaceship
+  packageTag: Package
+  launcher: {fileID: 6130978528470293248, guid: 4a48e39b202c8104b9fb492b67e37940, type: 3}
   rangeVisualizer: {fileID: 3013674770417857196}
   successEffectPrefab: {fileID: 200370851968389457, guid: 0086f18dcad8d5749b28bf0bd0a8db31, type: 3}
   effectDuration: 1.5
   effectScale: 0.03
   pathVisualizerPrefab: {fileID: 6867914806932561599, guid: 9f43e3d425e54f84daf250ce03a8bbc7, type: 3}
+  routeInfoText: {fileID: 0}
 --- !u!1 &6652885947565325395
 GameObject:
   m_ObjectHideFlags: 0

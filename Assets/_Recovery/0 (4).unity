@@ -2776,7 +2776,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!114 &1299515283
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -4113,8 +4113,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::UIManager
   confirmationPanel: {fileID: 529765043}
-  launchButton: {fileID: 875179845}
-  cameraController: {fileID: 330585548}
 --- !u!4 &2036264329
 Transform:
   m_ObjectHideFlags: 0

@@ -15,7 +15,7 @@ GameObject:
   - component: {fileID: 603974699480808024}
   - component: {fileID: 1165412316565599310}
   - component: {fileID: 5538193147813501994}
-  - component: {fileID: 4301152723167159072}
+  - component: {fileID: -5232405404270779844}
   m_Layer: 0
   m_Name: PlanetPrefab
   m_TagString: Prefab
@@ -178,7 +178,7 @@ MonoBehaviour:
   clockwise: 0
   currentAngle: 0
   timeMultiplier: 1
---- !u!114 &4301152723167159072
+--- !u!114 &-5232405404270779844
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -190,6 +190,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 392dcb115b0ff5a4da4d4dc9fc8a6863, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::OrbitVisualizer
+  mode: 1
   dotPrefab: {fileID: 3269785430077223375, guid: 368effd9658aeeb4695ee102f5a051c9, type: 3}
   dotSpacing: 0.5
   dotScale: 0.1
+  lineColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
+  lineWidth: 0.1
+  lineResolution: 100

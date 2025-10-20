@@ -154,16 +154,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 84c82b96330b22f419a122053bc54198, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerSpaceship
+  thrustForce: 1
   pathPoints: []
   launchData:
     LaunchPosition: {x: 0, y: 0, z: 0}
     InitialVelocity: {x: 0, y: 0, z: 0}
     RelativeLaunchFrame: 0
+    launchFrame: 0
     pathPoints: []
     thrusts: []
-  thrustForce: 10
   maxFuel: 100
-  fuelConsumeRate: 10
+  fuelConsumeRate: 30
   currentFuel: 0
 --- !u!114 &-7660197740828746115
 MonoBehaviour:

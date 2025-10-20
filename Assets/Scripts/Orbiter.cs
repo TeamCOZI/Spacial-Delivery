@@ -93,7 +93,7 @@ public class Orbiter : MonoBehaviour
     {
         float focusDistance = Mathf.Sqrt(Mathf.Pow(semiMajorAxis, 2) - Mathf.Pow(semiMinorAxis, 2));
 
-        float angleInRad = currentAngle * Mathf.Deg2Rad;
+        float angleInRad = angle * Mathf.Deg2Rad;
 
         float x = semiMajorAxis * Mathf.Cos(angleInRad);
         float y = semiMinorAxis * Mathf.Sin(angleInRad);

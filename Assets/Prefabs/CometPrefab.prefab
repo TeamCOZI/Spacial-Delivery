@@ -14,7 +14,7 @@ GameObject:
   - component: {fileID: 6901591503063999458}
   - component: {fileID: 3650300174143379436}
   - component: {fileID: 8608715594065724614}
-  - component: {fileID: 4448167582371762997}
+  - component: {fileID: -6649440637118683846}
   m_Layer: 0
   m_Name: CometPrefab
   m_TagString: Prefab
@@ -161,7 +161,7 @@ MonoBehaviour:
   clockwise: 0
   currentAngle: 0
   timeMultiplier: 1
---- !u!114 &4448167582371762997
+--- !u!114 &-6649440637118683846
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}

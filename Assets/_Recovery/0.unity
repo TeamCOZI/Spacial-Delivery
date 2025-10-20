@@ -583,78 +583,6 @@ RectTransform:
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0, y: 0}
---- !u!1 &159898694
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 159898695}
-  - component: {fileID: 159898696}
-  m_Layer: 0
-  m_Name: SolarSystemGenerator
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &159898695
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 159898694}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &159898696
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 159898694}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 8b478cf4d053b3e498e1c961721e7b10, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::SolarSystemGenerator
-  starPrefab: {fileID: 4716304030622375498, guid: 3b7783f47acfcc84cb0a9282a301fa92, type: 3}
-  planetPrefab: {fileID: 1060877309845540997, guid: 0031da88026f9dc449081ddff20d3f4a, type: 3}
-  artificialSatellitePrefab: {fileID: 2920431155874509688, guid: 6ac475fd236a10349b693fd0d90da06a, type: 3}
-  minPlanets: 3
-  maxPlanets: 5
-  minSatellites: 0
-  maxSatellites: 3
-  starProportionDistribution:
-    mean: 0.5
-    stdDev: 0.15
-  lightIntensityDistribution:
-    mean: 0.5
-    stdDev: 0.15
-  lightRadiusDistribution:
-    mean: 0.5
-    stdDev: 0.15
-  planetPhysicsDistribution:
-    mean: 0.5
-    stdDev: 0.15
-  planetOrbitDistribution:
-    mean: 0.5
-    stdDev: 0.15
-  satellitePhysicalDistribution:
-    mean: 0.5
-    stdDev: 0.15
-  satelliteOrbitSpeedDistribution:
-    mean: 0.5
-    stdDev: 0.15
 --- !u!1 &330585543
 GameObject:
   m_ObjectHideFlags: 0
@@ -715,7 +643,7 @@ Camera:
     width: 1
     height: 1
   near clip plane: 0.3
-  far clip plane: 10000
+  far clip plane: 1000
   field of view: 30
   orthographic: 0
   orthographic size: 5
@@ -805,9 +733,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 72c865c4f82441c48a9f1a7cc7e8a152, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CameraController
-  zoomSpeed: 3000
-  defaultZ: -1000
-  minZ: -10000
+  zoomSpeed: 300
+  defaultZ: -50
+  minZ: -300
   maxZ: -10
   followSpeed: 5
   prefabTag: Prefab
@@ -2776,7 +2704,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!114 &1299515283
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3601,6 +3529,81 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1517292028}
   m_CullTransparentMesh: 1
+--- !u!1 &1592314485
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1592314487}
+  - component: {fileID: 1592314486}
+  m_Layer: 0
+  m_Name: Solar System
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1592314486
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1592314485}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8b478cf4d053b3e498e1c961721e7b10, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SolarSystemGenerator
+  starPrefab: {fileID: 4716304030622375498, guid: 3b7783f47acfcc84cb0a9282a301fa92, type: 3}
+  planetPrefab: {fileID: 1060877309845540997, guid: 0031da88026f9dc449081ddff20d3f4a, type: 3}
+  satellitePrefab: {fileID: 2920431155874509688, guid: 6ac475fd236a10349b693fd0d90da06a, type: 3}
+  cometPrefab: {fileID: 2245622500037777173, guid: b2bb72e2a17b43c4ca075becb3ff9987, type: 3}
+  minPlanets: 3
+  maxPlanets: 5
+  minSatellites: 0
+  maxSatellites: 3
+  minComets: 1
+  maxComets: 2
+  starProportionDistribution:
+    mean: 0.5
+    stdDev: 0.15
+  lightIntensityDistribution:
+    mean: 0.5
+    stdDev: 0.15
+  lightRadiusDistribution:
+    mean: 0.5
+    stdDev: 0.15
+  planetPhysicalDistribution:
+    mean: 0.5
+    stdDev: 0.15
+  planetOrbitDistribution:
+    mean: 0.5
+    stdDev: 0.15
+  satellitePhysicalDistribution:
+    mean: 0.5
+    stdDev: 0.15
+  satelliteOrbitSpeedDistribution:
+    mean: 0.5
+    stdDev: 0.15
+--- !u!4 &1592314487
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1592314485}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1635180287
 GameObject:
   m_ObjectHideFlags: 0
@@ -4083,53 +4086,6 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1991028059}
   m_CullTransparentMesh: 1
---- !u!1 &2036264327
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 2036264329}
-  - component: {fileID: 2036264328}
-  m_Layer: 0
-  m_Name: UIManager
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &2036264328
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2036264327}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: a2bd6db136507ff4caf9a605d6409aaa, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::UIManager
-  confirmationPanel: {fileID: 529765043}
-  launchButton: {fileID: 875179845}
-  cameraController: {fileID: 330585548}
---- !u!4 &2036264329
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2036264327}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &2039323935
 GameObject:
   m_ObjectHideFlags: 0
@@ -4544,5 +4500,4 @@ SceneRoots:
   - {fileID: 1960995258}
   - {fileID: 1299515284}
   - {fileID: 3451650721998005646}
-  - {fileID: 159898695}
-  - {fileID: 2036264329}
+  - {fileID: 1592314487}

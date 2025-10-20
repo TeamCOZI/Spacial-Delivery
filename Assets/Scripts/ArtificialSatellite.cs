@@ -23,7 +23,6 @@ public class ArtificialSatellite : MonoBehaviour
     public GameObject pathVisualizerPrefab;
 
     [Header("UI Settings")]
-    public GameObject confirmationPanel;
     public TextMeshProUGUI routeInfoText;
 
     private SphereCollider sphereCollider;
@@ -48,10 +47,6 @@ public class ArtificialSatellite : MonoBehaviour
     {
         UpdateRange();
         TimeManager.OnGlobalPeriodCompleted += OnPeriodCompleted;
-        if (confirmationPanel != null)
-        {
-            confirmationPanel.SetActive(false);
-        }
     }
 
     private void OnDestroy()
@@ -135,10 +130,7 @@ public class ArtificialSatellite : MonoBehaviour
             package.launchData.pathPoints = new List<Vector3>(package.pathPoints);
             pendingLaunchData = package.launchData;
 
-            if (confirmationPanel != null)
-            {
-                confirmationPanel.SetActive(true);
-            }
+            UIManager.Instance.ShowConfirmationPanel();
 
             TimeManager.Instance.Pause();
         }
@@ -173,10 +165,8 @@ public class ArtificialSatellite : MonoBehaviour
         }
         pendingLaunchData = null;
 
-        if (confirmationPanel != null)
-        {
-            confirmationPanel.SetActive(false);
-        }
+        UIManager.Instance.HideConfirmationPanel();
+
         TimeManager.Instance.Play();
     }
 
@@ -189,10 +179,8 @@ public class ArtificialSatellite : MonoBehaviour
         
         pendingLaunchData = null;
 
-        if (confirmationPanel != null)
-        {
-            confirmationPanel.SetActive(false);
-        }
+        UIManager.Instance.HideConfirmationPanel();
+
         TimeManager.Instance.Play();
     }
 
