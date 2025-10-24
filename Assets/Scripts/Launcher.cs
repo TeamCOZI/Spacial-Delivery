@@ -1,7 +1,6 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
 using System.Collections.Generic;
-using UnityEditor;
 
 public class Launcher : MonoBehaviour
 {
@@ -91,7 +90,7 @@ public class Launcher : MonoBehaviour
                 {
                     prefabRadius = prefabRenderer.bounds.extents.y;
                 }
-                launchCenter = cameraController.SelectedPrefab.position + new Vector3(0, 3f + prefabRadius, 0);
+                launchCenter = cameraController.SelectedPrefab.position + new Vector3(0, 5f + prefabRadius, 0);
 
                 if (dummyInstance != null)
                 {

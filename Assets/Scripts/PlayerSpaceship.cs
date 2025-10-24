@@ -1,4 +1,6 @@
+using NUnit.Framework.Constraints;
 using UnityEngine;
+using UnityEngine.AI;
 using UnityEngine.InputSystem;
 
 public class PlayerSpaceship : Package
@@ -12,6 +14,7 @@ public class PlayerSpaceship : Package
     private Vector2 moveInput;
 
     private CameraController mainCameraController;
+    private bool _isControlled = false;
 
     public static event System.Action<float, float> OnFuelUpdated;
 
@@ -35,7 +38,6 @@ public class PlayerSpaceship : Package
         if (playerInput == null) return;
         playerInput.actions["Move"].performed += HandleMove;
         playerInput.actions["Move"].canceled += HandleMove;
-        playerInput.actions["Interact"].performed += ToggleControl;
     }
 
     private void OnDisable()
@@ -43,22 +45,6 @@ public class PlayerSpaceship : Package
         if (playerInput == null) return;
         playerInput.actions["Move"].performed -= HandleMove;
         playerInput.actions["Move"].canceled -= HandleMove;
-        playerInput.actions["Interact"].performed -= ToggleControl;
-    }
-
-    public void ToggleControl(InputAction.CallbackContext context)
-    {
-        if (mainCameraController == null) return;
-
-        if (mainCameraController.SelectedPrefab == transform)
-        {
-            mainCameraController.UpdateSelection(null);
-        }
-        else
-        {
-            mainCameraController.UpdateSelection(transform);
-            OnFuelUpdated?.Invoke(currentFuel, maxFuel);
-        }
     }
 
     public void HandleMove(InputAction.CallbackContext context)
@@ -81,7 +67,7 @@ public class PlayerSpaceship : Package
 
     private void ApplyPlayerThrust()
     {
-        if (mainCameraController == null || mainCameraController.SelectedPrefab != transform)
+        if (!_isControlled)
         {
             return;
         }
@@ -100,5 +86,21 @@ public class PlayerSpaceship : Package
                 launchData.thrusts.Add(new ThrustData { frame = relativeFrame, direction = moveInput });
             }
         }
+    }
+
+    public void TakeControl()
+    {
+        _isControlled = true;
+        OnFuelUpdated?.Invoke(currentFuel, maxFuel);
+
+        if (playerInput != null) playerInput.ActivateInput();
+    }
+
+    public void ReleaseControl()
+    {
+        _isControlled = false;
+        moveInput = Vector2.zero;
+
+        if (playerInput != null) playerInput.DeactivateInput();
     }
 }

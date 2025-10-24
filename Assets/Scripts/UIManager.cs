@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.UI;
 
 public class UIManager : MonoBehaviour
 {
@@ -10,6 +11,12 @@ public class UIManager : MonoBehaviour
     [Header("Button Control")]
     public GameObject launchButton;
     public CameraController cameraController;
+    
+    [Header("Confirmation Panel Buttons")]
+    [SerializeField] private Button confirmRouteButton;
+    [SerializeField] private Button declineRouteButton;
+
+    private ArtificialSatellite _targetSatellite;
 
     private void Awake()
     {
@@ -31,12 +38,22 @@ public class UIManager : MonoBehaviour
         {
             launchButton.SetActive(false);
         }
+
+        if (confirmRouteButton != null)
+        {
+            confirmRouteButton.onClick.AddListener(OnConfirmRoute);
+        }
+        if (declineRouteButton != null)
+        {
+            declineRouteButton.onClick.AddListener(OnDeclineRoute);
+        }
     }
 
-    public void ShowConfirmationPanel()
+    public void ShowConfirmationPanel(ArtificialSatellite satelliteToConfirm)
     {
         if (confirmationPanel != null)
         {
+            _targetSatellite = satelliteToConfirm;
             confirmationPanel.SetActive(true);
         }
     }
@@ -45,8 +62,27 @@ public class UIManager : MonoBehaviour
     {
         if (confirmationPanel != null)
         {
+            _targetSatellite = null;
             confirmationPanel.SetActive(false);
         }
+    }
+
+    public void OnConfirmRoute()
+    {
+        if (_targetSatellite != null)
+        {
+            _targetSatellite.ConfirmRoute();
+        }
+        HideConfirmationPanel();
+    }
+
+    public void OnDeclineRoute()
+    {
+        if (_targetSatellite != null)
+        {
+            _targetSatellite.DeclineRoute();
+        }
+        HideConfirmationPanel();
     }
 
     public void ShowLaunchButton()

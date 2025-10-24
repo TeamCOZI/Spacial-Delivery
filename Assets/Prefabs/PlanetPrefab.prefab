@@ -195,5 +195,7 @@ MonoBehaviour:
   dotSpacing: 0.5
   dotScale: 0.1
   lineColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
-  lineWidth: 0.1
+  staticLineWidth: 0.1
   lineResolution: 100
+  useScreenSpaceWidth: 1
+  screenSpaceWidth: 0.1

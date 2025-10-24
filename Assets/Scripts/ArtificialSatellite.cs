@@ -130,7 +130,7 @@ public class ArtificialSatellite : MonoBehaviour
             package.launchData.pathPoints = new List<Vector3>(package.pathPoints);
             pendingLaunchData = package.launchData;
 
-            UIManager.Instance.ShowConfirmationPanel();
+            UIManager.Instance.ShowConfirmationPanel(this);
 
             TimeManager.Instance.Pause();
         }

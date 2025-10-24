@@ -13,6 +13,7 @@ GameObject:
   - component: {fileID: 4585310838201028375}
   - component: {fileID: 2600039990415793598}
   - component: {fileID: 6006654585489330638}
+  - component: {fileID: -1688918138744459160}
   - component: {fileID: 6168921824087046230}
   - component: {fileID: -8469202198271204161}
   - component: {fileID: 9182590517738302766}
@@ -143,6 +144,22 @@ Rigidbody:
   m_Interpolate: 0
   m_Constraints: 0
   m_CollisionDetection: 0
+--- !u!114 &-1688918138744459160
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2920431155874509688}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a7d9de27ad49944479631e221b77ec75, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Gravity
+  gravity: 100
+  gravityRadius: 10
+  lineColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
+  lineWidth: 0.1
 --- !u!114 &6168921824087046230
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -183,7 +200,7 @@ MonoBehaviour:
   staticLineWidth: 0.1
   lineResolution: 100
   useScreenSpaceWidth: 1
-  screenSpaceWidth: 1
+  screenSpaceWidth: 0.1
 --- !u!114 &9182590517738302766
 MonoBehaviour:
   m_ObjectHideFlags: 0

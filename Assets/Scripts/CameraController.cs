@@ -12,10 +12,12 @@ public class CameraController : MonoBehaviour
     public float defaultZ = -30f;
     public float minZ = -50f;
     public float maxZ = -10f;
+    public float selectZoom = 5f;
 
     [Header("Follow Settings")]
     public float followSpeed = 5.0f;
     public string prefabTag = "Prefab";
+    public string spaceshipTag = "PlayerSpaceship";
     public float spaceshipFollowDistance = 10f;
     public float spaceshipFollowHeight = 5f;
 
@@ -23,12 +25,20 @@ public class CameraController : MonoBehaviour
     public Vector3 angledOffset = new Vector3(0, 0, -15);
     public Vector3 angledRotation = new Vector3(30, 0, 0);
 
+    [Header("Spaceship Zoom Settings")]
+    public float defaultSpaceshipDistance = 17.5f;
+    public float minSpaceshipDistance = 8f;
+    public float maxSpaceshipDistance = 40f;
+    public float spaceshipZoomSpeed = 20f;
+
     private bool isDragging = false;
     private Vector3 lastMouseScreenPos;
     private PlayerSpaceship targetSpaceship;
 
     private Vector3 preSelectionPosition;
     private Quaternion preSelectionRotation;
+
+    private PlayerSpaceship _currentlyControlledSpaceship;
 
     public void Start()
     {
@@ -42,17 +52,17 @@ public class CameraController : MonoBehaviour
             return;
         }
 
-        if (SelectedPrefab != null && Mouse.current.rightButton.isPressed)
-        {
-            UpdateSelection(null);
-        }
-
         if (targetSpaceship == null && Mouse.current.leftButton.wasPressedThisFrame)
         {
+            if (UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject())
+            {
+                return;
+            }
+
             Ray ray = Camera.main.ScreenPointToRay(Mouse.current.position.ReadValue());
             if (Physics.Raycast(ray, out RaycastHit hit))
             {
-                if (hit.collider.CompareTag(prefabTag))
+                if (hit.collider.CompareTag(prefabTag) || hit.collider.CompareTag(spaceshipTag))
                 {
                     UpdateSelection(hit.transform);
                 }
@@ -60,11 +70,7 @@ public class CameraController : MonoBehaviour
         }
         
         HandleZoom();
-
-        if (SelectedPrefab == null)
-        {
-            HandleDrag();
-        }
+        HandleDrag();
     }
 
     private void LateUpdate()
@@ -88,6 +94,12 @@ public class CameraController : MonoBehaviour
     {
         if (SelectedPrefab == newSelection) return;
 
+        if (_currentlyControlledSpaceship != null)
+        {
+            _currentlyControlledSpaceship.ReleaseControl();
+            _currentlyControlledSpaceship = null;
+        }
+
         if (SelectedPrefab == null && newSelection != null)
         {
             preSelectionPosition = transform.position;
@@ -99,6 +111,21 @@ public class CameraController : MonoBehaviour
         if (SelectedPrefab != null)
         {
             targetSpaceship = SelectedPrefab.GetComponent<PlayerSpaceship>();
+
+            if (targetSpaceship != null)
+            {
+                _currentlyControlledSpaceship = targetSpaceship;
+                _currentlyControlledSpaceship.TakeControl();
+
+                float alpha_rad = angledRotation.x * Mathf.Deg2Rad;
+                angledOffset.y = defaultSpaceshipDistance * Mathf.Sin(alpha_rad);
+                angledOffset.z = -defaultSpaceshipDistance * Mathf.Cos(alpha_rad);
+            }
+            else
+            {
+                float newZ = -SelectedPrefab.transform.localScale.x * selectZoom;
+                transform.position = new Vector3(SelectedPrefab.position.x, SelectedPrefab.position.y, Mathf.Clamp(newZ, minZ, maxZ));
+            }
         }
         else
         {
@@ -114,6 +141,14 @@ public class CameraController : MonoBehaviour
     {
         if (Mouse.current.rightButton.wasPressedThisFrame)
         {
+            if (SelectedPrefab != null)
+            {
+                transform.rotation = preSelectionRotation;
+                SelectedPrefab = null;
+                targetSpaceship = null;
+                OnSelectionChanged?.Invoke(SelectedPrefab);
+            }
+
             isDragging = true;
             lastMouseScreenPos = Mouse.current.position.ReadValue();
             return;
@@ -151,10 +186,30 @@ public class CameraController : MonoBehaviour
         if (scrollValue != 0f)
         {
             float scrollInput = scrollValue / 120f;
-            Vector3 currentPosition = transform.position;
-            float newZ = currentPosition.z + scrollInput * zoomSpeed;
-            newZ = Mathf.Clamp(newZ, minZ, maxZ);
-            transform.position = new Vector3(currentPosition.x, currentPosition.y, newZ);
+
+            if (targetSpaceship != null)
+            {
+                float alpha_rad = angledRotation.x * Mathf.Deg2Rad;
+
+                float currentDistance = -angledOffset.z / Mathf.Cos(alpha_rad);
+
+                float newDistance = currentDistance - scrollInput * spaceshipZoomSpeed;
+                newDistance = Mathf.Clamp(newDistance, minSpaceshipDistance, maxSpaceshipDistance);
+
+                angledOffset.y = newDistance * Mathf.Sin(alpha_rad);
+                angledOffset.z = -newDistance * Mathf.Cos(alpha_rad);
+            }
+            else
+            {
+                Vector3 currentPosition = transform.position;
+
+                float adaptiveZoomMultiplier = zoomSpeed / 100f;
+                float zoomAmount = scrollInput * Mathf.Abs(currentPosition.z) * adaptiveZoomMultiplier;
+
+                float newZ = currentPosition.z + zoomAmount;
+                newZ = Mathf.Clamp(newZ, minZ, maxZ);
+                transform.position = new Vector3(currentPosition.x, currentPosition.y, newZ);
+            }
         }
     }
 
