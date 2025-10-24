@@ -797,7 +797,7 @@ MonoBehaviour:
   defaultZ: -1000
   minZ: -10000
   maxZ: -10
-  selectZoom: 5
+  selectZoom: 10
   followSpeed: 5
   prefabTag: Prefab
   spaceshipTag: PlayerSpaceship

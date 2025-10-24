@@ -1,5 +1,7 @@
 using System;
+using Unity.VisualScripting;
 using UnityEngine;
+using UnityEngine.AI;
 using UnityEngine.InputSystem;
 
 public class CameraController : MonoBehaviour
@@ -40,6 +42,11 @@ public class CameraController : MonoBehaviour
 
     private PlayerSpaceship _currentlyControlledSpaceship;
 
+    private float lastClickTime = 0f;
+    private Transform lastClickedObject = null;
+    private const float doubleClickThreshold = 0.3f;
+    private bool justSelected = false;
+
     public void Start()
     {
         transform.position = new Vector3(transform.position.x, transform.position.y, defaultZ);
@@ -64,7 +71,18 @@ public class CameraController : MonoBehaviour
             {
                 if (hit.collider.CompareTag(prefabTag) || hit.collider.CompareTag(spaceshipTag))
                 {
+                    bool isDoubleClick = (Time.time - lastClickTime < doubleClickThreshold) && (lastClickedObject == hit.transform);
+
                     UpdateSelection(hit.transform);
+
+                    if (isDoubleClick)
+                    {
+                        ActivateSpecialView();
+                        lastClickedObject = null;
+                    }
+
+                    lastClickTime = Time.time;
+                    lastClickedObject = hit.transform;
                 }
             }
         }
@@ -85,8 +103,20 @@ public class CameraController : MonoBehaviour
         }
         else if (SelectedPrefab != null)
         {
-            Vector3 desiredPosition = new Vector3(SelectedPrefab.position.x, SelectedPrefab.position.y, transform.position.z);
-            transform.position = desiredPosition;
+            if (justSelected)
+            {
+                if (Time.time - lastClickTime > doubleClickThreshold)
+                {
+                    justSelected = false;
+                    Vector3 desiredPosition = new Vector3(SelectedPrefab.position.x, SelectedPrefab.position.y, transform.position.z);
+                    transform.position = Vector3.Lerp(transform.position, desiredPosition, followSpeed * Time.deltaTime);
+                }
+            }
+            else
+            {
+                Vector3 desiredPosition = new Vector3(SelectedPrefab.position.x, SelectedPrefab.position.y, transform.position.z);
+                transform.position = Vector3.Lerp(transform.position, desiredPosition, followSpeed * Time.deltaTime);
+            }
         }
     }
 
@@ -100,6 +130,12 @@ public class CameraController : MonoBehaviour
             _currentlyControlledSpaceship = null;
         }
 
+        if (targetSpaceship != null)
+        {
+            targetSpaceship = null;
+            transform.rotation = preSelectionRotation;
+        }
+
         if (SelectedPrefab == null && newSelection != null)
         {
             preSelectionPosition = transform.position;
@@ -107,34 +143,36 @@ public class CameraController : MonoBehaviour
         }
 
         SelectedPrefab = newSelection;
+        justSelected = true;
 
-        if (SelectedPrefab != null)
+        OnSelectionChanged?.Invoke(SelectedPrefab);
+    }
+
+    private void ActivateSpecialView()
+    {
+        if (SelectedPrefab == null) return;
+
+        if (_currentlyControlledSpaceship != null)
         {
-            targetSpaceship = SelectedPrefab.GetComponent<PlayerSpaceship>();
+            _currentlyControlledSpaceship.ReleaseControl();
+        }
 
-            if (targetSpaceship != null)
-            {
-                _currentlyControlledSpaceship = targetSpaceship;
-                _currentlyControlledSpaceship.TakeControl();
+        PlayerSpaceship ps = SelectedPrefab.GetComponent<PlayerSpaceship>();
+        if (ps != null)
+        {
+            targetSpaceship = ps;
+            _currentlyControlledSpaceship = targetSpaceship;
+            _currentlyControlledSpaceship.TakeControl();
 
-                float alpha_rad = angledRotation.x * Mathf.Deg2Rad;
-                angledOffset.y = defaultSpaceshipDistance * Mathf.Sin(alpha_rad);
-                angledOffset.z = -defaultSpaceshipDistance * Mathf.Cos(alpha_rad);
-            }
-            else
-            {
-                float newZ = -SelectedPrefab.transform.localScale.x * selectZoom;
-                transform.position = new Vector3(SelectedPrefab.position.x, SelectedPrefab.position.y, Mathf.Clamp(newZ, minZ, maxZ));
-            }
+            float alpha_rad = angledRotation.x * Mathf.Deg2Rad;
+            angledOffset.y = defaultSpaceshipDistance * Mathf.Sin(alpha_rad);
+            angledOffset.z = -defaultSpaceshipDistance * Mathf.Cos(alpha_rad);
         }
         else
         {
-            targetSpaceship = null;
-            transform.position = preSelectionPosition;
-            transform.rotation = preSelectionRotation;
+            float newZ = -SelectedPrefab.transform.lossyScale.x * selectZoom;
+            transform.position = new Vector3(SelectedPrefab.position.x, SelectedPrefab.position.y, Mathf.Clamp(newZ, minZ, maxZ));
         }
-
-        OnSelectionChanged?.Invoke(SelectedPrefab);
     }
 
     private void HandleDrag()
