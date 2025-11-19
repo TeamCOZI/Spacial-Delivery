@@ -629,20 +629,63 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::SolarSystemGenerator
   starPrefab: {fileID: 4716304030622375498, guid: 3b7783f47acfcc84cb0a9282a301fa92, type: 3}
   planetPrefab: {fileID: 1060877309845540997, guid: 0031da88026f9dc449081ddff20d3f4a, type: 3}
+  asteriodBeltPrefab: {fileID: 2474534874965160233, guid: e3889078b4476da478a34c2bbc7686e7, type: 3}
   artificialSatellitePrefab: {fileID: 2920431155874509688, guid: 6ac475fd236a10349b693fd0d90da06a, type: 3}
   minPlanets: 3
   maxPlanets: 5
   minSatellites: 0
   maxSatellites: 3
-  starDistribution:
+  starFactorMin: 200
+  starFactorMax: 300
+  starFactorDistribution:
     mean: 0.5
-    stdDev: 0.15
-  planetDistribution:
+    stdDev: 0.5
+  starScaleRatio: 1
+  starGravityRatio: 50
+  starGravityRadiusRatio: 10
+  starLightMin: 1.5
+  starLightMax: 1.75
+  starLightDistribution:
     mean: 0.5
-    stdDev: 0.15
-  satelliteDistribution:
+    stdDev: 0.5
+  starLightIntensityRatio: 1
+  starLightRadiusRatio: 100
+  terrestrialPlanetFactorMin: 5
+  terrestrialPlanetFactorMax: 10
+  terrestrialPlanetFactorDistribution:
     mean: 0.5
-    stdDev: 0.15
+    stdDev: 0.5
+  terrestrialPlanetScaleRatio: 1
+  terrestrialPlanetGravityRatio: 30
+  terrestrialPlanetGravityRadiusRatio: 6
+  jovianPlanetFactorMin: 10
+  jovianPlanetFactorMax: 30
+  jovianPlanetFactorDistribution:
+    mean: 0.5
+    stdDev: 0.5
+  jovianPlanetScaleRatio: 1
+  jovianPlanetGravityRatio: 30
+  jovianPlanetGravityRadiusRatio: 6
+  planetOrbitIncreaseMultiplyMin: 1.2
+  planetOrbitIncreaseMultiplyMax: 1.7
+  planetOrbitIncreaseMultiplyDistribution:
+    mean: 0.2
+    stdDev: 0.05
+  planetInitialOrbitIncrease: 100
+  satelliteFactorMin: 1
+  satelliteFactorMax: 2
+  satelliteFactorDistribution:
+    mean: 0.5
+    stdDev: 0.5
+  satelliteScaleRatio: 1
+  satelliteGravityRatio: 30
+  satelliteGravityRadiusRatio: 6
+  satelliteOrbitIncreaseMultiplyMin: 1.2
+  satelliteOrbitIncreaseMulitplyMax: 1.5
+  satelliteOrbitIncreaseMulitplyDistribuiton:
+    mean: 0.2
+    stdDev: 0.05
+  satelliteInitialOrbitIncrease: 30
 --- !u!1 &330585543
 GameObject:
   m_ObjectHideFlags: 0
@@ -803,8 +846,8 @@ MonoBehaviour:
   spaceshipTag: PlayerSpaceship
   spaceshipFollowDistance: 30
   spaceshipFollowHeight: 30
-  angledOffset: {x: 0, y: -50, z: -30}
-  angledRotation: {x: -60, y: 0, z: 0}
+  angledOffset: {x: 0, y: 0, z: -100}
+  angledRotation: {x: 0, y: 0, z: 0}
   defaultSpaceshipDistance: 17.5
   minSpaceshipDistance: 10
   maxSpaceshipDistance: 3000
@@ -4465,7 +4508,7 @@ MonoBehaviour:
   playerSpaceshipPrefab: {fileID: 7973281092498103026, guid: 58bd2a64cb6491d4ea4e181f7a1f919f, type: 3}
   dummyPackagePrefab: {fileID: 454386822080372244, guid: f47f8de02923960459eeeab0cb61f5bb, type: 3}
   dotPrefab: {fileID: 3269785430077223375, guid: 368effd9658aeeb4695ee102f5a051c9, type: 3}
-  launchPowerMultiplier: 0.1
+  launchPowerMultiplier: 1
   maxDragDistance: 200
   slowDown: 1
   trajectorySimulationDots: 50

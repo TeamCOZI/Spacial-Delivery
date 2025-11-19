@@ -153,11 +153,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 271bac2255f20cc4ca181cbbd9fab977, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Package
+  thrustForce: 10
   pathPoints: []
   launchData:
     LaunchPosition: {x: 0, y: 0, z: 0}
     InitialVelocity: {x: 0, y: 0, z: 0}
     RelativeLaunchFrame: 0
+    launchFrame: 0
     pathPoints: []
     thrusts: []
 --- !u!114 &-7660197740828746115

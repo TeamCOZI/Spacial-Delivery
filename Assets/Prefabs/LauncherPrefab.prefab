@@ -71,7 +71,7 @@ MonoBehaviour:
   playerSpaceshipPrefab: {fileID: 7973281092498103026, guid: 58bd2a64cb6491d4ea4e181f7a1f919f, type: 3}
   dummyPackagePrefab: {fileID: 454386822080372244, guid: f47f8de02923960459eeeab0cb61f5bb, type: 3}
   dotPrefab: {fileID: 3269785430077223375, guid: 368effd9658aeeb4695ee102f5a051c9, type: 3}
-  launchPowerMultiplier: 10
+  launchPowerMultiplier: 1
   maxDragDistance: 1.5
   slowDown: 0.1
   trajectorySimulationDots: 50

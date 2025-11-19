@@ -1,7 +1,5 @@
 using System;
-using Unity.VisualScripting;
 using UnityEngine;
-using UnityEngine.AI;
 using UnityEngine.InputSystem;
 
 public class CameraController : MonoBehaviour
@@ -148,7 +146,7 @@ public class CameraController : MonoBehaviour
         OnSelectionChanged?.Invoke(SelectedPrefab);
     }
 
-    private void ActivateSpecialView()
+    private void ActivateSpecialView(bool preserveZoom = false)
     {
         if (SelectedPrefab == null) return;
 
@@ -165,8 +163,21 @@ public class CameraController : MonoBehaviour
             _currentlyControlledSpaceship.TakeControl();
 
             float alpha_rad = angledRotation.x * Mathf.Deg2Rad;
-            angledOffset.y = defaultSpaceshipDistance * Mathf.Sin(alpha_rad);
-            angledOffset.z = -defaultSpaceshipDistance * Mathf.Cos(alpha_rad);
+            float newDistance;
+
+            if (preserveZoom)
+            {
+                newDistance = -transform.position.z;
+            }
+            else
+            {
+                newDistance = defaultSpaceshipDistance;
+            }
+
+            newDistance = Mathf.Clamp(newDistance, minSpaceshipDistance, maxSpaceshipDistance);
+
+            angledOffset.y = newDistance * Mathf.Sin(alpha_rad);
+            angledOffset.z = -newDistance * Mathf.Cos(alpha_rad);
         }
         else
         {
@@ -175,16 +186,20 @@ public class CameraController : MonoBehaviour
         }
     }
 
+    public void SelectAndActivateSpecialView(Transform newSelection)
+    {
+        UpdateSelection(newSelection);
+
+        ActivateSpecialView(true);
+    }
+
     private void HandleDrag()
     {
         if (Mouse.current.rightButton.wasPressedThisFrame)
         {
             if (SelectedPrefab != null)
             {
-                transform.rotation = preSelectionRotation;
-                SelectedPrefab = null;
-                targetSpaceship = null;
-                OnSelectionChanged?.Invoke(SelectedPrefab);
+                UpdateSelection(null);
             }
 
             isDragging = true;

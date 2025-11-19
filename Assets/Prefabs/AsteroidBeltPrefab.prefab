@@ -46,7 +46,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::AsteroidbeltGenerator
   centralBody: {fileID: 0}
   asteroidPrefab: {fileID: 8109227045949665818, guid: d2e15bfe1eea6aa41a4fbd34ca3bf41c, type: 3}
-  numberOfAsteroids: 200
+  numberOfAsteroids: 10
   clockwise: 0
   beltSemiMajorAxis: 30
   beltSemiMinorAxis: 30

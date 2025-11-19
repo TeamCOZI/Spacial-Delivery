@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.EventSystems;
 
 [System.Serializable]
 public struct DistributionSettings
@@ -21,6 +22,7 @@ public class SolarSystemGenerator : MonoBehaviour
     [Header("Prefabs")]
     public GameObject starPrefab;
     public GameObject planetPrefab;
+    public GameObject asteriodBeltPrefab;
     public GameObject artificialSatellitePrefab;
 
     [Header("Generation Settings")]
@@ -30,9 +32,9 @@ public class SolarSystemGenerator : MonoBehaviour
     public int maxSatellites = 3;
 
     [Header("Distribution Controls")]
-    public float starScaleMin = 200f;
-    public float starScaleMax = 300f;
-    public DistributionSettings starScaleDistribution = new DistributionSettings(0.5f, 0.5f);
+    public float starFactorMin = 200f;
+    public float starFactorMax = 300f;
+    public DistributionSettings starFactorDistribution = new DistributionSettings(0.5f, 0.5f);
     public float starScaleRatio = 1f;
     public float starGravityRatio = 50f;
     public float starGravityRadiusRatio = 10f;
@@ -43,20 +45,28 @@ public class SolarSystemGenerator : MonoBehaviour
     public float starLightIntensityRatio = 1f;
     public float starLightRadiusRatio = 100f;
 
-    public float planetScaleMin = 5f;
-    public float planetScaleMax = 10f;
-    public DistributionSettings planetScaleDistribution = new DistributionSettings(0.5f, 0.5f);
-    public float planetScaleRatio = 1f;
-    public float planetGravityRatio = 30f;
-    public float planetGravityRadiusRatio = 6f;
+    public float terrestrialPlanetFactorMin = 5f;
+    public float terrestrialPlanetFactorMax = 10f;
+    public DistributionSettings terrestrialPlanetFactorDistribution = new DistributionSettings(0.5f, 0.5f);
+    public float terrestrialPlanetScaleRatio = 1f;
+    public float terrestrialPlanetGravityRatio = 30f;
+    public float terrestrialPlanetGravityRadiusRatio = 6f;
+
+    public float jovianPlanetFactorMin = 10f;
+    public float jovianPlanetFactorMax = 30f;
+    public DistributionSettings jovianPlanetFactorDistribution = new DistributionSettings(0.5f, 0.5f);
+    public float jovianPlanetScaleRatio = 3f;
+    public float jovianPlanetGravityRatio = 50f;
+    public float jovianPlanetGravityRadiusRatio = 10f;
 
     public float planetOrbitIncreaseMultiplyMin = 1.2f;
     public float planetOrbitIncreaseMultiplyMax = 1.7f;
     public DistributionSettings planetOrbitIncreaseMultiplyDistribution = new DistributionSettings(0.2f, 0.05f);
+    public float planetInitialOrbitIncrease = 100f;
 
-    public float satelliteScaleMin = 1f;
-    public float satelliteScaleMax = 2f;
-    public DistributionSettings satelliteScaleDistribution = new DistributionSettings(0.5f, 0.5f);
+    public float satelliteFactorMin = 1f;
+    public float satelliteFactorMax = 2f;
+    public DistributionSettings satelliteFactorDistribution = new DistributionSettings(0.5f, 0.5f);
     public float satelliteScaleRatio = 1f;
     public float satelliteGravityRatio = 30f;
     public float satelliteGravityRadiusRatio = 6f;
@@ -64,6 +74,7 @@ public class SolarSystemGenerator : MonoBehaviour
     public float satelliteOrbitIncreaseMultiplyMin = 1.2f;
     public float satelliteOrbitIncreaseMulitplyMax = 1.5f;
     public DistributionSettings satelliteOrbitIncreaseMulitplyDistribuiton = new DistributionSettings(0.2f, 0.05f);
+    public float satelliteInitialOrbitIncrease = 30f;
 
     void Start()
     {
@@ -80,7 +91,7 @@ public class SolarSystemGenerator : MonoBehaviour
         GameObject star = Instantiate(starPrefab, transform.position, Quaternion.identity, transform);
         star.name = "Central Star";
 
-        int starScale = Mathf.RoundToInt(Mathf.Lerp(starScaleMin, starScaleMax, NextGaussian(starScaleDistribution.mean, starScaleDistribution.stdDev)));
+        int starScale = Mathf.RoundToInt(Mathf.Lerp(starFactorMin, starFactorMax, NextGaussian(starFactorDistribution.mean, starFactorDistribution.stdDev)));
         star.transform.localScale = Vector3.one * starScale * starScaleRatio;
         int starGravityRadius = 0;
 
@@ -92,7 +103,7 @@ public class SolarSystemGenerator : MonoBehaviour
             gravityComponent.gravityRadius = starGravityRadius;
         }
 
-        int starLightScale = Mathf.RoundToInt(Mathf.Lerp(starLightMin, starLightMax, NextGaussian(starScaleDistribution.mean, starScaleDistribution.stdDev)));
+        int starLightScale = Mathf.RoundToInt(Mathf.Lerp(starLightMin, starLightMax, NextGaussian(starFactorDistribution.mean, starFactorDistribution.stdDev)));
 
         Star starComponent = star.GetComponent<Star>();
         if (starComponent != null)
@@ -101,24 +112,32 @@ public class SolarSystemGenerator : MonoBehaviour
             starComponent.lightRadius = starLightScale * starLightRadiusRatio;
         }
 
-        int numberOfPlanets = 10;
-        List<int> planetRandomFactors = GenerateRandomFactors(numberOfPlanets, planetScaleMin, planetScaleMax, planetScaleDistribution);
-        List<int> radii = GenerateOrbitRadii(ref numberOfPlanets, starScale, starGravityRadius, planetRandomFactors, planetScaleRatio, 100, planetOrbitIncreaseMultiplyMin, planetOrbitIncreaseMultiplyMax, planetOrbitIncreaseMultiplyDistribution);
-        List<int> periods = GeneratePeriods(3600, 60, numberOfPlanets);
+        // This variable is used as index.
+        int numberOfPlanets = 0;
 
-        for (int i = 0; i < numberOfPlanets - 1; i++)
+        // For assigning orbit speed.
+        List<GameObject> planets = new List<GameObject>();
+
+        // Initial orbit = Star scale + Initial orbit increase
+        // Axis = Previous planet Axis + Previous planet gravity radius + Previous orbit increase * Orbit increase multiply
+        // This variable is used to assign axis value.
+        int initialOrbit = starScale + (int)planetInitialOrbitIncrease;
+        
+        // Instantiating terrestrial planets.
+        while (initialOrbit < starGravityRadius * 0.3)
         {
             GameObject planet = Instantiate(planetPrefab, star.transform);
-            planet.name = $"Planet {i + 1}";
+            planet.name = $"Planet {numberOfPlanets + 1}";
 
-            planet.transform.localScale = Vector3.one * planetRandomFactors[i] / starScale * planetScaleRatio;
-            int planetGravityRadius = 0;
+            int planetRandomFactor = (int)Mathf.Lerp(terrestrialPlanetFactorMin, terrestrialPlanetFactorMax, NextGaussian(terrestrialPlanetFactorDistribution.mean, terrestrialPlanetFactorDistribution.stdDev));
+            planet.transform.localScale = Vector3.one * planetRandomFactor * terrestrialPlanetScaleRatio / starScale;
+            float planetGravityRadius = 0;
 
             Gravity planetGravity = planet.GetComponent<Gravity>();
             if (planetGravity != null)
             {
-                planetGravity.gravity = planetRandomFactors[i] * planetGravityRatio;
-                planetGravityRadius = (int)(planetRandomFactors[i] * planetGravityRadiusRatio);
+                planetGravity.gravity = planetRandomFactor * terrestrialPlanetGravityRatio;
+                planetGravityRadius = planetRandomFactor * terrestrialPlanetGravityRadiusRatio;
                 planetGravity.gravityRadius = planetGravityRadius;
             }
 
@@ -127,35 +146,169 @@ public class SolarSystemGenerator : MonoBehaviour
             {
                 planetOrbiter.centralBody = star;
 
-                planetOrbiter.semiMajorAxis = radii[i];
-                planetOrbiter.semiMinorAxis = radii[i];
-                planetOrbiter.orbitSpeed = 360f / periods[i];
+                planetOrbiter.semiMajorAxis = initialOrbit;
+                planetOrbiter.semiMinorAxis = initialOrbit;
                 planetOrbiter.currentAngle = Random.Range(0f, 360f);
             }
 
-            GenerateSatellitesFor(planet, planetRandomFactors[i], planetGravityRadius);
+            GenerateSatellitesFor(planet, planetRandomFactor, (int)planetGravityRadius);
+
+            // Add planet to planets list for assigning orbit speed later.
+            planets.Add(planet);
+
+            // Reassign orbit for next iteration.
+            planetInitialOrbitIncrease *= Mathf.Lerp(planetOrbitIncreaseMultiplyMin, planetOrbitIncreaseMultiplyMax, NextGaussian(planetOrbitIncreaseMultiplyDistribution.mean, planetOrbitIncreaseMultiplyDistribution.stdDev));
+            initialOrbit += (int)planetGravityRadius + (int)planetInitialOrbitIncrease;
+
+            numberOfPlanets++;
+        }
+
+        // Instantiating asteriod belt.
+        GameObject asteriodBelt = Instantiate(asteriodBeltPrefab, star.transform);
+        asteriodBelt.name = "Asteriod Belt";
+        int asteriodBeltIdx = numberOfPlanets;
+
+        AsteroidbeltGenerator asteriodBeltGenerator = asteriodBelt.GetComponent<AsteroidbeltGenerator>();
+        if (asteriodBeltGenerator != null)
+        {
+            asteriodBeltGenerator.centralBody = star;
+
+            asteriodBeltGenerator.beltSemiMajorAxis = initialOrbit;
+            asteriodBeltGenerator.beltSemiMinorAxis = initialOrbit;
+            planets.Add(asteriodBelt);
+
+            planetInitialOrbitIncrease *= Mathf.Lerp(planetOrbitIncreaseMultiplyMin, planetOrbitIncreaseMultiplyMax, NextGaussian(planetOrbitIncreaseMultiplyDistribution.mean, planetOrbitIncreaseMultiplyDistribution.stdDev));
+            initialOrbit += (int)planetInitialOrbitIncrease;
+
+            numberOfPlanets++;
+        }
+
+        planetInitialOrbitIncrease *= Mathf.Lerp(planetOrbitIncreaseMultiplyMin, planetOrbitIncreaseMultiplyMax, NextGaussian(planetOrbitIncreaseMultiplyDistribution.mean, planetOrbitIncreaseMultiplyDistribution.stdDev));
+        initialOrbit += (int)planetInitialOrbitIncrease;
+
+
+        // Instantiating jovian planets in condition.
+        while (initialOrbit < starGravityRadius)
+        {
+            if ((int)Random.Range(0, 10) < 9)
+            {
+                GameObject planet = Instantiate(planetPrefab, star.transform);
+                planet.name = $"Planet {numberOfPlanets + 1}";
+
+                int planetRandomFactor = (int)Mathf.Lerp(jovianPlanetFactorMin, jovianPlanetFactorMax, NextGaussian(jovianPlanetFactorDistribution.mean, jovianPlanetFactorDistribution.stdDev));
+                planet.transform.localScale = Vector3.one * planetRandomFactor * jovianPlanetScaleRatio / starScale;
+                float planetGravityRadius = 0;
+
+                Gravity planetGravity = planet.GetComponent<Gravity>();
+                if (planetGravity != null)
+                {
+                    planetGravity.gravity = planetRandomFactor * jovianPlanetGravityRatio;
+                    planetGravityRadius = planetRandomFactor * jovianPlanetGravityRadiusRatio;
+                    planetGravity.gravityRadius = planetGravityRadius;
+                }
+
+                Orbiter planetOrbiter = planet.GetComponent<Orbiter>();
+                if (planetOrbiter != null)
+                {
+                    planetOrbiter.centralBody = star;
+
+                    planetOrbiter.semiMajorAxis = initialOrbit;
+                    planetOrbiter.semiMinorAxis = initialOrbit;
+                    planetOrbiter.currentAngle = Random.Range(0f, 360f);
+                }
+
+                GenerateSatellitesFor(planet, planetRandomFactor, (int)planetGravityRadius);
+
+                // Add planet to planets list for assigning orbit speed later.
+                planets.Add(planet);
+
+                // Reassign orbit for next iteration.
+                planetInitialOrbitIncrease *= Mathf.Lerp(planetOrbitIncreaseMultiplyMin, planetOrbitIncreaseMultiplyMax, NextGaussian(planetOrbitIncreaseMultiplyDistribution.mean, planetOrbitIncreaseMultiplyDistribution.stdDev));
+                initialOrbit += (int)planetGravityRadius + (int)planetInitialOrbitIncrease;
+
+                numberOfPlanets++;
+            }
+            else
+            {
+                GameObject planet = Instantiate(planetPrefab, star.transform);
+                planet.name = $"Planet {numberOfPlanets + 1}";
+
+                int planetRandomFactor = (int)Mathf.Lerp(terrestrialPlanetFactorMin, terrestrialPlanetFactorMax, NextGaussian(terrestrialPlanetFactorDistribution.mean, terrestrialPlanetFactorDistribution.stdDev));
+                planet.transform.localScale = Vector3.one * planetRandomFactor * terrestrialPlanetScaleRatio / starScale;
+                float planetGravityRadius = 0;
+
+                Gravity planetGravity = planet.GetComponent<Gravity>();
+                if (planetGravity != null)
+                {
+                    planetGravity.gravity = planetRandomFactor * terrestrialPlanetGravityRatio;
+                    planetGravityRadius = planetRandomFactor * terrestrialPlanetGravityRadiusRatio;
+                    planetGravity.gravityRadius = planetGravityRadius;
+                }
+
+                Orbiter planetOrbiter = planet.GetComponent<Orbiter>();
+                if (planetOrbiter != null)
+                {
+                    planetOrbiter.centralBody = star;
+
+                    planetOrbiter.semiMajorAxis = initialOrbit;
+                    planetOrbiter.semiMinorAxis = initialOrbit;
+                    planetOrbiter.currentAngle = Random.Range(0f, 360f);
+                }
+
+                GenerateSatellitesFor(planet, planetRandomFactor, (int)planetGravityRadius);
+
+                // Add planet to planets list for assigning orbit speed later.
+                planets.Add(planet);
+
+                // Reassign orbit for next iteration.
+                planetInitialOrbitIncrease *= Mathf.Lerp(planetOrbitIncreaseMultiplyMin, planetOrbitIncreaseMultiplyMax, NextGaussian(planetOrbitIncreaseMultiplyDistribution.mean, planetOrbitIncreaseMultiplyDistribution.stdDev));
+                initialOrbit += (int)planetGravityRadius + (int)planetInitialOrbitIncrease;
+
+                numberOfPlanets++;
+            }
+        }
+        
+        // Assiging orbit speed.
+        List<int> periods = GeneratePeriods(3600, 60, numberOfPlanets + 1);
+
+        for (int i = 0; i < numberOfPlanets; i++)
+        {   
+            if (i == asteriodBeltIdx)
+            {
+                AsteroidbeltGenerator asteroidbeltGenerator = planets[i].GetComponent<AsteroidbeltGenerator>();
+                asteriodBeltGenerator.orbitSpeed = 360f / periods[i];
+            }
+            else
+            {
+                Orbiter planetOrbiter = planets[i].GetComponent<Orbiter>();
+                planetOrbiter.orbitSpeed = 360f / periods[i];
+            }
         }
     }
 
     private void GenerateSatellitesFor(GameObject planet, int planetScale, int planetGravityRadius)
     {
-        int numberOfSatellites = 10;
-        List<int> satelliteRandomFactors = GenerateRandomFactors(numberOfSatellites, satelliteScaleMin, satelliteScaleMax, satelliteScaleDistribution);
-        List<int> radii = GenerateOrbitRadii(ref numberOfSatellites, planetScale, planetGravityRadius, satelliteRandomFactors, satelliteScaleRatio, 30, satelliteOrbitIncreaseMultiplyMin, satelliteOrbitIncreaseMulitplyMax, satelliteOrbitIncreaseMulitplyDistribuiton);
-        List<int> periods = GeneratePeriods(3600, 360, numberOfSatellites);
+        int numberOfSatellites = 0;
 
-        for (int i = 0; i < numberOfSatellites - 1; i++)
+        List<GameObject> satellites = new List<GameObject>();
+
+        int initialOrbit = planetScale + (int)satelliteInitialOrbitIncrease;
+
+        while (initialOrbit < planetGravityRadius)
         {
             GameObject satellite = Instantiate(artificialSatellitePrefab, planet.transform);
-            satellite.name = $"{planet.name} - Satellite {i + 1}";
+            satellite.name = $"{planet.name} - Satellite {numberOfSatellites + 1}";
 
-            satellite.transform.localScale = Vector3.one * satelliteRandomFactors[i] / planetScale * satelliteScaleRatio;
+            int satelliteRandomFactor = (int)Mathf.Lerp(satelliteFactorMin, satelliteFactorMax, NextGaussian(satelliteFactorDistribution.mean, satelliteFactorDistribution.stdDev));
+            satellite.transform.localScale = Vector3.one * satelliteRandomFactor * satelliteScaleRatio / planetScale;
+            float satelliteGravityRadius = 0;
 
             Gravity satelliteGravityComponent = satellite.GetComponent<Gravity>();
             if (satelliteGravityComponent != null)
             {
-                satelliteGravityComponent.gravity = satelliteRandomFactors[i] * satelliteGravityRatio;
-                satelliteGravityComponent.gravityRadius = satelliteRandomFactors[i] * satelliteGravityRadiusRatio;
+                satelliteGravityComponent.gravity = satelliteRandomFactor * satelliteGravityRatio;
+                satelliteGravityRadius = satelliteRandomFactor * satelliteGravityRatio;
+                satelliteGravityComponent.gravityRadius = satelliteRandomFactor * satelliteGravityRadiusRatio;
             }
 
             Orbiter satelliteOrbiter = satellite.GetComponent<Orbiter>();
@@ -163,49 +316,24 @@ public class SolarSystemGenerator : MonoBehaviour
             {
                 satelliteOrbiter.centralBody = planet;
 
-                satelliteOrbiter.semiMajorAxis = radii[i];
-                satelliteOrbiter.semiMinorAxis = radii[i];
-                satelliteOrbiter.orbitSpeed = 360f / periods[i];
+                satelliteOrbiter.semiMajorAxis = initialOrbit;
+                satelliteOrbiter.semiMinorAxis = initialOrbit;
                 satelliteOrbiter.currentAngle = Random.Range(0f, 360f);
             }
-        }
-    }
-    
-    private List<int> GenerateRandomFactors(int count, float scaleMin, float scaleMax, DistributionSettings scaleDistribution)
-    {
-        List<int> randomFactors = new List<int>();
 
-        for (int i = 0; i < count; i++)
+            satellites.Add(satellite);
+
+            satelliteInitialOrbitIncrease *= Mathf.Lerp(satelliteOrbitIncreaseMultiplyMin, satelliteOrbitIncreaseMulitplyMax, NextGaussian(satelliteOrbitIncreaseMulitplyDistribuiton.mean, satelliteOrbitIncreaseMulitplyDistribuiton.stdDev));
+            initialOrbit += (int)satelliteGravityRadius * (int)satelliteInitialOrbitIncrease;
+        }
+        
+        List<int> periods = GeneratePeriods(120, 60, numberOfSatellites + 1);
+
+        for (int i = 0; i < numberOfSatellites; i++)
         {
-            int randomFactor = Mathf.RoundToInt(Mathf.Lerp(scaleMin, scaleMax, NextGaussian(scaleDistribution.mean, scaleDistribution.stdDev)));
-            randomFactors.Add(randomFactor);
+            Orbiter satelliteOrbiter = satellites[i].GetComponent<Orbiter>();
+            satelliteOrbiter.orbitSpeed = 360f / periods[numberOfSatellites];
         }
-
-        return randomFactors;
-    }
-
-    private List<int> GenerateOrbitRadii(ref int count, int parentScale, int parentGravityRadius, List<int> randomFactors, float scaleRatio, float initialOrbitIncrease, float orbitIncreaseMultiplyMin, float orbitIncreaseMultiplyMax, DistributionSettings orbitIncreaseMultiplyDistribution)
-    {
-        List<int> radii = new List<int>();
-
-        float initialOrbit = parentScale + initialOrbitIncrease;
-        radii.Add((int)initialOrbit);
-
-        initialOrbit += randomFactors[0] * scaleRatio + initialOrbitIncrease;
-        radii.Add((int)initialOrbit);
-
-        count = 2;
-
-        while (parentGravityRadius > initialOrbit)
-        {
-            float orbitIncreaseMultiply = NextGaussian(orbitIncreaseMultiplyDistribution.mean, orbitIncreaseMultiplyDistribution.stdDev);
-            initialOrbitIncrease *= Mathf.Lerp(orbitIncreaseMultiplyMin, orbitIncreaseMultiplyMax, orbitIncreaseMultiply);
-            initialOrbit += randomFactors[count - 1] * scaleRatio + Mathf.RoundToInt(initialOrbitIncrease);
-            radii.Add((int)initialOrbit);
-            count++;
-        }
-
-        return radii;
     }
     
     private List<int> GeneratePeriods(int totalPeriod, int minPeriod, int count)

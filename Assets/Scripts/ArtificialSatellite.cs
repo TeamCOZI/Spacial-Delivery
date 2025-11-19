@@ -136,6 +136,12 @@ public class ArtificialSatellite : MonoBehaviour
         }
 
         Vector3 capturePosition = packageObject.transform.position;
+
+        if (cameraController != null && cameraController.SelectedPrefab == packageObject.transform)
+        {
+            cameraController.UpdateSelection(null);
+        }
+        
         Destroy(packageObject);
         ShowSuccessEffect(capturePosition);
     }

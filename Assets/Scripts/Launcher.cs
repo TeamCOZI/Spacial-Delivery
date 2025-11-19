@@ -90,7 +90,7 @@ public class Launcher : MonoBehaviour
                 {
                     prefabRadius = prefabRenderer.bounds.extents.y;
                 }
-                launchCenter = cameraController.SelectedPrefab.position + new Vector3(0, 5f + prefabRadius, 0);
+                launchCenter = cameraController.SelectedPrefab.position + new Vector3(0, 10f + prefabRadius, 0);
 
                 if (dummyInstance != null)
                 {
@@ -184,6 +184,11 @@ public class Launcher : MonoBehaviour
             {
                 rb.isKinematic = false;
                 rb.linearVelocity = initialVelocity;
+            }
+
+            if (cameraController != null)
+            {
+                cameraController.SelectAndActivateSpecialView(launchedObject.transform);
             }
         }
     }
