@@ -83,7 +83,14 @@ public class Package : MonoBehaviour
             if (distance == 0f || distance > source.gravityRadius)
                 continue;
 
-            float forceMagnitude = (source.gravity * rb.mass) / (distance * distance);
+            Rigidbody sourceRb = source.GetComponent<Rigidbody>();
+            if (sourceRb == null)
+            {
+                Debug.Log(sourceRb);
+                continue;
+            }
+
+            float forceMagnitude = source.gravity * sourceRb.mass * rb.mass / (distance * distance);
 
             Vector3 force = direction.normalized * forceMagnitude;
 

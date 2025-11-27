@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.EventSystems;
 
 [System.Serializable]
 public struct DistributionSettings
@@ -31,7 +30,7 @@ public class SolarSystemGenerator : MonoBehaviour
     public int minSatellites = 0;
     public int maxSatellites = 3;
 
-    [Header("Distribution Controls")]
+    [Header("Star Settings")]
     public float starFactorMin = 200f;
     public float starFactorMax = 300f;
     public DistributionSettings starFactorDistribution = new DistributionSettings(0.5f, 0.5f);
@@ -45,36 +44,58 @@ public class SolarSystemGenerator : MonoBehaviour
     public float starLightIntensityRatio = 1f;
     public float starLightRadiusRatio = 100f;
 
+    public float starMass = 1000f;
+
+    [Header("Terrestrial Planet Settings")]
     public float terrestrialPlanetFactorMin = 5f;
     public float terrestrialPlanetFactorMax = 10f;
     public DistributionSettings terrestrialPlanetFactorDistribution = new DistributionSettings(0.5f, 0.5f);
     public float terrestrialPlanetScaleRatio = 1f;
     public float terrestrialPlanetGravityRatio = 30f;
     public float terrestrialPlanetGravityRadiusRatio = 6f;
+    public float terrestrialPlanetMass = 100f;
 
+    [Header("Jovian Planet Settings")]
     public float jovianPlanetFactorMin = 10f;
     public float jovianPlanetFactorMax = 30f;
     public DistributionSettings jovianPlanetFactorDistribution = new DistributionSettings(0.5f, 0.5f);
     public float jovianPlanetScaleRatio = 3f;
     public float jovianPlanetGravityRatio = 50f;
     public float jovianPlanetGravityRadiusRatio = 10f;
+    public float jovianPlanetMass = 300f;
 
+    [Header("Planet Orbit Settings")]
     public float planetOrbitIncreaseMultiplyMin = 1.2f;
     public float planetOrbitIncreaseMultiplyMax = 1.7f;
     public DistributionSettings planetOrbitIncreaseMultiplyDistribution = new DistributionSettings(0.2f, 0.05f);
     public float planetInitialOrbitIncrease = 100f;
 
+    [Header("Planet Heat Settings")]
+    public float planetInitialHeat = 200f;
+    public float planetHeatRatio = 0.04f;
+
+    [Header("Planet Period Settings")]
+    public int planetTotalPeriod = 3600;
+    public int planetMinPeriod = 60;
+
+    [Header("Satellite Settings")]
     public float satelliteFactorMin = 1f;
     public float satelliteFactorMax = 2f;
     public DistributionSettings satelliteFactorDistribution = new DistributionSettings(0.5f, 0.5f);
     public float satelliteScaleRatio = 1f;
     public float satelliteGravityRatio = 30f;
     public float satelliteGravityRadiusRatio = 6f;
+    public float satelliteMass = 10f;
     
+    [Header("Satellite Orbit Settings")]
     public float satelliteOrbitIncreaseMultiplyMin = 1.2f;
     public float satelliteOrbitIncreaseMulitplyMax = 1.5f;
     public DistributionSettings satelliteOrbitIncreaseMulitplyDistribuiton = new DistributionSettings(0.2f, 0.05f);
     public float satelliteInitialOrbitIncrease = 30f;
+
+    [Header("Satellite Period Settings")]
+    public int satelliteTotalPeriod = 120;
+    public int satelliteMinPeriod = 60;
 
     void Start()
     {
@@ -112,6 +133,12 @@ public class SolarSystemGenerator : MonoBehaviour
             starComponent.lightRadius = starLightScale * starLightRadiusRatio;
         }
 
+        Rigidbody starRb = star.GetComponent<Rigidbody>();
+        if (starRb != null)
+        {
+            starRb.mass = starMass;
+        }
+
         // This variable is used as index.
         int numberOfPlanets = 0;
 
@@ -122,6 +149,7 @@ public class SolarSystemGenerator : MonoBehaviour
         // Axis = Previous planet Axis + Previous planet gravity radius + Previous orbit increase * Orbit increase multiply
         // This variable is used to assign axis value.
         int initialOrbit = starScale + (int)planetInitialOrbitIncrease;
+        int initialHeat = (int)planetInitialHeat;
         
         // Instantiating terrestrial planets.
         while (initialOrbit < starGravityRadius * 0.3)
@@ -151,14 +179,28 @@ public class SolarSystemGenerator : MonoBehaviour
                 planetOrbiter.currentAngle = Random.Range(0f, 360f);
             }
 
+            Rigidbody planetRb = planet.GetComponent<Rigidbody>();
+            if (planetRb != null)
+            {
+                planetRb.mass = terrestrialPlanetMass;
+            }
+
             GenerateSatellitesFor(planet, planetRandomFactor, (int)planetGravityRadius);
+
+            Planet planetPlanet = planet.GetComponent<Planet>();
+            if (planetPlanet != null)
+            {
+                planetPlanet.Heat = initialHeat;
+            }
 
             // Add planet to planets list for assigning orbit speed later.
             planets.Add(planet);
 
-            // Reassign orbit for next iteration.
+            // Reassign orbit and heat for next iteration.
             planetInitialOrbitIncrease *= Mathf.Lerp(planetOrbitIncreaseMultiplyMin, planetOrbitIncreaseMultiplyMax, NextGaussian(planetOrbitIncreaseMultiplyDistribution.mean, planetOrbitIncreaseMultiplyDistribution.stdDev));
             initialOrbit += (int)planetGravityRadius + (int)planetInitialOrbitIncrease;
+
+            initialHeat -= (int)(planetInitialOrbitIncrease * planetHeatRatio);
 
             numberOfPlanets++;
         }
@@ -185,6 +227,8 @@ public class SolarSystemGenerator : MonoBehaviour
 
         planetInitialOrbitIncrease *= Mathf.Lerp(planetOrbitIncreaseMultiplyMin, planetOrbitIncreaseMultiplyMax, NextGaussian(planetOrbitIncreaseMultiplyDistribution.mean, planetOrbitIncreaseMultiplyDistribution.stdDev));
         initialOrbit += (int)planetInitialOrbitIncrease;
+
+        initialHeat -= (int)(planetInitialOrbitIncrease * planetHeatRatio);
 
 
         // Instantiating jovian planets in condition.
@@ -217,6 +261,18 @@ public class SolarSystemGenerator : MonoBehaviour
                     planetOrbiter.currentAngle = Random.Range(0f, 360f);
                 }
 
+                Rigidbody planetRb = planet.GetComponent<Rigidbody>();
+                if (planetRb != null)
+                {
+                    planetRb.mass = jovianPlanetMass;
+                }
+
+                Planet planetPlanet = planet.GetComponent<Planet>();
+                if (planetPlanet != null)
+                {
+                    planetPlanet.Heat = initialHeat;
+                }
+
                 GenerateSatellitesFor(planet, planetRandomFactor, (int)planetGravityRadius);
 
                 // Add planet to planets list for assigning orbit speed later.
@@ -225,6 +281,8 @@ public class SolarSystemGenerator : MonoBehaviour
                 // Reassign orbit for next iteration.
                 planetInitialOrbitIncrease *= Mathf.Lerp(planetOrbitIncreaseMultiplyMin, planetOrbitIncreaseMultiplyMax, NextGaussian(planetOrbitIncreaseMultiplyDistribution.mean, planetOrbitIncreaseMultiplyDistribution.stdDev));
                 initialOrbit += (int)planetGravityRadius + (int)planetInitialOrbitIncrease;
+
+                initialHeat -= (int)(planetInitialOrbitIncrease * planetHeatRatio);
 
                 numberOfPlanets++;
             }
@@ -255,6 +313,18 @@ public class SolarSystemGenerator : MonoBehaviour
                     planetOrbiter.currentAngle = Random.Range(0f, 360f);
                 }
 
+                Rigidbody planetRb = planet.GetComponent<Rigidbody>();
+                if (planetRb != null)
+                {
+                    planetRb.mass = terrestrialPlanetMass;
+                }
+
+                Planet planetPlanet = planet.GetComponent<Planet>();
+                if (planetPlanet != null)
+                {
+                    planetPlanet.Heat = initialHeat;
+                }
+
                 GenerateSatellitesFor(planet, planetRandomFactor, (int)planetGravityRadius);
 
                 // Add planet to planets list for assigning orbit speed later.
@@ -264,12 +334,14 @@ public class SolarSystemGenerator : MonoBehaviour
                 planetInitialOrbitIncrease *= Mathf.Lerp(planetOrbitIncreaseMultiplyMin, planetOrbitIncreaseMultiplyMax, NextGaussian(planetOrbitIncreaseMultiplyDistribution.mean, planetOrbitIncreaseMultiplyDistribution.stdDev));
                 initialOrbit += (int)planetGravityRadius + (int)planetInitialOrbitIncrease;
 
+                initialHeat -= (int)(planetInitialOrbitIncrease * planetHeatRatio);
+
                 numberOfPlanets++;
             }
         }
         
         // Assiging orbit speed.
-        List<int> periods = GeneratePeriods(3600, 60, numberOfPlanets + 1);
+        List<int> periods = GeneratePeriods(planetTotalPeriod, planetMinPeriod, numberOfPlanets + 1);
 
         for (int i = 0; i < numberOfPlanets; i++)
         {   
@@ -321,13 +393,19 @@ public class SolarSystemGenerator : MonoBehaviour
                 satelliteOrbiter.currentAngle = Random.Range(0f, 360f);
             }
 
+            Rigidbody satelliteRb = satellite.GetComponent<Rigidbody>();
+            if (satelliteRb != null)
+            {
+                satelliteRb.mass = satelliteMass;
+            }
+
             satellites.Add(satellite);
 
             satelliteInitialOrbitIncrease *= Mathf.Lerp(satelliteOrbitIncreaseMultiplyMin, satelliteOrbitIncreaseMulitplyMax, NextGaussian(satelliteOrbitIncreaseMulitplyDistribuiton.mean, satelliteOrbitIncreaseMulitplyDistribuiton.stdDev));
             initialOrbit += (int)satelliteGravityRadius * (int)satelliteInitialOrbitIncrease;
         }
         
-        List<int> periods = GeneratePeriods(120, 60, numberOfSatellites + 1);
+        List<int> periods = GeneratePeriods(satelliteTotalPeriod, satelliteMinPeriod, numberOfSatellites + 1);
 
         for (int i = 0; i < numberOfSatellites; i++)
         {

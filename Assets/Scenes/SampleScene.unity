@@ -672,6 +672,8 @@ MonoBehaviour:
     mean: 0.2
     stdDev: 0.05
   planetInitialOrbitIncrease: 100
+  planetTotalPeriod: 3600
+  planetMinPeriod: 60
   satelliteFactorMin: 1
   satelliteFactorMax: 2
   satelliteFactorDistribution:
@@ -686,6 +688,8 @@ MonoBehaviour:
     mean: 0.2
     stdDev: 0.05
   satelliteInitialOrbitIncrease: 30
+  satelliteTotalPeriod: 120
+  satelliteMinPeriod: 60
 --- !u!1 &330585543
 GameObject:
   m_ObjectHideFlags: 0
@@ -4510,7 +4514,7 @@ MonoBehaviour:
   dotPrefab: {fileID: 3269785430077223375, guid: 368effd9658aeeb4695ee102f5a051c9, type: 3}
   launchPowerMultiplier: 1
   maxDragDistance: 200
-  slowDown: 1
+  slowDown: 0.5
   trajectorySimulationDots: 50
   numberOfDots: 10
   dotScale: 0.1

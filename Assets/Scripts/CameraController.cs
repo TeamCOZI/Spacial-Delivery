@@ -94,10 +94,10 @@ public class CameraController : MonoBehaviour
         if (targetSpaceship != null)
         {
             transform.position = targetSpaceship.transform.position;
-            transform.rotation = targetSpaceship.transform.rotation;
+            // transform.rotation = targetSpaceship.transform.rotation;
 
             transform.Translate(angledOffset, Space.Self);
-            transform.Rotate(angledRotation, Space.Self);
+            // transform.Rotate(angledRotation, Space.Self);
         }
         else if (SelectedPrefab != null)
         {
