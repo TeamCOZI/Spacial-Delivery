@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Unity.VisualScripting;
 using UnityEngine;
 
 [System.Serializable]
@@ -73,6 +74,8 @@ public class SolarSystemGenerator : MonoBehaviour
     [Header("Planet Heat Settings")]
     public float planetInitialHeat = 200f;
     public float planetHeatRatio = 0.04f;
+
+    [Header("Planet ATM Settings")]
 
     [Header("Planet Period Settings")]
     public int planetTotalPeriod = 3600;
@@ -190,11 +193,15 @@ public class SolarSystemGenerator : MonoBehaviour
             Planet planetPlanet = planet.GetComponent<Planet>();
             if (planetPlanet != null)
             {
-                planetPlanet.Heat = initialHeat;
+                planetPlanet.heat = initialHeat;
+                if (planetPlanet.heat > 150) planetPlanet.atm = 0f;
+                else planetPlanet.atm = planetGravity.gravity * 2 * (0.2f * (int)(planetPlanet.heat / 10));
             }
 
             // Add planet to planets list for assigning orbit speed later.
             planets.Add(planet);
+
+            Debug.Log(planet.name + " / Heat : " + planetPlanet.heat + ", ATM : " + planetPlanet.atm);
 
             // Reassign orbit and heat for next iteration.
             planetInitialOrbitIncrease *= Mathf.Lerp(planetOrbitIncreaseMultiplyMin, planetOrbitIncreaseMultiplyMax, NextGaussian(planetOrbitIncreaseMultiplyDistribution.mean, planetOrbitIncreaseMultiplyDistribution.stdDev));
@@ -237,7 +244,7 @@ public class SolarSystemGenerator : MonoBehaviour
             if ((int)Random.Range(0, 10) < 9)
             {
                 GameObject planet = Instantiate(planetPrefab, star.transform);
-                planet.name = $"Planet {numberOfPlanets + 1}";
+                planet.name = $"Planet {numberOfPlanets}";
 
                 int planetRandomFactor = (int)Mathf.Lerp(jovianPlanetFactorMin, jovianPlanetFactorMax, NextGaussian(jovianPlanetFactorDistribution.mean, jovianPlanetFactorDistribution.stdDev));
                 planet.transform.localScale = Vector3.one * planetRandomFactor * jovianPlanetScaleRatio / starScale;
@@ -270,13 +277,17 @@ public class SolarSystemGenerator : MonoBehaviour
                 Planet planetPlanet = planet.GetComponent<Planet>();
                 if (planetPlanet != null)
                 {
-                    planetPlanet.Heat = initialHeat;
+                    planetPlanet.heat = initialHeat;
+                    if (planetPlanet.heat > 150) planetPlanet.atm = 0f;
+                    else planetPlanet.atm = planetGravity.gravity * 2 * (0.2f * (int)(planetPlanet.heat / 10));
                 }
 
                 GenerateSatellitesFor(planet, planetRandomFactor, (int)planetGravityRadius);
 
                 // Add planet to planets list for assigning orbit speed later.
                 planets.Add(planet);
+
+                Debug.Log(planet.name + " / Heat : " + planetPlanet.heat + ", ATM : " + planetPlanet.atm);
 
                 // Reassign orbit for next iteration.
                 planetInitialOrbitIncrease *= Mathf.Lerp(planetOrbitIncreaseMultiplyMin, planetOrbitIncreaseMultiplyMax, NextGaussian(planetOrbitIncreaseMultiplyDistribution.mean, planetOrbitIncreaseMultiplyDistribution.stdDev));
@@ -289,7 +300,7 @@ public class SolarSystemGenerator : MonoBehaviour
             else
             {
                 GameObject planet = Instantiate(planetPrefab, star.transform);
-                planet.name = $"Planet {numberOfPlanets + 1}";
+                planet.name = $"Planet {numberOfPlanets}";
 
                 int planetRandomFactor = (int)Mathf.Lerp(terrestrialPlanetFactorMin, terrestrialPlanetFactorMax, NextGaussian(terrestrialPlanetFactorDistribution.mean, terrestrialPlanetFactorDistribution.stdDev));
                 planet.transform.localScale = Vector3.one * planetRandomFactor * terrestrialPlanetScaleRatio / starScale;
@@ -322,13 +333,17 @@ public class SolarSystemGenerator : MonoBehaviour
                 Planet planetPlanet = planet.GetComponent<Planet>();
                 if (planetPlanet != null)
                 {
-                    planetPlanet.Heat = initialHeat;
+                    planetPlanet.heat = initialHeat;
+                    if (planetPlanet.heat > 150) planetPlanet.atm = 0f;
+                    else planetPlanet.atm = planetGravity.gravity * 2 * (0.2f * (int)(planetPlanet.heat / 10));
                 }
 
                 GenerateSatellitesFor(planet, planetRandomFactor, (int)planetGravityRadius);
 
                 // Add planet to planets list for assigning orbit speed later.
                 planets.Add(planet);
+
+                Debug.Log(planet.name + " / Heat : " + planetPlanet.heat + ", ATM : " + planetPlanet.atm);
 
                 // Reassign orbit for next iteration.
                 planetInitialOrbitIncrease *= Mathf.Lerp(planetOrbitIncreaseMultiplyMin, planetOrbitIncreaseMultiplyMax, NextGaussian(planetOrbitIncreaseMultiplyDistribution.mean, planetOrbitIncreaseMultiplyDistribution.stdDev));
