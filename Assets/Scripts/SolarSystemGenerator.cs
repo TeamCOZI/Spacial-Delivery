@@ -195,13 +195,13 @@ public class SolarSystemGenerator : MonoBehaviour
             {
                 planetPlanet.heat = initialHeat;
                 if (planetPlanet.heat > 150) planetPlanet.atm = 0f;
-                else planetPlanet.atm = planetGravity.gravity * 2 * (0.2f * (int)(planetPlanet.heat / 10));
+                else planetPlanet.atm = (int)(planetGravity.gravity * 2 * (0.2f * (int)(planetPlanet.heat / 10)));
             }
 
             // Add planet to planets list for assigning orbit speed later.
             planets.Add(planet);
 
-            Debug.Log(planet.name + " / Heat : " + planetPlanet.heat + ", ATM : " + planetPlanet.atm);
+            Debug.Log(planet.name + " / Terrestrial Planet Scale : " + planetRandomFactor * terrestrialPlanetScaleRatio + " / Heat : " + planetPlanet.heat + ", ATM : " + planetPlanet.atm);
 
             // Reassign orbit and heat for next iteration.
             planetInitialOrbitIncrease *= Mathf.Lerp(planetOrbitIncreaseMultiplyMin, planetOrbitIncreaseMultiplyMax, NextGaussian(planetOrbitIncreaseMultiplyDistribution.mean, planetOrbitIncreaseMultiplyDistribution.stdDev));
@@ -241,7 +241,7 @@ public class SolarSystemGenerator : MonoBehaviour
         // Instantiating jovian planets in condition.
         while (initialOrbit < starGravityRadius)
         {
-            if ((int)Random.Range(0, 10) < 9)
+            if (Random.Range(0, 10) < 9)
             {
                 GameObject planet = Instantiate(planetPrefab, star.transform);
                 planet.name = $"Planet {numberOfPlanets}";
@@ -279,7 +279,7 @@ public class SolarSystemGenerator : MonoBehaviour
                 {
                     planetPlanet.heat = initialHeat;
                     if (planetPlanet.heat > 150) planetPlanet.atm = 0f;
-                    else planetPlanet.atm = planetGravity.gravity * 2 * (0.2f * (int)(planetPlanet.heat / 10));
+                    else planetPlanet.atm = (int)(planetGravity.gravity * 2 * (0.2f * (planetPlanet.heat / 10)));
                 }
 
                 GenerateSatellitesFor(planet, planetRandomFactor, (int)planetGravityRadius);
@@ -287,7 +287,7 @@ public class SolarSystemGenerator : MonoBehaviour
                 // Add planet to planets list for assigning orbit speed later.
                 planets.Add(planet);
 
-                Debug.Log(planet.name + " / Heat : " + planetPlanet.heat + ", ATM : " + planetPlanet.atm);
+                Debug.Log(planet.name + " / Jovian Planet Scale : " + planetRandomFactor * terrestrialPlanetScaleRatio + " / Heat : " + planetPlanet.heat + ", ATM : " + planetPlanet.atm);
 
                 // Reassign orbit for next iteration.
                 planetInitialOrbitIncrease *= Mathf.Lerp(planetOrbitIncreaseMultiplyMin, planetOrbitIncreaseMultiplyMax, NextGaussian(planetOrbitIncreaseMultiplyDistribution.mean, planetOrbitIncreaseMultiplyDistribution.stdDev));
@@ -335,7 +335,7 @@ public class SolarSystemGenerator : MonoBehaviour
                 {
                     planetPlanet.heat = initialHeat;
                     if (planetPlanet.heat > 150) planetPlanet.atm = 0f;
-                    else planetPlanet.atm = planetGravity.gravity * 2 * (0.2f * (int)(planetPlanet.heat / 10));
+                    else planetPlanet.atm = (int)(planetGravity.gravity * 2 * (0.2f * (int)(planetPlanet.heat / 10)));
                 }
 
                 GenerateSatellitesFor(planet, planetRandomFactor, (int)planetGravityRadius);
@@ -343,7 +343,7 @@ public class SolarSystemGenerator : MonoBehaviour
                 // Add planet to planets list for assigning orbit speed later.
                 planets.Add(planet);
 
-                Debug.Log(planet.name + " / Heat : " + planetPlanet.heat + ", ATM : " + planetPlanet.atm);
+                Debug.Log(planet.name + " / Terrestrial Planet Scale : " + planetRandomFactor * terrestrialPlanetScaleRatio + " / Heat : " + planetPlanet.heat + ", ATM : " + planetPlanet.atm);
 
                 // Reassign orbit for next iteration.
                 planetInitialOrbitIncrease *= Mathf.Lerp(planetOrbitIncreaseMultiplyMin, planetOrbitIncreaseMultiplyMax, NextGaussian(planetOrbitIncreaseMultiplyDistribution.mean, planetOrbitIncreaseMultiplyDistribution.stdDev));
