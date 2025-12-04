@@ -169,7 +169,8 @@ public class SolarSystemGenerator : MonoBehaviour
             GameObject planet = Instantiate(planetPrefab, star.transform);
             planet.name = $"Planet {numberOfPlanets + 1}";
 
-            planet.transform.localScale = Vector3.one * planetRandomFactor * terrestrialPlanetScaleRatio / starScale;
+            int planetScale = (int)(planetRandomFactor * terrestrialPlanetScaleRatio);
+            planet.transform.localScale = Vector3.one * planetScale / starScale;
 
             Gravity planetGravity = planet.GetComponent<Gravity>();
             if (planetGravity != null)
@@ -194,7 +195,7 @@ public class SolarSystemGenerator : MonoBehaviour
                 planetRb.mass = terrestrialPlanetMass;
             }
 
-            GenerateSatellitesFor(planet, planetRandomFactor, (int)planetGravityRadius);
+            GenerateSatellitesFor(planet, planetScale, (int)planetGravityRadius);
 
             Planet planetPlanet = planet.GetComponent<Planet>();
             if (planetPlanet != null)
@@ -263,7 +264,8 @@ public class SolarSystemGenerator : MonoBehaviour
                 GameObject planet = Instantiate(planetPrefab, star.transform);
                 planet.name = $"Planet {numberOfPlanets}";
 
-                planet.transform.localScale = Vector3.one * planetRandomFactor * jovianPlanetScaleRatio / starScale;
+                int planetScale = (int)(planetRandomFactor * terrestrialPlanetScaleRatio);
+                planet.transform.localScale = Vector3.one * planetScale / starScale;
 
                 Gravity planetGravity = planet.GetComponent<Gravity>();
                 if (planetGravity != null)
@@ -295,7 +297,7 @@ public class SolarSystemGenerator : MonoBehaviour
                     planetPlanet.atm = planetGravity.gravity * 3;
                 }
 
-                GenerateSatellitesFor(planet, planetRandomFactor, (int)planetGravityRadius);
+                GenerateSatellitesFor(planet, planetScale, (int)planetGravityRadius);
 
                 // Add planet to planets list for assigning orbit speed later.
                 planets.Add(planet);
@@ -321,7 +323,8 @@ public class SolarSystemGenerator : MonoBehaviour
                 GameObject planet = Instantiate(planetPrefab, star.transform);
                 planet.name = $"Planet {numberOfPlanets}";
                 
-                planet.transform.localScale = Vector3.one * planetRandomFactor * terrestrialPlanetScaleRatio / starScale;
+                int planetScale = (int)(planetRandomFactor * terrestrialPlanetScaleRatio);
+                planet.transform.localScale = Vector3.one * planetScale / starScale;
 
                 Gravity planetGravity = planet.GetComponent<Gravity>();
                 if (planetGravity != null)
@@ -353,7 +356,7 @@ public class SolarSystemGenerator : MonoBehaviour
                     planetPlanet.atm = 0f;
                 }
 
-                GenerateSatellitesFor(planet, planetRandomFactor, (int)planetGravityRadius);
+                GenerateSatellitesFor(planet, planetScale, (int)planetGravityRadius);
 
                 // Add planet to planets list for assigning orbit speed later.
                 planets.Add(planet);
@@ -402,7 +405,6 @@ public class SolarSystemGenerator : MonoBehaviour
             int satelliteRandomFactor = (int)Mathf.Lerp(satelliteFactorMin, satelliteFactorMax, NextGaussian(satelliteFactorDistribution.mean, satelliteFactorDistribution.stdDev));
             float satelliteGravityRadius = satelliteRandomFactor * satelliteGravityRadiusRatio;
             initialOrbit += (int)(previousSatelliteGravityRadius + satelliteGravityRadius);
-            Debug.Log("Orbit : " + initialOrbit + " + " + previousSatelliteGravityRadius + " + " + satelliteGravityRadius);
             if (initialOrbit > planetGravityRadius) break;
             previousSatelliteGravityRadius = satelliteGravityRadius;
             
