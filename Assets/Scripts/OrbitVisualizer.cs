@@ -1,6 +1,5 @@
 using UnityEngine;
 using System.Collections.Generic;
-using JetBrains.Annotations;
 
 [RequireComponent(typeof(Orbiter))]
 public class OrbitVisualizer : MonoBehaviour

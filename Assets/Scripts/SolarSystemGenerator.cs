@@ -1,6 +1,4 @@
 using System.Collections.Generic;
-using System.Runtime.CompilerServices;
-using Unity.VisualScripting;
 using UnityEngine;
 
 [System.Serializable]
@@ -70,6 +68,7 @@ public class SolarSystemGenerator : MonoBehaviour
     public float planetOrbitIncreaseMultiplyMin = 1.2f;
     public float planetOrbitIncreaseMultiplyMax = 1.7f;
     public DistributionSettings planetOrbitIncreaseMultiplyDistribution = new DistributionSettings(0.2f, 0.05f);
+    public float planetInitialOrbit = 100f;
     public float planetInitialOrbitIncrease = 100f;
 
     [Header("Planet Heat Settings")]
@@ -95,6 +94,7 @@ public class SolarSystemGenerator : MonoBehaviour
     public float satelliteOrbitIncreaseMultiplyMin = 1.2f;
     public float satelliteOrbitIncreaseMulitplyMax = 1.5f;
     public DistributionSettings satelliteOrbitIncreaseMulitplyDistribuiton = new DistributionSettings(0.2f, 0.05f);
+    public float satelliteInitialOrbit = 30f;
     public float satelliteInitialOrbitIncrease = 30f;
 
     [Header("Satellite Period Settings")]
@@ -152,7 +152,7 @@ public class SolarSystemGenerator : MonoBehaviour
         // Initial orbit = Star scale + Initial orbit increase
         // Axis = Previous planet Axis + Previous planet gravity radius + Planet Gravity Radius + Previous orbit increase * Orbit increase multiply
         // This variable is used to assign planet attributes.
-        int initialOrbit = starScale + (int)planetInitialOrbitIncrease;
+        int initialOrbit = starScale + (int)planetInitialOrbit;
         float previousPlanetGravityRadius = 0f;
 
         int initialHeat = (int)planetInitialHeat;
@@ -210,7 +210,7 @@ public class SolarSystemGenerator : MonoBehaviour
             Debug.Log(planet.name + " / Terrestrial Planet Scale : " + planetRandomFactor * terrestrialPlanetScaleRatio + " / Heat : " + planetPlanet.heat + ", ATM : " + planetPlanet.atm);
 
             // Reassign orbit and heat for next iteration.
-            if (numberOfPlanets != 0)
+            if (numberOfPlanets > 1)
             {
                 planetInitialOrbitIncrease *= Mathf.Lerp(planetOrbitIncreaseMultiplyMin, planetOrbitIncreaseMultiplyMax, NextGaussian(planetOrbitIncreaseMultiplyDistribution.mean, planetOrbitIncreaseMultiplyDistribution.stdDev));
             }
@@ -394,23 +394,28 @@ public class SolarSystemGenerator : MonoBehaviour
 
         List<GameObject> satellites = new List<GameObject>();
 
-        int initialOrbit = planetScale + (int)satelliteInitialOrbitIncrease;
+        int initialOrbit = planetScale + (int)satelliteInitialOrbit;
+        float previousSatelliteGravityRadius = 0f;
 
-        while (initialOrbit < planetGravityRadius)
+        while (true)
         {
+            int satelliteRandomFactor = (int)Mathf.Lerp(satelliteFactorMin, satelliteFactorMax, NextGaussian(satelliteFactorDistribution.mean, satelliteFactorDistribution.stdDev));
+            float satelliteGravityRadius = satelliteRandomFactor * satelliteGravityRadiusRatio;
+            initialOrbit += (int)(previousSatelliteGravityRadius + satelliteGravityRadius);
+            Debug.Log("Orbit : " + initialOrbit + " + " + previousSatelliteGravityRadius + " + " + satelliteGravityRadius);
+            if (initialOrbit > planetGravityRadius) break;
+            previousSatelliteGravityRadius = satelliteGravityRadius;
+            
             GameObject satellite = Instantiate(artificialSatellitePrefab, planet.transform);
             satellite.name = $"{planet.name} - Satellite {numberOfSatellites + 1}";
-
-            int satelliteRandomFactor = (int)Mathf.Lerp(satelliteFactorMin, satelliteFactorMax, NextGaussian(satelliteFactorDistribution.mean, satelliteFactorDistribution.stdDev));
+            
             satellite.transform.localScale = Vector3.one * satelliteRandomFactor * satelliteScaleRatio / planetScale;
-            float satelliteGravityRadius = 0;
 
             Gravity satelliteGravityComponent = satellite.GetComponent<Gravity>();
             if (satelliteGravityComponent != null)
             {
                 satelliteGravityComponent.gravity = satelliteRandomFactor * satelliteGravityRatio;
-                satelliteGravityRadius = satelliteRandomFactor * satelliteGravityRatio;
-                satelliteGravityComponent.gravityRadius = satelliteRandomFactor * satelliteGravityRadiusRatio;
+                satelliteGravityComponent.gravityRadius = satelliteGravityRadius;
             }
 
             Orbiter satelliteOrbiter = satellite.GetComponent<Orbiter>();
@@ -431,8 +436,14 @@ public class SolarSystemGenerator : MonoBehaviour
 
             satellites.Add(satellite);
 
-            satelliteInitialOrbitIncrease *= Mathf.Lerp(satelliteOrbitIncreaseMultiplyMin, satelliteOrbitIncreaseMulitplyMax, NextGaussian(satelliteOrbitIncreaseMulitplyDistribuiton.mean, satelliteOrbitIncreaseMulitplyDistribuiton.stdDev));
-            initialOrbit += (int)satelliteGravityRadius + (int)satelliteInitialOrbitIncrease;
+            if (numberOfSatellites > 1)
+            {
+                satelliteInitialOrbitIncrease *= Mathf.Lerp(satelliteOrbitIncreaseMultiplyMin, satelliteOrbitIncreaseMulitplyMax, NextGaussian(satelliteOrbitIncreaseMulitplyDistribuiton.mean, satelliteOrbitIncreaseMulitplyDistribuiton.stdDev));
+            }
+
+            initialOrbit += (int)satelliteInitialOrbitIncrease;
+
+            numberOfSatellites++;
         }
         
         List<int> periods = GeneratePeriods(satelliteTotalPeriod, satelliteMinPeriod, numberOfSatellites + 1);

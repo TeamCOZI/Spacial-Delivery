@@ -650,6 +650,7 @@ MonoBehaviour:
     stdDev: 0.5
   starLightIntensityRatio: 1
   starLightRadiusRatio: 100
+  starMass: 1000
   terrestrialPlanetFactorMin: 5
   terrestrialPlanetFactorMax: 10
   terrestrialPlanetFactorDistribution:
@@ -657,7 +658,8 @@ MonoBehaviour:
     stdDev: 0.5
   terrestrialPlanetScaleRatio: 1
   terrestrialPlanetGravityRatio: 30
-  terrestrialPlanetGravityRadiusRatio: 6
+  terrestrialPlanetGravityRadiusRatio: 30
+  terrestrialPlanetMass: 100
   jovianPlanetFactorMin: 10
   jovianPlanetFactorMax: 30
   jovianPlanetFactorDistribution:
@@ -666,12 +668,15 @@ MonoBehaviour:
   jovianPlanetScaleRatio: 1
   jovianPlanetGravityRatio: 30
   jovianPlanetGravityRadiusRatio: 6
+  jovianPlanetMass: 300
   planetOrbitIncreaseMultiplyMin: 1.2
   planetOrbitIncreaseMultiplyMax: 1.7
   planetOrbitIncreaseMultiplyDistribution:
     mean: 0.2
     stdDev: 0.05
   planetInitialOrbitIncrease: 100
+  planetInitialHeat: 200
+  planetHeatRatio: 0.04
   planetTotalPeriod: 3600
   planetMinPeriod: 60
   satelliteFactorMin: 1
@@ -682,6 +687,7 @@ MonoBehaviour:
   satelliteScaleRatio: 1
   satelliteGravityRatio: 30
   satelliteGravityRadiusRatio: 6
+  satelliteMass: 10
   satelliteOrbitIncreaseMultiplyMin: 1.2
   satelliteOrbitIncreaseMulitplyMax: 1.5
   satelliteOrbitIncreaseMulitplyDistribuiton:
