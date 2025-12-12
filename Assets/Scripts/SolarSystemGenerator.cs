@@ -73,6 +73,7 @@ public class SolarSystemGenerator : MonoBehaviour
 
     [Header("Planet Heat Settings")]
     public float planetInitialHeat = 200f;
+    public float planetInitialHeatAxis = 500f;
     public float planetHeatRatio = 0.04f;
 
     [Header("Planet ATM Settings")]
@@ -155,7 +156,7 @@ public class SolarSystemGenerator : MonoBehaviour
         int initialOrbit = starScale + (int)planetInitialOrbit;
         float previousPlanetGravityRadius = 0f;
 
-        int initialHeat = (int)planetInitialHeat;
+        int initialHeat = 0;
         
         // Instantiating terrestrial planets.
         while (true)
@@ -165,6 +166,7 @@ public class SolarSystemGenerator : MonoBehaviour
             initialOrbit += (int)(previousPlanetGravityRadius + planetGravityRadius);
             if (initialOrbit > starGravityRadius * 0.3) break;
             previousPlanetGravityRadius = planetGravityRadius;
+            if (numberOfPlanets == 0) initialHeat = (int)(planetInitialHeat - (initialOrbit - planetInitialHeatAxis) * planetHeatRatio);
 
             GameObject planet = Instantiate(planetPrefab, star.transform);
             planet.name = $"Planet {numberOfPlanets + 1}";

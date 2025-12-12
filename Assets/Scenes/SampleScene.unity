@@ -665,7 +665,7 @@ MonoBehaviour:
   jovianPlanetFactorDistribution:
     mean: 0.5
     stdDev: 0.5
-  jovianPlanetScaleRatio: 1
+  jovianPlanetScaleRatio: 10
   jovianPlanetGravityRatio: 30
   jovianPlanetGravityRadiusRatio: 6
   jovianPlanetMass: 300
@@ -674,6 +674,7 @@ MonoBehaviour:
   planetOrbitIncreaseMultiplyDistribution:
     mean: 0.2
     stdDev: 0.05
+  planetInitialOrbit: 100
   planetInitialOrbitIncrease: 100
   planetInitialHeat: 200
   planetHeatRatio: 0.04
@@ -693,6 +694,7 @@ MonoBehaviour:
   satelliteOrbitIncreaseMulitplyDistribuiton:
     mean: 0.2
     stdDev: 0.05
+  satelliteInitialOrbit: 30
   satelliteInitialOrbitIncrease: 30
   satelliteTotalPeriod: 120
   satelliteMinPeriod: 60
