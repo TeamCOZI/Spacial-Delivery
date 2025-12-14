@@ -168,6 +168,7 @@ public class SolarSystemGenerator : MonoBehaviour
             previousPlanetGravityRadius = planetGravityRadius;
             if (numberOfPlanets == 0) initialHeat = (int)(planetInitialHeat - (initialOrbit - planetInitialHeatAxis) * planetHeatRatio);
 
+            // Actual value assigning part.
             GameObject planet = Instantiate(planetPrefab, star.transform);
             planet.name = $"Planet {numberOfPlanets + 1}";
 
@@ -202,6 +203,7 @@ public class SolarSystemGenerator : MonoBehaviour
             Planet planetPlanet = planet.GetComponent<Planet>();
             if (planetPlanet != null)
             {
+                planetPlanet.planetClass_ = planetClass.terrestrial;
                 planetPlanet.heat = initialHeat;
                 if (planetPlanet.heat > 150) planetPlanet.atm = 0f;
                 else planetPlanet.atm = (int)(planetGravity.gravity * 2 * (0.2f * (int)(planetPlanet.heat / 10)));
@@ -295,6 +297,7 @@ public class SolarSystemGenerator : MonoBehaviour
                 Planet planetPlanet = planet.GetComponent<Planet>();
                 if (planetPlanet != null)
                 {
+                    planetPlanet.planetClass_ = planetClass.jovian;
                     planetPlanet.heat = initialHeat;
                     planetPlanet.atm = planetGravity.gravity * 3;
                 }
@@ -354,6 +357,7 @@ public class SolarSystemGenerator : MonoBehaviour
                 Planet planetPlanet = planet.GetComponent<Planet>();
                 if (planetPlanet != null)
                 {
+                    planetPlanet.planetClass_ = planetClass.terrestrial;
                     planetPlanet.heat = initialHeat;
                     planetPlanet.atm = 0f;
                 }
@@ -391,6 +395,8 @@ public class SolarSystemGenerator : MonoBehaviour
                 planetOrbiter.orbitSpeed = 360f / periods[i];
             }
         }
+
+        starComponent.planets = planets;
     }
 
     private void GenerateSatellitesFor(GameObject planet, int planetScale, int planetGravityRadius)
@@ -457,6 +463,9 @@ public class SolarSystemGenerator : MonoBehaviour
             Orbiter satelliteOrbiter = satellites[i].GetComponent<Orbiter>();
             satelliteOrbiter.orbitSpeed = 360f / periods[numberOfSatellites];
         }
+
+        Planet planetPlanet = planet.GetComponent<Planet>();
+        planetPlanet.satellites = satellites;
     }
     
     private List<int> GeneratePeriods(int totalPeriod, int minPeriod, int count)

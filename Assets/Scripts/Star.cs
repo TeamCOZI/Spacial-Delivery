@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 public class Star : MonoBehaviour
@@ -10,6 +11,8 @@ public class Star : MonoBehaviour
     public float lightRadius = 20f;
 
     private Light starLight;
+
+    public List<GameObject> planets = new List<GameObject>();
 
     private void Awake()
     {

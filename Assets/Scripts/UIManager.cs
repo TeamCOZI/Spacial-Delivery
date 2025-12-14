@@ -7,6 +7,7 @@ public class UIManager : MonoBehaviour
 
     [Header("UI Panels")]
     public GameObject confirmationPanel;
+    public GameObject focusInfoPanel;
 
     [Header("Button Control")]
     public GameObject launchButton;
@@ -37,6 +38,11 @@ public class UIManager : MonoBehaviour
         if (launchButton != null)
         {
             launchButton.SetActive(false);
+        }
+
+        if (focusInfoPanel != null)
+        {
+            focusInfoPanel.SetActive(false);
         }
 
         if (confirmRouteButton != null)
