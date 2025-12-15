@@ -32,6 +32,9 @@ public class ArtificialSatellite : MonoBehaviour
 
     private CameraController cameraController;
 
+    public float heat { get; set; }
+    public float atm { get; set; }
+
     private void Awake()
     {
         sphereCollider = GetComponent<SphereCollider>();

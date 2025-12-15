@@ -120,6 +120,29 @@ public class FocusInfoUI : MonoBehaviour
                 temperatureText.text = "온도 : 초저온";
             }
         }
+        else if (satellite != null)
+        {
+            if (satellite.heat >= 100)
+            {
+                temperatureText.text = "온도 : 초고온";
+            }
+            else if (satellite.heat >= 50)
+            {
+                temperatureText.text = "온도 : 고온";
+            }
+            else if (satellite.heat >= 0)
+            {
+                temperatureText.text = "온도 : 평범함";
+            }
+            else if (satellite.heat >= -100)
+            {
+                temperatureText.text = "온도 : 저온";
+            }
+            else
+            {
+                temperatureText.text = "온도 : 초저온";
+            }
+        }
         else
         {
             temperatureText.text = "온도 : N/A";

@@ -444,6 +444,14 @@ public class SolarSystemGenerator : MonoBehaviour
                 satelliteRb.mass = satelliteMass;
             }
 
+            Planet planetPlanet_ = planet.GetComponent<Planet>();
+            ArtificialSatellite satelliteSatellite = satellite.GetComponent<ArtificialSatellite>();
+            if (satelliteSatellite != null)
+            {
+                satelliteSatellite.heat = planetPlanet_.heat;
+                satelliteSatellite.atm = satelliteGravityComponent.gravity * 2;
+            }
+
             satellites.Add(satellite);
 
             if (numberOfSatellites > 1)

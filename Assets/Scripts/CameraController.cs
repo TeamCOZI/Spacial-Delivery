@@ -106,14 +106,12 @@ public class CameraController : MonoBehaviour
                 if (Time.time - lastClickTime > doubleClickThreshold)
                 {
                     justSelected = false;
-                    Vector3 desiredPosition = new Vector3(SelectedPrefab.position.x, SelectedPrefab.position.y, transform.position.z);
-                    transform.position = Vector3.Lerp(transform.position, desiredPosition, followSpeed * Time.deltaTime);
+                    transform.position = new Vector3(SelectedPrefab.position.x, SelectedPrefab.position.y, transform.position.z);
                 }
             }
             else
             {
-                Vector3 desiredPosition = new Vector3(SelectedPrefab.position.x, SelectedPrefab.position.y, transform.position.z);
-                transform.position = Vector3.Lerp(transform.position, desiredPosition, followSpeed * Time.deltaTime);
+                transform.position = new Vector3(SelectedPrefab.position.x, SelectedPrefab.position.y, transform.position.z);
             }
         }
     }
