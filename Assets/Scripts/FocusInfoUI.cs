@@ -201,6 +201,29 @@ public class FocusInfoUI : MonoBehaviour
                 atmText.text = "기압 : 매우 낮음";
             }
         }
+        else if (satellite != null)
+        {
+            if (satellite.atm >= 2401)
+            {
+                atmText.text = "기압 : 매우 높음";
+            }
+            else if (satellite.atm >= 1201)
+            {
+                atmText.text = "기압 : 높음";
+            }
+            else if (satellite.atm >= 300)
+            {
+                atmText.text = "기압 : 평범함";
+            }
+            else if (satellite.atm >= 60)
+            {
+                atmText.text = "기압 : 낮음";
+            }
+            else
+            {
+                atmText.text = "기압 : 매우 낮음";
+            }
+        }
         else
         {
             atmText.text = "기압 : N/A";

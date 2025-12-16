@@ -173,7 +173,7 @@ public class SolarSystemGenerator : MonoBehaviour
             planet.name = $"Planet {numberOfPlanets + 1}";
 
             int planetScale = (int)(planetRandomFactor * terrestrialPlanetScaleRatio);
-            planet.transform.localScale = Vector3.one * planetScale / starScale;
+            planet.transform.localScale = Vector3.one * planetScale / (starScale * starScaleRatio);
 
             Gravity planetGravity = planet.GetComponent<Gravity>();
             if (planetGravity != null)
@@ -212,7 +212,7 @@ public class SolarSystemGenerator : MonoBehaviour
             // Add planet to planets list for assigning orbit speed later.
             planets.Add(planet);
 
-            Debug.Log(planet.name + " / Terrestrial Planet Scale : " + planetRandomFactor * terrestrialPlanetScaleRatio + " / Heat : " + planetPlanet.heat + ", ATM : " + planetPlanet.atm);
+            Debug.Log(planet.name + " / Terrestrial Planet / Scale : " + planetScale + " / Heat : " + planetPlanet.heat + ", ATM : " + planetPlanet.atm);
 
             // Reassign orbit and heat for next iteration.
             if (numberOfPlanets > 1)
@@ -269,7 +269,7 @@ public class SolarSystemGenerator : MonoBehaviour
                 planet.name = $"Planet {numberOfPlanets}";
 
                 int planetScale = (int)(planetRandomFactor * terrestrialPlanetScaleRatio);
-                planet.transform.localScale = Vector3.one * planetScale / starScale;
+                planet.transform.localScale = Vector3.one * planetScale / (starScale * starScaleRatio);
 
                 Gravity planetGravity = planet.GetComponent<Gravity>();
                 if (planetGravity != null)
@@ -307,7 +307,7 @@ public class SolarSystemGenerator : MonoBehaviour
                 // Add planet to planets list for assigning orbit speed later.
                 planets.Add(planet);
 
-                Debug.Log(planet.name + " / Jovian Planet Scale : " + planetRandomFactor * jovianPlanetScaleRatio + " / Heat : " + planetPlanet.heat + ", ATM : " + planetPlanet.atm);
+                Debug.Log(planet.name + " / Jovian Planet / Scale : " + planetScale + " / Heat : " + planetPlanet.heat + ", ATM : " + planetPlanet.atm);
 
                 // Reassign orbit for next iteration.
                 planetInitialOrbitIncrease *= Mathf.Lerp(planetOrbitIncreaseMultiplyMin, planetOrbitIncreaseMultiplyMax, NextGaussian(planetOrbitIncreaseMultiplyDistribution.mean, planetOrbitIncreaseMultiplyDistribution.stdDev));
@@ -329,7 +329,7 @@ public class SolarSystemGenerator : MonoBehaviour
                 planet.name = $"Planet {numberOfPlanets}";
                 
                 int planetScale = (int)(planetRandomFactor * terrestrialPlanetScaleRatio);
-                planet.transform.localScale = Vector3.one * planetScale / starScale;
+                planet.transform.localScale = Vector3.one * planetScale / (starScale * starScaleRatio);
 
                 Gravity planetGravity = planet.GetComponent<Gravity>();
                 if (planetGravity != null)
@@ -367,7 +367,7 @@ public class SolarSystemGenerator : MonoBehaviour
                 // Add planet to planets list for assigning orbit speed later.
                 planets.Add(planet);
 
-                Debug.Log(planet.name + " / Terrestrial Planet Scale : " + planetRandomFactor * terrestrialPlanetScaleRatio + " / Heat : " + planetPlanet.heat + ", ATM : " + planetPlanet.atm);
+                Debug.Log(planet.name + " / Terrestrial Planet / Scale : " + planetScale + " / Heat : " + planetPlanet.heat + ", ATM : " + planetPlanet.atm);
 
                 // Reassign orbit for next iteration.
                 planetInitialOrbitIncrease *= Mathf.Lerp(planetOrbitIncreaseMultiplyMin, planetOrbitIncreaseMultiplyMax, NextGaussian(planetOrbitIncreaseMultiplyDistribution.mean, planetOrbitIncreaseMultiplyDistribution.stdDev));
@@ -419,7 +419,11 @@ public class SolarSystemGenerator : MonoBehaviour
             GameObject satellite = Instantiate(artificialSatellitePrefab, planet.transform);
             satellite.name = $"{planet.name} - Satellite {numberOfSatellites + 1}";
             
-            satellite.transform.localScale = Vector3.one * satelliteRandomFactor * satelliteScaleRatio / planetScale;
+            Planet planetPlanet_ = planet.GetComponent<Planet>();
+            float thisPlanetScaleRatio;
+            if (planetPlanet_.planetClass_ == planetClass.terrestrial) thisPlanetScaleRatio = terrestrialPlanetScaleRatio;
+            else thisPlanetScaleRatio = jovianPlanetScaleRatio;
+            satellite.transform.localScale = Vector3.one * satelliteRandomFactor * satelliteScaleRatio / (planetScale * thisPlanetScaleRatio);
 
             Gravity satelliteGravityComponent = satellite.GetComponent<Gravity>();
             if (satelliteGravityComponent != null)
@@ -444,7 +448,6 @@ public class SolarSystemGenerator : MonoBehaviour
                 satelliteRb.mass = satelliteMass;
             }
 
-            Planet planetPlanet_ = planet.GetComponent<Planet>();
             ArtificialSatellite satelliteSatellite = satellite.GetComponent<ArtificialSatellite>();
             if (satelliteSatellite != null)
             {
