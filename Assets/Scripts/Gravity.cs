@@ -11,6 +11,7 @@ public class Gravity : MonoBehaviour
     public Color lineColor = Color.yellow;
     public float lineWidth = 0.1f;
     private LineRenderer radiusLine;
+    private bool isVisualVisible = true;
 
     public static List<Gravity> AllSources = new List<Gravity>();
 
@@ -25,6 +26,8 @@ public class Gravity : MonoBehaviour
     private void Start()
     {
         SetupRadiusVisual();
+
+        radiusLine.enabled = isVisualVisible;
     }
 
     private void Update()
@@ -86,5 +89,14 @@ public class Gravity : MonoBehaviour
     {
         Gizmos.color = Color.yellow;
         Gizmos.DrawWireSphere(transform.position, gravityRadius);
+    }
+
+    public void SetRadiusVisualVisibility(bool isVisible)
+    {
+        isVisualVisible = isVisible;
+        if (radiusLine != null)
+        {
+            radiusLine.enabled = isVisible;
+        }
     }
 }

@@ -32,6 +32,8 @@ public class ArtificialSatellite : MonoBehaviour
 
     private CameraController cameraController;
 
+    private OrbitVisualizer orbitVisualizer;
+
     public float heat { get; set; }
     public float atm { get; set; }
 
@@ -44,6 +46,7 @@ public class ArtificialSatellite : MonoBehaviour
         {
             cameraController = Camera.main.GetComponent<CameraController>();
         }
+        orbitVisualizer = GetComponent<OrbitVisualizer>();
     }
 
     private void Start()
@@ -223,6 +226,31 @@ public class ArtificialSatellite : MonoBehaviour
             }
 
             Destroy(successEffect, effectDuration);
+        }
+    }
+
+    public void SetVisibility(bool isVisible)
+    {
+        var meshRenderer = GetComponent<MeshRenderer>();
+        if (meshRenderer != null)
+        {
+            meshRenderer.enabled = isVisible;
+        }
+
+        foreach(Renderer r in GetComponentsInChildren<Renderer>())
+        {
+            r.enabled = isVisible;
+        }
+
+        if (orbitVisualizer != null)
+        {
+            orbitVisualizer.SetVisibility(isVisible);
+        }
+
+        Gravity gravityComponent = GetComponent<Gravity>();
+        if (gravityComponent != null)
+        {
+            gravityComponent.SetRadiusVisualVisibility(isVisible);
         }
     }
 }

@@ -123,9 +123,6 @@ public class OrbitVisualizer : MonoBehaviour
 
     private void DrawOrbit()
     {
-        if (lineRenderer != null) lineRenderer.enabled = (mode == VisualizationMode.Line);
-        if (orbitContainer != null) orbitContainer.SetActive(mode == VisualizationMode.Dots);
-
         switch (mode)
         {
             case VisualizationMode.Dots:
@@ -208,5 +205,17 @@ public class OrbitVisualizer : MonoBehaviour
     private void OnDestroy()
     {
         Destroy(orbitContainer);
+    }
+
+    public void SetVisibility (bool isVisible)
+    {
+        if (mode == VisualizationMode.Line && lineRenderer != null)
+        {
+            lineRenderer.enabled = isVisible;
+        }
+        else if (mode == VisualizationMode.Dots && orbitContainer != null)
+        {
+            orbitContainer.SetActive(isVisible);
+        }
     }
 }

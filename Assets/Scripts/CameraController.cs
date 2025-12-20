@@ -12,7 +12,7 @@ public class CameraController : MonoBehaviour
     public float defaultZ = -30f;
     public float minZ = -50f;
     public float maxZ = -10f;
-    public float selectZoom = 5f;
+    public float selectZoom = 100f;
 
     [Header("Follow Settings")]
     public float followSpeed = 5.0f;
@@ -40,14 +40,16 @@ public class CameraController : MonoBehaviour
 
     private PlayerSpaceship _currentlyControlledSpaceship;
 
-    private float lastClickTime = 0f;
-    private Transform lastClickedObject = null;
-    private const float doubleClickThreshold = 0.3f;
-    private bool justSelected = false;
+    private Star centralStar;
 
     public void Start()
     {
         transform.position = new Vector3(transform.position.x, transform.position.y, defaultZ);
+    }
+
+    public void SetCentralStar(Star star)
+    {
+        centralStar = star;
     }
 
     private void Update()
@@ -69,18 +71,9 @@ public class CameraController : MonoBehaviour
             {
                 if (hit.collider.CompareTag(prefabTag) || hit.collider.CompareTag(spaceshipTag))
                 {
-                    bool isDoubleClick = (Time.time - lastClickTime < doubleClickThreshold) && (lastClickedObject == hit.transform);
-
                     UpdateSelection(hit.transform);
 
-                    if (isDoubleClick)
-                    {
-                        ActivateSpecialView();
-                        lastClickedObject = null;
-                    }
-
-                    lastClickTime = Time.time;
-                    lastClickedObject = hit.transform;
+                    ActivateSpecialView();
                 }
             }
         }
@@ -101,18 +94,7 @@ public class CameraController : MonoBehaviour
         }
         else if (SelectedPrefab != null)
         {
-            if (justSelected)
-            {
-                if (Time.time - lastClickTime > doubleClickThreshold)
-                {
-                    justSelected = false;
-                    transform.position = new Vector3(SelectedPrefab.position.x, SelectedPrefab.position.y, transform.position.z);
-                }
-            }
-            else
-            {
-                transform.position = new Vector3(SelectedPrefab.position.x, SelectedPrefab.position.y, transform.position.z);
-            }
+            transform.position = new Vector3(SelectedPrefab.position.x, SelectedPrefab.position.y, transform.position.z);
         }
     }
 
@@ -139,7 +121,6 @@ public class CameraController : MonoBehaviour
         }
 
         SelectedPrefab = newSelection;
-        justSelected = true;
 
         OnSelectionChanged?.Invoke(SelectedPrefab);
     }
@@ -147,6 +128,11 @@ public class CameraController : MonoBehaviour
     private void ActivateSpecialView(bool preserveZoom = false)
     {
         if (SelectedPrefab == null) return;
+
+        if (FocusManager.Instance != null)
+        {
+            FocusManager.Instance.SetFocus(SelectedPrefab);
+        }
 
         if (_currentlyControlledSpaceship != null)
         {
@@ -198,6 +184,11 @@ public class CameraController : MonoBehaviour
             if (SelectedPrefab != null)
             {
                 UpdateSelection(null);
+            }
+
+            if (FocusManager.Instance != null && centralStar != null)
+            {
+                FocusManager.Instance.SetFocus(centralStar.transform);
             }
 
             isDragging = true;

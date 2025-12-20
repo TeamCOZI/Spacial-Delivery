@@ -102,8 +102,19 @@ public class SolarSystemGenerator : MonoBehaviour
     public int satelliteTotalPeriod = 120;
     public int satelliteMinPeriod = 60;
 
+    private CameraController cameraController;
+    private FocusManager focusManager;
+
     void Start()
     {
+        cameraController = FindFirstObjectByType<CameraController>();
+        focusManager = FindFirstObjectByType<FocusManager>();
+
+        if (cameraController == null || focusManager == null)
+        {
+            Debug.LogError("CameraController or FocusManger not found.");
+            return;
+        }
         GenerateSystem();
     }
 
@@ -116,6 +127,14 @@ public class SolarSystemGenerator : MonoBehaviour
 
         GameObject star = Instantiate(starPrefab, transform.position, Quaternion.identity, transform);
         star.name = "Central Star";
+
+        Star starComponent = star.GetComponent<Star>();
+        if (starComponent == null)
+        {
+            Debug.LogError("Star Prefab doesn't have star component.");
+            Destroy(star);
+            return;
+        }
 
         int starScale = Mathf.RoundToInt(Mathf.Lerp(starFactorMin, starFactorMax, NextGaussian(starFactorDistribution.mean, starFactorDistribution.stdDev)));
         star.transform.localScale = Vector3.one * starScale * starScaleRatio;
@@ -131,7 +150,6 @@ public class SolarSystemGenerator : MonoBehaviour
 
         int starLightScale = Mathf.RoundToInt(Mathf.Lerp(starLightMin, starLightMax, NextGaussian(starFactorDistribution.mean, starFactorDistribution.stdDev)));
 
-        Star starComponent = star.GetComponent<Star>();
         if (starComponent != null)
         {
             starComponent.lightIntensity = starLightScale * starLightIntensityRatio;
@@ -207,6 +225,7 @@ public class SolarSystemGenerator : MonoBehaviour
                 planetPlanet.heat = initialHeat;
                 if (planetPlanet.heat > 150) planetPlanet.atm = 0f;
                 else planetPlanet.atm = (int)(planetGravity.gravity * 2 * (0.2f * (int)(planetPlanet.heat / 10)));
+                planetPlanet.SetSatelliteVisibility(false);
             }
 
             // Add planet to planets list for assigning orbit speed later.
@@ -294,15 +313,16 @@ public class SolarSystemGenerator : MonoBehaviour
                     planetRb.mass = jovianPlanetMass;
                 }
 
+                GenerateSatellitesFor(planet, planetScale, (int)planetGravityRadius);
+
                 Planet planetPlanet = planet.GetComponent<Planet>();
                 if (planetPlanet != null)
                 {
                     planetPlanet.planetClass_ = planetClass.jovian;
                     planetPlanet.heat = initialHeat;
                     planetPlanet.atm = planetGravity.gravity * 3;
+                    planetPlanet.SetSatelliteVisibility(false);
                 }
-
-                GenerateSatellitesFor(planet, planetScale, (int)planetGravityRadius);
 
                 // Add planet to planets list for assigning orbit speed later.
                 planets.Add(planet);
@@ -354,15 +374,16 @@ public class SolarSystemGenerator : MonoBehaviour
                     planetRb.mass = terrestrialPlanetMass;
                 }
 
+                GenerateSatellitesFor(planet, planetScale, (int)planetGravityRadius);
+
                 Planet planetPlanet = planet.GetComponent<Planet>();
                 if (planetPlanet != null)
                 {
                     planetPlanet.planetClass_ = planetClass.terrestrial;
                     planetPlanet.heat = initialHeat;
                     planetPlanet.atm = 0f;
+                    planetPlanet.SetSatelliteVisibility(false);
                 }
-
-                GenerateSatellitesFor(planet, planetScale, (int)planetGravityRadius);
 
                 // Add planet to planets list for assigning orbit speed later.
                 planets.Add(planet);
@@ -394,6 +415,16 @@ public class SolarSystemGenerator : MonoBehaviour
                 Orbiter planetOrbiter = planets[i].GetComponent<Orbiter>();
                 planetOrbiter.orbitSpeed = 360f / periods[i];
             }
+        }
+
+        if (cameraController != null)
+        {
+            cameraController.SetCentralStar(starComponent);
+        }
+
+        if (focusManager != null)
+        {
+            focusManager.SetFocus(star.transform);
         }
 
         starComponent.planets = planets;
