@@ -212,3 +212,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 00d7ff7dd4042794da707dae4eef0424, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Planet
+  visibilityDistance: 500
+  screenHeightFraction: 0.01
+  unfocusedScaleMultiplier: 30

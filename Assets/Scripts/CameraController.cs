@@ -140,6 +140,7 @@ public class CameraController : MonoBehaviour
         }
 
         PlayerSpaceship ps = SelectedPrefab.GetComponent<PlayerSpaceship>();
+        Gravity gravityComponent = SelectedPrefab.GetComponent<Gravity>();
         if (ps != null)
         {
             targetSpaceship = ps;
@@ -162,6 +163,11 @@ public class CameraController : MonoBehaviour
 
             angledOffset.y = newDistance * Mathf.Sin(alpha_rad);
             angledOffset.z = -newDistance * Mathf.Cos(alpha_rad);
+        }
+        else if (gravityComponent != null)
+        {
+            float newZ = gravityComponent.gravityRadius * -9;
+            transform.position = new Vector3(SelectedPrefab.position.x, SelectedPrefab.position.y, Mathf.Clamp(newZ, minZ, maxZ));
         }
         else
         {

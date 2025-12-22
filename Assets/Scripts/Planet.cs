@@ -10,30 +10,38 @@ public class Planet : MonoBehaviour
     public List<GameObject> satellites { get; set; }
 
     private Vector3 originalScale;
+
+    [Header("Distance-Based Visibility")]
+    public float visibilityDistance = 500f;
+    public float screenHeightFraction = 0.01f;
+
+    private float tanHalFov;
+
     public float unfocusedScaleMultiplier = 30f;
 
     void Start()
     {
         originalScale = transform.localScale;
         
-        if (FocusManager.Instance != null)
+        if (Camera.main != null)
         {
-            FocusManager.Instance.OnFocusChanged += HandleFocusChanged;
-            HandleFocusChanged(FocusManager.Instance.CurrentFocus);
+            tanHalFov = Mathf.Tan(Camera.main.fieldOfView * 0.5f * Mathf.Deg2Rad);
         }
     }
 
-    void OnDestroy()
+    void Update()
     {
-        if (FocusManager.Instance != null)
+        if (Camera.main != null)
         {
-            FocusManager.Instance.OnFocusChanged -= HandleFocusChanged;
+            HandleVisibilityByDistance();
         }
     }
 
-    private void HandleFocusChanged(Transform newFocus)
+    private void HandleVisibilityByDistance()
     {
-        bool isFocused = (newFocus == transform);
+        Gravity gravityComponent = GetComponent<Gravity>();
+
+        bool isFocused = Camera.main.transform.position.z > gravityComponent.gravityRadius * -10;
 
         if (isFocused)
         {
@@ -41,13 +49,18 @@ public class Planet : MonoBehaviour
         }
         else
         {
-            transform.localScale = originalScale * unfocusedScaleMultiplier;
+            float zDistance = Mathf.Abs(Camera.main.transform.position.z);
+            
+            float frustumHeight = 2.0f * zDistance * tanHalFov;
+
+            float targetWorldSize = frustumHeight * screenHeightFraction;
+
+            transform.localScale = originalScale * targetWorldSize;
         }
 
         Orbiter orbiter = GetComponent<Orbiter>();
         if (orbiter == null || orbiter.centralBody == null) return;
 
-        Gravity gravityComponent = GetComponent<Gravity>();
         if (gravityComponent != null)
         {
             gravityComponent.SetRadiusVisualVisibility(isFocused);
