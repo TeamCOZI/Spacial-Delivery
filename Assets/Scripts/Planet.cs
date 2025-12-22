@@ -55,7 +55,7 @@ public class Planet : MonoBehaviour
 
             float targetWorldSize = frustumHeight * screenHeightFraction;
 
-            transform.localScale = originalScale * targetWorldSize;
+            transform.localScale = Vector3.one * 0.005f * targetWorldSize;
         }
 
         Orbiter orbiter = GetComponent<Orbiter>();

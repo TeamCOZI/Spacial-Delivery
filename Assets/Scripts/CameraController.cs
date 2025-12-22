@@ -1,4 +1,5 @@
 using System;
+using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -16,6 +17,7 @@ public class CameraController : MonoBehaviour
 
     [Header("Follow Settings")]
     public float followSpeed = 5.0f;
+    public float snappingDistance = 0.1f;
     public string prefabTag = "Prefab";
     public string spaceshipTag = "PlayerSpaceship";
     public float spaceshipFollowDistance = 10f;
@@ -41,6 +43,9 @@ public class CameraController : MonoBehaviour
     private PlayerSpaceship _currentlyControlledSpaceship;
 
     private Star centralStar;
+
+    private bool isTransitioning = false;
+    private float targetZ;
 
     public void Start()
     {
@@ -72,7 +77,6 @@ public class CameraController : MonoBehaviour
                 if (hit.collider.CompareTag(prefabTag) || hit.collider.CompareTag(spaceshipTag))
                 {
                     UpdateSelection(hit.transform);
-
                     ActivateSpecialView();
                 }
             }
@@ -84,17 +88,38 @@ public class CameraController : MonoBehaviour
 
     private void LateUpdate()
     {
+        if (SelectedPrefab == null) return;
+
+        Vector3 targetPosition;
+
         if (targetSpaceship != null)
         {
-            transform.position = targetSpaceship.transform.position;
-            // transform.rotation = targetSpaceship.transform.rotation;
-
-            transform.Translate(angledOffset, Space.Self);
-            // transform.Rotate(angledRotation, Space.Self);
+            targetPosition = targetSpaceship.transform.position + angledOffset;
         }
         else if (SelectedPrefab != null)
         {
-            transform.position = new Vector3(SelectedPrefab.position.x, SelectedPrefab.position.y, transform.position.z);
+            targetPosition = new Vector3(SelectedPrefab.position.x, SelectedPrefab.position.y, targetZ);
+        }
+        else
+        {
+            return;
+        }
+
+        if (isTransitioning)
+        {
+            transform.position = Vector3.Lerp(transform.position, targetPosition, followSpeed * Time.deltaTime);
+
+            float distance = Vector3.Distance(transform.position, targetPosition);
+
+            if (distance <= snappingDistance)
+            {
+                isTransitioning = false;
+                transform.position = targetPosition;
+            }
+        }
+        else
+        {
+            transform.position = targetPosition;
         }
     }
 
@@ -121,6 +146,15 @@ public class CameraController : MonoBehaviour
         }
 
         SelectedPrefab = newSelection;
+
+        if (newSelection != null)
+        {
+            isTransitioning = true;
+        }
+        else
+        {
+            isTransitioning = false;
+        }
 
         OnSelectionChanged?.Invoke(SelectedPrefab);
     }
@@ -167,12 +201,12 @@ public class CameraController : MonoBehaviour
         else if (gravityComponent != null)
         {
             float newZ = gravityComponent.gravityRadius * -9;
-            transform.position = new Vector3(SelectedPrefab.position.x, SelectedPrefab.position.y, Mathf.Clamp(newZ, minZ, maxZ));
+            targetZ = Mathf.Clamp(newZ, minZ, maxZ);
         }
         else
         {
             float newZ = -SelectedPrefab.transform.lossyScale.x * selectZoom;
-            transform.position = new Vector3(SelectedPrefab.position.x, SelectedPrefab.position.y, Mathf.Clamp(newZ, minZ, maxZ));
+            targetZ = Mathf.Clamp(newZ, minZ, maxZ);
         }
     }
 
@@ -209,6 +243,7 @@ public class CameraController : MonoBehaviour
 
         if (isDragging)
         {
+            isTransitioning = false;
             Vector3 currentMouseScreenPos = Mouse.current.position.ReadValue();
 
             if (Vector3.Distance(currentMouseScreenPos, lastMouseScreenPos) <= 0.1f)
@@ -237,6 +272,7 @@ public class CameraController : MonoBehaviour
 
             if (targetSpaceship != null)
             {
+                isTransitioning = false;
                 float alpha_rad = angledRotation.x * Mathf.Deg2Rad;
 
                 float currentDistance = -angledOffset.z / Mathf.Cos(alpha_rad);
@@ -249,14 +285,13 @@ public class CameraController : MonoBehaviour
             }
             else
             {
-                Vector3 currentPosition = transform.position;
+                isTransitioning = false;
 
                 float adaptiveZoomMultiplier = zoomSpeed / 100f;
-                float zoomAmount = scrollInput * Mathf.Abs(currentPosition.z) * adaptiveZoomMultiplier;
+                float zoomAmount = scrollInput * Mathf.Abs(targetZ) * adaptiveZoomMultiplier;
 
-                float newZ = currentPosition.z + zoomAmount;
-                newZ = Mathf.Clamp(newZ, minZ, maxZ);
-                transform.position = new Vector3(currentPosition.x, currentPosition.y, newZ);
+                float newZ = targetZ + zoomAmount;
+                targetZ = Mathf.Clamp(newZ, minZ, maxZ);
             }
         }
     }
