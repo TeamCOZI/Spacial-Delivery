@@ -9,6 +9,9 @@ public class UIManager : MonoBehaviour
     public GameObject confirmationPanel;
     public GameObject focusInfoPanel;
 
+    [Header("UI Controls")]
+    public Slider iconSizeSlider;
+
     [Header("Button Control")]
     public GameObject launchButton;
     public CameraController cameraController;
@@ -52,6 +55,12 @@ public class UIManager : MonoBehaviour
         if (declineRouteButton != null)
         {
             declineRouteButton.onClick.AddListener(OnDeclineRoute);
+        }
+
+        if (iconSizeSlider != null)
+        {
+            iconSizeSlider.value = GameSettings.IconSize;
+            iconSizeSlider.onValueChanged.AddListener(OnIconSizeChanged);
         }
     }
 
@@ -105,5 +114,10 @@ public class UIManager : MonoBehaviour
         {
             launchButton.SetActive(false);
         }
+    }
+
+    public void OnIconSizeChanged(float value)
+    {
+        GameSettings.IconSize = value;
     }
 }

@@ -14,10 +14,25 @@ public class Planet : MonoBehaviour
     [Header("Distance-Based Visibility")]
     public float visibilityDistance = 500f;
     public float screenHeightFraction = 0.01f;
+    public float baseFocusSize = 0.005f;
 
-    private float tanHalFov;
+    private float tanHalfFov;
 
     public float unfocusedScaleMultiplier = 30f;
+
+    private Renderer mainRenderer;
+    private MaterialPropertyBlock propBlock;
+
+    void Awake()
+    {
+        mainRenderer = GetComponent<Renderer>();
+        if (mainRenderer == null)
+        {
+            Debug.LogError("Cannot find renderer component.", this);
+        }
+
+        propBlock = new MaterialPropertyBlock();
+    }
 
     void Start()
     {
@@ -25,7 +40,7 @@ public class Planet : MonoBehaviour
         
         if (Camera.main != null)
         {
-            tanHalFov = Mathf.Tan(Camera.main.fieldOfView * 0.5f * Mathf.Deg2Rad);
+            tanHalfFov = Mathf.Tan(Camera.main.fieldOfView * 0.5f * Mathf.Deg2Rad);
         }
     }
 
@@ -40,8 +55,15 @@ public class Planet : MonoBehaviour
     private void HandleVisibilityByDistance()
     {
         Gravity gravityComponent = GetComponent<Gravity>();
+        if (gravityComponent == null) return;
 
         bool isFocused = Camera.main.transform.position.z > gravityComponent.gravityRadius * -10;
+
+        float isVisibleValue = isFocused ? 0f : 1f;
+
+        mainRenderer.GetPropertyBlock(propBlock, 1);
+        propBlock.SetFloat("_IsVisible", isVisibleValue);
+        mainRenderer.SetPropertyBlock(propBlock, 1);
 
         if (isFocused)
         {
@@ -50,17 +72,11 @@ public class Planet : MonoBehaviour
         else
         {
             float zDistance = Mathf.Abs(Camera.main.transform.position.z);
-            
-            float frustumHeight = 2.0f * zDistance * tanHalFov;
-
-            float targetWorldSize = frustumHeight * screenHeightFraction;
-
-            transform.localScale = Vector3.one * 0.005f * targetWorldSize;
+            float frustumHeight = 2.0f * zDistance * tanHalfFov;
+            float targetWorldSize = frustumHeight * screenHeightFraction * GameSettings.IconSize;
+            transform.localScale = Vector3.one * baseFocusSize * targetWorldSize;
         }
-
-        Orbiter orbiter = GetComponent<Orbiter>();
-        if (orbiter == null || orbiter.centralBody == null) return;
-
+        
         if (gravityComponent != null)
         {
             gravityComponent.SetRadiusVisualVisibility(isFocused);
