@@ -1,12 +1,13 @@
 using System;
 using UnityEngine;
 using UnityEngine.InputSystem;
-using UnityEngine.UIElements;
 
 public class CameraController : MonoBehaviour
 {
     public Transform SelectedPrefab { get; private set; }
     public event Action<Transform> OnSelectionChanged;
+
+    private Planet currentlyHoveredPlanet;
 
     [Header("Zoom Settings")]
     public float zoomSpeed = 100f;
@@ -36,14 +37,12 @@ public class CameraController : MonoBehaviour
     private Vector3 lastMouseScreenPos;
     private PlayerSpaceship targetSpaceship;
 
-    private Vector3 preSelectionPosition;
     private Quaternion preSelectionRotation;
 
     private PlayerSpaceship _currentlyControlledSpaceship;
 
     private Star centralStar;
 
-    private bool isTransitioning = false;
     private Vector2 targetXY;
     private float targetZ;
 
@@ -71,13 +70,10 @@ public class CameraController : MonoBehaviour
             return;
         }
 
+        HandleHover();
+
         if (targetSpaceship == null && Mouse.current.leftButton.wasPressedThisFrame)
         {
-            if (UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject())
-            {
-                return;
-            }
-
             Ray ray = Camera.main.ScreenPointToRay(Mouse.current.position.ReadValue());
             if (Physics.Raycast(ray, out RaycastHit hit))
             {
@@ -91,6 +87,41 @@ public class CameraController : MonoBehaviour
         
         HandleZoom();
         HandleDrag();
+    }
+
+    private void HandleHover()
+    {
+        Ray ray = Camera.main.ScreenPointToRay(Mouse.current.position.ReadValue());
+        float maxDistance = Mathf.Infinity;
+        int layerMask = ~0;
+
+        if (Physics.Raycast(ray, out RaycastHit hit, maxDistance, layerMask))
+        {
+            Planet hitPlanet = hit.transform.GetComponent<Planet>();
+
+            if (hitPlanet != currentlyHoveredPlanet)
+            {
+                if (currentlyHoveredPlanet != null)
+                {
+                    currentlyHoveredPlanet.isHovered = false;
+                }
+
+                currentlyHoveredPlanet = hitPlanet;
+
+                if (currentlyHoveredPlanet != null)
+                {
+                    currentlyHoveredPlanet.isHovered = true;
+                }
+            }
+        }
+        else
+        {
+            if (currentlyHoveredPlanet != null)
+            {
+                currentlyHoveredPlanet.isHovered = false;
+                currentlyHoveredPlanet = null;
+            }
+        }
     }
 
     private void LateUpdate()
@@ -143,7 +174,6 @@ public class CameraController : MonoBehaviour
 
         if (SelectedPrefab == null && newSelection != null)
         {
-            preSelectionPosition = transform.position;
             preSelectionRotation = transform.rotation;
 
             currentOffset = transform.position - newSelection.position;

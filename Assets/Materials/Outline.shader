@@ -41,17 +41,15 @@ Shader "Unlit/Outline"
             {
                 Varyings OUT;
 
-                float3 positionOS = IN.positionOS.xyz + IN.normalOS * _Thickness;
+                float finalThickness = _Thickness * _IsVisible;
+
+                float3 positionOS = IN.positionOS.xyz + IN.normalOS * finalThickness;
                 OUT.positionHCS = TransformObjectToHClip(positionOS);
                 return OUT;
             }
 
             half4 frag(Varyings IN) : SV_Target
             {
-                if (_IsVisible < 0.5)
-                {
-                    return half4(0, 0, 0, 0);
-                }
                 return _Color;
             }
             ENDHLSL

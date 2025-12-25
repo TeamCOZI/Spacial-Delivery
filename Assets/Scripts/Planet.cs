@@ -16,9 +16,13 @@ public class Planet : MonoBehaviour
     public float screenHeightFraction = 0.01f;
     public float baseFocusSize = 0.005f;
 
-    private float tanHalfFov;
+    [Header("Hover Settings")]
+    public float hoverScaleMultiplier = 1.2f;
+    public float hoverTransitionSpeed = 5f;
 
-    public float unfocusedScaleMultiplier = 30f;
+    private float tanHalfFov;
+    public bool isHovered = false;
+    private Vector3 targetScale;
 
     private Renderer mainRenderer;
     private MaterialPropertyBlock propBlock;
@@ -37,6 +41,7 @@ public class Planet : MonoBehaviour
     void Start()
     {
         originalScale = transform.localScale;
+        targetScale = originalScale;
         
         if (Camera.main != null)
         {
@@ -49,6 +54,8 @@ public class Planet : MonoBehaviour
         if (Camera.main != null)
         {
             HandleVisibilityByDistance();
+
+            transform.localScale = Vector3.Lerp(transform.localScale, targetScale, Time.deltaTime * hoverTransitionSpeed);
         }
     }
 
@@ -67,14 +74,22 @@ public class Planet : MonoBehaviour
 
         if (isFocused)
         {
-            transform.localScale = originalScale;
+            targetScale = originalScale;
         }
         else
         {
             float zDistance = Mathf.Abs(Camera.main.transform.position.z);
             float frustumHeight = 2.0f * zDistance * tanHalfFov;
             float targetWorldSize = frustumHeight * screenHeightFraction * GameSettings.IconSize;
-            transform.localScale = Vector3.one * baseFocusSize * targetWorldSize;
+
+            if (isHovered)
+            {
+                targetScale = Vector3.one * baseFocusSize * targetWorldSize * hoverScaleMultiplier;
+            }
+            else
+            {
+                targetScale = Vector3.one * baseFocusSize * targetWorldSize;
+            }
         }
         
         if (gravityComponent != null)
