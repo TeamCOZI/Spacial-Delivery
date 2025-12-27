@@ -14,7 +14,7 @@ public class Planet : MonoBehaviour
     [Header("Distance-Based Visibility")]
     public float visibilityDistance = 500f;
     public float screenHeightFraction = 0.01f;
-    public float baseFocusSize = 0.005f;
+    public float baseFocusSize = 0.0025f;
 
     [Header("Hover Settings")]
     public float hoverScaleMultiplier = 1.2f;
@@ -23,6 +23,7 @@ public class Planet : MonoBehaviour
     private float tanHalfFov;
     public bool isHovered = false;
     private Vector3 targetScale;
+    private Vector3 currentScaleVelocity;
 
     private Renderer mainRenderer;
     private MaterialPropertyBlock propBlock;
@@ -55,7 +56,7 @@ public class Planet : MonoBehaviour
         {
             HandleVisibilityByDistance();
 
-            transform.localScale = Vector3.Lerp(transform.localScale, targetScale, Time.deltaTime * hoverTransitionSpeed);
+            transform.localScale = Vector3.SmoothDamp(transform.localScale, targetScale, ref currentScaleVelocity, hoverTransitionSpeed);
         }
     }
 
@@ -64,7 +65,7 @@ public class Planet : MonoBehaviour
         Gravity gravityComponent = GetComponent<Gravity>();
         if (gravityComponent == null) return;
 
-        bool isFocused = Camera.main.transform.position.z > gravityComponent.gravityRadius * -10;
+        bool isFocused = FocusManager.Instance != null && FocusManager.Instance.CurrentFocus == this.transform;
 
         float isVisibleValue = isFocused ? 0f : 1f;
 

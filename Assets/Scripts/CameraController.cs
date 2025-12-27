@@ -270,7 +270,9 @@ public class CameraController : MonoBehaviour
 
             Vector3 worldDelta = currentWorldPos - lastWorldPos;
 
-            targetXY -= new Vector2(worldDelta.x, worldDelta.y);
+            transform.position -= worldDelta;
+
+            targetXY = new Vector2(transform.position.x, transform.position.y);
 
             lastMouseScreenPos = currentMouseScreenPos;
         }
@@ -298,7 +300,7 @@ public class CameraController : MonoBehaviour
             }
             else
             {
-                float baseZ = transform.position.z;
+                float baseZ = targetZ;
                 float adaptiveZoomMultiplier = zoomSpeed / 100f;
                 float zoomAmount = scrollInput * Mathf.Abs(baseZ) * adaptiveZoomMultiplier;
 

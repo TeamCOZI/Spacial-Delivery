@@ -215,7 +215,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Planet
   visibilityDistance: 500
   screenHeightFraction: 0.01
-  baseFocusSize: 0.005
+  baseFocusSize: 0.0025
   hoverScaleMultiplier: 2
-  hoverTransitionSpeed: 5
+  hoverTransitionSpeed: 0.1
   isHovered: 0

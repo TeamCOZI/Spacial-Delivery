@@ -82,6 +82,9 @@ public class SolarSystemGenerator : MonoBehaviour
     public int planetTotalPeriod = 3600;
     public int planetMinPeriod = 60;
 
+    [Header("Asteriod Belt Settings")]
+    public float asteriodBeltThreshold = 0.3f;
+
     [Header("Satellite Settings")]
     public float satelliteFactorMin = 1f;
     public float satelliteFactorMax = 2f;
@@ -182,7 +185,7 @@ public class SolarSystemGenerator : MonoBehaviour
             int planetRandomFactor = (int)Mathf.Lerp(terrestrialPlanetFactorMin, terrestrialPlanetFactorMax, NextGaussian(terrestrialPlanetFactorDistribution.mean, terrestrialPlanetFactorDistribution.stdDev));
             float planetGravityRadius = planetRandomFactor * terrestrialPlanetGravityRadiusRatio;
             initialOrbit += (int)(previousPlanetGravityRadius + planetGravityRadius);
-            if (initialOrbit > starGravityRadius * 0.3) break;
+            if (initialOrbit > starGravityRadius * asteriodBeltThreshold) break;
             previousPlanetGravityRadius = planetGravityRadius;
             if (numberOfPlanets == 0) initialHeat = (int)(planetInitialHeat - (initialOrbit - planetInitialHeatAxis) * planetHeatRatio);
 
