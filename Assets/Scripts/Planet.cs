@@ -39,6 +39,22 @@ public class Planet : MonoBehaviour
         propBlock = new MaterialPropertyBlock();
     }
 
+    private void OnEnable()
+    {
+        if (FocusManager.Instance != null)
+        {
+            FocusManager.Instance.RegisterPlanet(this);
+        }
+    }
+
+    private void OnDisable()
+    {
+        if (FocusManager.Instance != null)
+        {
+            FocusManager.Instance.DeregisterPlanet(this);
+        }
+    }
+
     void Start()
     {
         originalScale = transform.localScale;
@@ -54,67 +70,48 @@ public class Planet : MonoBehaviour
     {
         if (Camera.main != null)
         {
-            HandleVisibilityByDistance();
-
             transform.localScale = Vector3.SmoothDamp(transform.localScale, targetScale, ref currentScaleVelocity, hoverTransitionSpeed);
         }
     }
 
-    private void HandleVisibilityByDistance()
+    public void ShowDetailView()
     {
-        Gravity gravityComponent = GetComponent<Gravity>();
-        if (gravityComponent == null) return;
+        mainRenderer.enabled = true;
 
-        bool isFocused = FocusManager.Instance != null && FocusManager.Instance.CurrentFocus == this.transform;
+        mainRenderer.GetPropertyBlock(propBlock);
+        propBlock.SetFloat("_IsVisible", 0f);
+        mainRenderer.SetPropertyBlock(propBlock);
 
-        float isVisibleValue = isFocused ? 0f : 1f;
+        targetScale = originalScale;
 
-        mainRenderer.GetPropertyBlock(propBlock, 1);
-        propBlock.SetFloat("_IsVisible", isVisibleValue);
-        mainRenderer.SetPropertyBlock(propBlock, 1);
-
-        if (isFocused)
+        if(GetComponent<Gravity>() != null)
         {
-            targetScale = originalScale;
+            GetComponent<Gravity>().SetRadiusVisualVisibility(true);
         }
-        else
-        {
-            float zDistance = Mathf.Abs(Camera.main.transform.position.z);
-            float frustumHeight = 2.0f * zDistance * tanHalfFov;
-            float targetWorldSize = frustumHeight * screenHeightFraction * GameSettings.IconSize;
-
-            if (isHovered)
-            {
-                targetScale = Vector3.one * baseFocusSize * targetWorldSize * hoverScaleMultiplier;
-            }
-            else
-            {
-                targetScale = Vector3.one * baseFocusSize * targetWorldSize;
-            }
-        }
-        
-        if (gravityComponent != null)
-        {
-            gravityComponent.SetRadiusVisualVisibility(isFocused);
-        }
-
-        SetSatelliteVisibility(isFocused);
     }
 
-    public void SetSatelliteVisibility(bool isVisible)
+    public void ShowAsIcon(float frustumHeight)
     {
-        if (satellites == null) return;
+        mainRenderer.enabled = true;
 
-        foreach (var satelliteGO in satellites)
+        mainRenderer.GetPropertyBlock(propBlock);
+        propBlock.SetFloat("_IsVisible", 1f);
+        mainRenderer.SetPropertyBlock(propBlock);
+
+        float targetWorldSize = frustumHeight * screenHeightFraction * GameSettings.IconSize;
+        float finalSize = isHovered
+        ? baseFocusSize * targetWorldSize * hoverScaleMultiplier
+        : baseFocusSize * targetWorldSize;
+        targetScale = Vector3.one * finalSize;
+
+        if(GetComponent<Gravity>() != null)
         {
-            if (satelliteGO != null)
-            {
-                ArtificialSatellite satellite = satelliteGO.GetComponent<ArtificialSatellite>();
-                if (satellite != null)
-                {
-                    satellite.SetVisibility(isVisible);
-                }
-            }
+            GetComponent<Gravity>().SetRadiusVisualVisibility(false);
         }
+    }
+
+    public void SetHover(bool hover)
+    {
+        isHovered = hover;
     }
 }

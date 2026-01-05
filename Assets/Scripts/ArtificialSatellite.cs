@@ -2,7 +2,6 @@ using UnityEngine;
 using System.Collections.Generic;
 using TMPro;
 
-[RequireComponent(typeof(SphereCollider))]
 public class ArtificialSatellite : MonoBehaviour
 {
     [Header("Capture Settings")]
@@ -25,34 +24,98 @@ public class ArtificialSatellite : MonoBehaviour
     [Header("UI Settings")]
     public TextMeshProUGUI routeInfoText;
 
-    private SphereCollider sphereCollider;
+    [Header("Distance-Based Visibility")]
+    public float screenHeightFraction = 0.01f;
+    public float baseFocusSize = 0.0025f;
+
+    [Header("Hover Settings")]
+    public float hoverScaleMultiplier = 1.2f;
+    public float hoverTransitionSpeed = 5f;
+    
+    private Vector3 originalScale;
+    public bool isHovered = false;
+    private Vector3 targetScale;
+    private Vector3 currentScaleVelocity;
+
+    private Renderer mainRenderer;
+    private MaterialPropertyBlock propBlock;
+
     private readonly List<LaunchData> successfulLaunchRoutes = new List<LaunchData>();
     private readonly List<LaunchData> pendingLaunchesThisPeriod = new List<LaunchData>();
     private LaunchData pendingLaunchData;
 
     private CameraController cameraController;
-
     private OrbitVisualizer orbitVisualizer;
+    private Gravity gravityComponent;
+
+    private CaptureRangeHandler captureHandler;
+    private MeshCollider meshCollider;
 
     public float heat { get; set; }
     public float atm { get; set; }
 
     private void Awake()
     {
-        sphereCollider = GetComponent<SphereCollider>();
-        sphereCollider.isTrigger = true;
+        foreach (var col in GetComponents<Collider>())
+        {
+            Destroy(col);
+        }
+
+        MeshFilter meshFilter = GetComponent<MeshFilter>();
+        if (meshFilter != null && meshFilter.sharedMesh != null)
+        {
+            meshCollider = gameObject.AddComponent<MeshCollider>();
+            meshCollider.sharedMesh = meshFilter.sharedMesh;
+            meshCollider.convex = true;
+        }
+
+        if (rangeVisualizer != null)
+        {
+            captureHandler = rangeVisualizer.GetComponent<CaptureRangeHandler>();
+            if (captureHandler == null)
+            {
+                captureHandler = rangeVisualizer.gameObject.AddComponent<CaptureRangeHandler>();
+            }
+        }
 
         if (Camera.main != null)
         {
             cameraController = Camera.main.GetComponent<CameraController>();
         }
         orbitVisualizer = GetComponent<OrbitVisualizer>();
+        gravityComponent = GetComponent<Gravity>();
+
+        mainRenderer = GetComponent<Renderer>();
+        if (mainRenderer == null)
+        {
+            Debug.LogError("Renderer component not found in artificial satellite.", this);
+        }
+        propBlock = new MaterialPropertyBlock();
+    }
+
+    private void OnEnable()
+    {
+        if (FocusManager.Instance != null)
+        {
+            FocusManager.Instance.RegisterSatellite(this);
+        }
+    }
+
+    private void OnDisable()
+    {
+        if (FocusManager.Instance != null)
+        {
+            FocusManager.Instance.DeregisterSatellite(this);
+        }
     }
 
     private void Start()
     {
         UpdateRange();
         TimeManager.OnGlobalPeriodCompleted += OnPeriodCompleted;
+
+        originalScale = transform.localScale;
+        targetScale = originalScale;
     }
 
     private void OnDestroy()
@@ -62,7 +125,9 @@ public class ArtificialSatellite : MonoBehaviour
 
     private void Update()
     {
-        if (launcher == null) return;
+        transform.localScale = Vector3.SmoothDamp(transform.localScale, targetScale, ref currentScaleVelocity, hoverTransitionSpeed);
+
+        if (launcher == null || !mainRenderer.enabled) return;
 
         int currentPeriodFrame = TimeManager.Instance.GlobalFrame - TimeManager.Instance.PeriodStartFrame;
         List<LaunchData> launchedRoutes = new List<LaunchData>();
@@ -88,12 +153,79 @@ public class ArtificialSatellite : MonoBehaviour
         }
     }
 
+    public void ShowDetailView()
+    {
+        if (meshCollider != null) meshCollider.enabled = true;
+
+        mainRenderer.enabled = true;
+        foreach(var r in GetComponentsInChildren<Renderer>()) { r.enabled = true; }
+
+        mainRenderer.GetPropertyBlock(propBlock);
+        propBlock.SetFloat("_IsVisible", 0f);
+        mainRenderer.SetPropertyBlock(propBlock);
+
+        targetScale = originalScale;
+
+        if (gravityComponent != null) gravityComponent.SetRadiusVisualVisibility(true);
+        if (orbitVisualizer != null) orbitVisualizer.SetVisibility(true);
+        if (rangeVisualizer != null) rangeVisualizer.gameObject.SetActive(true);
+    }
+
+    public void ShowAsIcon(float frustumHeight)
+    {
+        if (meshCollider != null) meshCollider.enabled = true;
+
+        mainRenderer.enabled = true;
+        foreach(var r in GetComponentsInChildren<Renderer>()) { r.enabled = true; }
+
+        mainRenderer.GetPropertyBlock(propBlock);
+        propBlock.SetFloat("_IsVisible", 1f);
+        mainRenderer.SetPropertyBlock(propBlock);
+
+        float targetWorldSize = frustumHeight * screenHeightFraction * GameSettings.IconSize;
+        float finalSize = isHovered
+        ? baseFocusSize * targetWorldSize * hoverScaleMultiplier
+        : baseFocusSize * targetWorldSize;
+
+        if (transform.parent != null)
+        {
+            Vector3 parentScale = transform.parent.lossyScale;
+            if (parentScale.x != 0 && parentScale.y != 0 && parentScale.z != 0)
+            {
+                targetScale = new Vector3(
+                    finalSize / parentScale.x,
+                    finalSize / parentScale.y,
+                    finalSize / parentScale.z
+                );
+            }
+        }
+
+        targetScale = Vector3.one * finalSize;
+
+        if (gravityComponent != null) gravityComponent.SetRadiusVisualVisibility(false);
+        if (orbitVisualizer != null) orbitVisualizer.SetVisibility(false);
+        if (rangeVisualizer != null) rangeVisualizer.gameObject.SetActive(false);
+    }
+
+    public void Hide()
+    {
+        if (meshCollider != null) meshCollider.enabled = false;
+
+        mainRenderer.enabled = false;
+        foreach(var r in GetComponentsInChildren<Renderer>()) { r.enabled = false; }
+
+        if (gravityComponent != null) gravityComponent.SetRadiusVisualVisibility(false);
+        if (orbitVisualizer != null) orbitVisualizer.SetVisibility(false);
+        if (rangeVisualizer != null) rangeVisualizer.gameObject.SetActive(false);
+    }
+
+    public void SetHover(bool hover)
+    {
+        isHovered = hover;
+    }
+
     private void OnValidate()
     {
-        if (sphereCollider == null)
-        {
-            sphereCollider = GetComponent<SphereCollider>();
-        }
         UpdateRange();
     }
 
@@ -108,7 +240,10 @@ public class ArtificialSatellite : MonoBehaviour
 
     private void UpdateRange()
     {
-        sphereCollider.radius = captureRange;
+        if (captureHandler != null)
+        {
+            captureHandler.UpdateRadius();
+        }
 
         if (rangeVisualizer != null)
         {
@@ -128,7 +263,7 @@ public class ArtificialSatellite : MonoBehaviour
         }
     }
 
-    private void CapturePlayerSpaceship(GameObject packageObject)
+    public void CapturePlayerSpaceship(GameObject packageObject)
     {
         Package package = packageObject.GetComponent<Package>();
         if (package != null && package.launchData != null)
@@ -152,7 +287,7 @@ public class ArtificialSatellite : MonoBehaviour
         ShowSuccessEffect(capturePosition);
     }
     
-    private void CapturePackage(GameObject packageObject)
+    public void CapturePackage(GameObject packageObject)
     {
         Vector3 capturePosition = packageObject.transform.position;
         Destroy(packageObject);

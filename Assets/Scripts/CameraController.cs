@@ -1,4 +1,5 @@
 using System;
+using UnityEditor;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -6,8 +7,6 @@ public class CameraController : MonoBehaviour
 {
     public Transform SelectedPrefab { get; private set; }
     public event Action<Transform> OnSelectionChanged;
-
-    private Planet currentlyHoveredPlanet;
 
     [Header("Zoom Settings")]
     public float zoomSpeed = 100f;
@@ -50,6 +49,10 @@ public class CameraController : MonoBehaviour
     private Vector3 positionVelocity = Vector3.zero;
     private Vector3 offsetVelocity = Vector3.zero;
 
+    private Vector2 dragOffsetXY = Vector2.zero;
+
+    private bool selectionChangedThisFrame = false;
+
     public void Start()
     {
         transform.position = new Vector3(transform.position.x, transform.position.y, defaultZ);
@@ -72,6 +75,14 @@ public class CameraController : MonoBehaviour
 
         HandleHover();
 
+        if (Keyboard.current != null && Keyboard.current.cKey.wasPressedThisFrame && SelectedPrefab != null)
+        {
+            UpdateSelection(null);
+            targetXY = Vector2.zero;
+            targetZ = -75000f;
+            return;
+        }
+
         if (targetSpaceship == null && Mouse.current.leftButton.wasPressedThisFrame)
         {
             Ray ray = Camera.main.ScreenPointToRay(Mouse.current.position.ReadValue());
@@ -91,36 +102,23 @@ public class CameraController : MonoBehaviour
 
     private void HandleHover()
     {
+        if (FocusManager.Instance == null) return;
+
         Ray ray = Camera.main.ScreenPointToRay(Mouse.current.position.ReadValue());
-        float maxDistance = Mathf.Infinity;
-        int layerMask = ~0;
-
-        if (Physics.Raycast(ray, out RaycastHit hit, maxDistance, layerMask))
+        if (Physics.Raycast(ray, out RaycastHit hit))
         {
-            Planet hitPlanet = hit.transform.GetComponent<Planet>();
-
-            if (hitPlanet != currentlyHoveredPlanet)
+            if (hit.collider.CompareTag(prefabTag) || hit.collider.CompareTag(spaceshipTag))
             {
-                if (currentlyHoveredPlanet != null)
-                {
-                    currentlyHoveredPlanet.isHovered = false;
-                }
-
-                currentlyHoveredPlanet = hitPlanet;
-
-                if (currentlyHoveredPlanet != null)
-                {
-                    currentlyHoveredPlanet.isHovered = true;
-                }
+                FocusManager.Instance.SetHoveredObject(hit.transform);
+            }
+            else
+            {
+                FocusManager.Instance.SetHoveredObject(null);
             }
         }
         else
         {
-            if (currentlyHoveredPlanet != null)
-            {
-                currentlyHoveredPlanet.isHovered = false;
-                currentlyHoveredPlanet = null;
-            }
+            FocusManager.Instance.SetHoveredObject(null);
         }
     }
 
@@ -144,9 +142,61 @@ public class CameraController : MonoBehaviour
 
             currentOffset = Vector3.SmoothDamp(currentOffset, targetOffset, ref offsetVelocity, smoothTime);
 
-            transform.position = SelectedPrefab.position + currentOffset;
+            Vector3 finalFollowPosition = SelectedPrefab.position + new Vector3(dragOffsetXY.x, dragOffsetXY.y, 0);
+            transform.position = finalFollowPosition + currentOffset;
 
             transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, smoothTime * 10 * Time.deltaTime);
+
+            if (!selectionChangedThisFrame)
+            {
+                const float settleThreshold = 10f;
+                if (Vector3.Distance(currentOffset, targetOffset) < settleThreshold)
+                {
+                    Gravity gravity = SelectedPrefab.GetComponent<Gravity>();
+                    if (gravity != null)
+                    {
+                        bool unfocusByZ = targetZ < gravity.gravityRadius * -11;
+
+                        float xyDistanceFromTarget = Vector2.Distance(
+                            new Vector2(transform.position.x, transform.position.y),
+                            new Vector2(SelectedPrefab.position.x, SelectedPrefab.position.y)
+                        );
+                        bool unfocusByXY = xyDistanceFromTarget > gravity.gravityRadius;
+
+                        if (unfocusByXY || unfocusByZ)
+                        {
+                            ArtificialSatellite satellite = SelectedPrefab.GetComponent<ArtificialSatellite>();
+
+                            if (satellite != null)
+                            {
+                                Orbiter orbiter = satellite.GetComponent<Orbiter>();
+                                if (orbiter != null && orbiter.centralBody != null)
+                                {
+                                    Planet parentPlanet = orbiter.centralBody.GetComponent<Planet>();
+                                    if (parentPlanet != null)
+                                    {
+                                        SelectAndActivateSpecialView(parentPlanet.transform);
+                                    }
+                                    else
+                                    {
+                                        UpdateSelection(null);
+                                    }
+                                }
+                                else
+                                {
+                                    UpdateSelection(null);
+                                }
+                            }
+                            else
+                            {
+                                string temp = unfocusByXY ? "XY" : "Z";
+                                Debug.Log($"Unfocused by {temp}");
+                                UpdateSelection(null);
+                            }
+                        }
+                    }
+                }
+            }
         }
         else
         {
@@ -155,11 +205,13 @@ public class CameraController : MonoBehaviour
             transform.position = Vector3.SmoothDamp(transform.position, finalTargetPosition, ref positionVelocity, smoothTime);
             transform.rotation = Quaternion.Slerp(transform.rotation, preSelectionRotation, smoothTime * 10 * Time.deltaTime);
         }
+        selectionChangedThisFrame = false;
     }
 
     public void UpdateSelection(Transform newSelection)
     {
         if (SelectedPrefab == newSelection) return;
+        selectionChangedThisFrame = true;
 
         if (_currentlyControlledSpaceship != null)
         {
@@ -175,13 +227,18 @@ public class CameraController : MonoBehaviour
         if (SelectedPrefab == null && newSelection != null)
         {
             preSelectionRotation = transform.rotation;
-
             currentOffset = transform.position - newSelection.position;
+            dragOffsetXY = Vector2.zero;
         }
         else if (SelectedPrefab != null && newSelection == null)
         {
             targetXY = new Vector2(transform.position.x, transform.position.y);
             targetZ = transform.position.z;
+
+            if (FocusManager.Instance != null)
+            {
+                FocusManager.Instance.SetFocus(null);
+            }
         }
 
         SelectedPrefab = newSelection;
@@ -236,14 +293,18 @@ public class CameraController : MonoBehaviour
     {
         if (Mouse.current.rightButton.wasPressedThisFrame)
         {
-            if (SelectedPrefab != null)
-            {
-                UpdateSelection(null);
-            }
+            bool isPlanetSelected = SelectedPrefab != null && SelectedPrefab.GetComponent<Planet>() != null;
 
-            if (FocusManager.Instance != null && centralStar != null)
+            if (!isPlanetSelected)
             {
-                FocusManager.Instance.SetFocus(centralStar.transform);
+                if (SelectedPrefab != null)
+                {
+                    UpdateSelection(null);
+                }
+                if (FocusManager.Instance != null && centralStar != null)
+                {
+                    FocusManager.Instance.SetFocus(centralStar.transform);
+                }
             }
 
             isDragging = true;
@@ -259,7 +320,6 @@ public class CameraController : MonoBehaviour
         if (isDragging)
         {
             Vector3 currentMouseScreenPos = Mouse.current.position.ReadValue();
-
             if (Vector3.Distance(currentMouseScreenPos, lastMouseScreenPos) <= 0.1f)
             {
                 return;
@@ -267,12 +327,19 @@ public class CameraController : MonoBehaviour
 
             Vector3 lastWorldPos = GetWorldPosOnXYPlane(lastMouseScreenPos);
             Vector3 currentWorldPos = GetWorldPosOnXYPlane(currentMouseScreenPos);
-
             Vector3 worldDelta = currentWorldPos - lastWorldPos;
 
-            transform.position -= worldDelta;
+            bool isPlanetSelected = SelectedPrefab != null && SelectedPrefab.GetComponent<Planet>() != null;
 
-            targetXY = new Vector2(transform.position.x, transform.position.y);
+            if (isPlanetSelected)
+            {
+                dragOffsetXY -= new Vector2(worldDelta.x, worldDelta.y);
+            }
+            else
+            {
+                transform.position -= worldDelta;
+                targetXY = new Vector2(transform.position.x, transform.position.y);
+            }
 
             lastMouseScreenPos = currentMouseScreenPos;
         }

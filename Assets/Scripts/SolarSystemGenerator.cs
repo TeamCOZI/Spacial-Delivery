@@ -228,7 +228,6 @@ public class SolarSystemGenerator : MonoBehaviour
                 planetPlanet.heat = initialHeat;
                 if (planetPlanet.heat > 150) planetPlanet.atm = 0f;
                 else planetPlanet.atm = (int)(planetGravity.gravity * 2 * (0.2f * (int)(planetPlanet.heat / 10)));
-                planetPlanet.SetSatelliteVisibility(false);
             }
 
             // Add planet to planets list for assigning orbit speed later.
@@ -324,7 +323,6 @@ public class SolarSystemGenerator : MonoBehaviour
                     planetPlanet.planetClass_ = planetClass.jovian;
                     planetPlanet.heat = initialHeat;
                     planetPlanet.atm = planetGravity.gravity * 3;
-                    planetPlanet.SetSatelliteVisibility(false);
                 }
 
                 // Add planet to planets list for assigning orbit speed later.
@@ -385,7 +383,6 @@ public class SolarSystemGenerator : MonoBehaviour
                     planetPlanet.planetClass_ = planetClass.terrestrial;
                     planetPlanet.heat = initialHeat;
                     planetPlanet.atm = 0f;
-                    planetPlanet.SetSatelliteVisibility(false);
                 }
 
                 // Add planet to planets list for assigning orbit speed later.

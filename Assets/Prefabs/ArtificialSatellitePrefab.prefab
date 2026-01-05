@@ -11,12 +11,12 @@ GameObject:
   - component: {fileID: 1108982721774039331}
   - component: {fileID: 8850191857687115595}
   - component: {fileID: 4585310838201028375}
-  - component: {fileID: 2600039990415793598}
   - component: {fileID: 6006654585489330638}
   - component: {fileID: -1688918138744459160}
   - component: {fileID: 6168921824087046230}
   - component: {fileID: -8469202198271204161}
   - component: {fileID: 9182590517738302766}
+  - component: {fileID: 2736910221931276061}
   m_Layer: 0
   m_Name: ArtificialSatellitePrefab
   m_TagString: Prefab
@@ -74,6 +74,7 @@ MeshRenderer:
   m_RendererPriority: 0
   m_Materials:
   - {fileID: 2100000, guid: 31321ba15b8f8eb4c954353edc038b1d, type: 2}
+  - {fileID: 2100000, guid: 4946815949113344bab5643ef4bcc476, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -96,27 +97,6 @@ MeshRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 0
   m_AdditionalVertexStreams: {fileID: 0}
---- !u!135 &2600039990415793598
-SphereCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2920431155874509688}
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_LayerOverridePriority: 0
-  m_IsTrigger: 1
-  m_ProvidesContacts: 0
-  m_Enabled: 1
-  serializedVersion: 3
-  m_Radius: 3
-  m_Center: {x: 0, y: 0, z: 0}
 --- !u!54 &6006654585489330638
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -223,6 +203,33 @@ MonoBehaviour:
   effectScale: 0.03
   pathVisualizerPrefab: {fileID: 6867914806932561599, guid: 9f43e3d425e54f84daf250ce03a8bbc7, type: 3}
   routeInfoText: {fileID: 0}
+  screenHeightFraction: 0.01
+  baseFocusSize: 0.1
+  hoverScaleMultiplier: 2
+  hoverTransitionSpeed: 0.1
+  isHovered: 0
+--- !u!64 &2736910221931276061
+MeshCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2920431155874509688}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 5
+  m_Convex: 0
+  m_CookingOptions: 30
+  m_Mesh: {fileID: 10207, guid: 0000000000000000e000000000000000, type: 0}
 --- !u!1 &6652885947565325395
 GameObject:
   m_ObjectHideFlags: 0
@@ -234,7 +241,9 @@ GameObject:
   - component: {fileID: 3013674770417857196}
   - component: {fileID: 5559113365685075700}
   - component: {fileID: 3454189343414168811}
-  m_Layer: 0
+  - component: {fileID: 2046298255452441523}
+  - component: {fileID: 1632052594634439290}
+  m_Layer: 2
   m_Name: RangeVisualizer
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -312,3 +321,36 @@ MeshRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 0
   m_AdditionalVertexStreams: {fileID: 0}
+--- !u!135 &2046298255452441523
+SphereCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6652885947565325395}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Radius: 0.5
+  m_Center: {x: 0, y: 0, z: 0}
+--- !u!114 &1632052594634439290
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6652885947565325395}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 06a57daafddbe8a4fa439c98d70d5bdd, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::CaptureRangeHandler
