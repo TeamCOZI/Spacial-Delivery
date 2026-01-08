@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using NUnit.Framework;
 using UnityEngine;
 
 public class FocusManager : MonoBehaviour
@@ -69,75 +70,64 @@ public class FocusManager : MonoBehaviour
         float zDistance = Mathf.Abs(mainCamera.transform.position.z);
         float frustumHeight = 2.0f * zDistance * tanHalfFov;
 
-        if (CurrentFocus == null || CurrentFocus.GetComponent<Star>() != null)
+        Planet focusedPlanet = CurrentFocus?.GetComponent<Planet>();
+        ArtificialSatellite focusedSatellite = CurrentFocus?.GetComponent<ArtificialSatellite>();
+
+        foreach (var planet in allPlanets)
         {
-            foreach (var planet in allPlanets)
+            bool isParentOfFocusedSatellite = false;
+            if (focusedSatellite != null)
+            {
+                Orbiter orbiter = focusedSatellite.GetComponent<Orbiter>();
+            if (orbiter != null && orbiter.centralBody != null && orbiter.centralBody == planet.gameObject)
+                {
+                    isParentOfFocusedSatellite = true;
+                }
+            }
+
+            if (planet == focusedPlanet || isParentOfFocusedSatellite)
+            {
+                planet.ShowDetailView();
+            }
+            else
             {
                 planet.ShowAsIcon(frustumHeight);
-
-            }
-            foreach (var satellite in allSatellites)
-            {
-                satellite.Hide();
             }
         }
-        else
-        {
-            Planet focusedPlanet = CurrentFocus.GetComponent<Planet>();
-            ArtificialSatellite focusedSatellite = CurrentFocus.GetComponent<ArtificialSatellite>();
 
-            if (focusedPlanet != null)
+        foreach (var satellite in allSatellites)
+        {
+            if (satellite == focusedSatellite)
             {
-                foreach (var planet in allPlanets)
+                satellite.ShowDetailView();
+            }
+            else if (focusedPlanet != null)
+            {
+                Orbiter orbiter = satellite.GetComponent<Orbiter>();
+                if (orbiter != null && orbiter.centralBody != null && orbiter.centralBody.transform == focusedPlanet.transform)
                 {
-                    if (planet == focusedPlanet)
-                    {
-                        planet.ShowDetailView();
-                    }
-                    else
-                    {
-                        planet.ShowAsIcon(frustumHeight);
-                    }
+                    satellite.ShowAsIcon(frustumHeight);
                 }
-                foreach (var satellite in allSatellites)
+                else
                 {
-                    Orbiter orbiter = satellite.GetComponent<Orbiter>();
-                    if (orbiter != null && orbiter.centralBody.transform == focusedPlanet.transform)
-                    {
-                        satellite.ShowAsIcon(frustumHeight);
-                    }
-                    else
-                    {
-                        satellite.Hide();
-                    }
+                    satellite.Hide();
                 }
             }
             else if (focusedSatellite != null)
             {
-                Planet parentPlanet = focusedSatellite.GetComponentInParent<Planet>();
-
-                foreach (var planet in allPlanets)
+                Orbiter orbiter = satellite.GetComponent<Orbiter>();
+                if (orbiter != null && orbiter.centralBody != null && orbiter.centralBody.transform == focusedSatellite.transform)
                 {
-                    if (planet == parentPlanet)
-                    {
-                        planet.ShowDetailView();
-                    }
-                    else
-                    {
-                        planet.ShowAsIcon(frustumHeight);
-                    }
+                    satellite.ShowAsIcon(frustumHeight);
                 }
-                foreach (var satellite in allSatellites)
+                else
                 {
-                    if (satellite == focusedSatellite)
-                    {
-                        satellite.ShowDetailView();
-                    }
-                    else
-                    {
-                        satellite.Hide();
-                    }
+                    satellite.Hide();
                 }
+            }
+            else
+            {
+                satellite.Hide();
             }
         }
     }

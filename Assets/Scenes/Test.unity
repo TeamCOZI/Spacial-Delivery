@@ -813,10 +813,11 @@ MonoBehaviour:
   planetInitialOrbit: 3000
   planetInitialOrbitIncrease: 3500
   planetInitialHeat: 200
-  planetInitialHeatAxis: 500
-  planetHeatRatio: 0.04
+  planetInitialHeatAxis: 1500
+  planetHeatRatio: 0.02
   planetTotalPeriod: 3600
   planetMinPeriod: 600
+  asteriodBeltThreshold: 0.3
   satelliteFactorMin: 1
   satelliteFactorMax: 2
   satelliteFactorDistribution:

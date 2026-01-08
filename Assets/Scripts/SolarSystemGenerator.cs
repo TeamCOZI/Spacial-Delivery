@@ -277,7 +277,7 @@ public class SolarSystemGenerator : MonoBehaviour
         // Instantiating jovian planets in condition.
         while (initialOrbit < starGravityRadius)
         {
-            if (Random.Range(0, 10) < 9)
+            if (Random.Range(0, 10) < 5)
             {
 
                 int planetRandomFactor = (int)Mathf.Lerp(jovianPlanetFactorMin, jovianPlanetFactorMax, NextGaussian(jovianPlanetFactorDistribution.mean, jovianPlanetFactorDistribution.stdDev));
@@ -449,6 +449,9 @@ public class SolarSystemGenerator : MonoBehaviour
             
             GameObject satellite = Instantiate(artificialSatellitePrefab, planet.transform);
             satellite.name = $"{planet.name} - Satellite {numberOfSatellites + 1}";
+
+            GameObject childSatellite = Instantiate(artificialSatellitePrefab, satellite.transform);
+            childSatellite.name = $"{satellite.name} - Child Satellite";
             
             Planet planetPlanet_ = planet.GetComponent<Planet>();
             float thisPlanetScaleRatio;
@@ -471,6 +474,16 @@ public class SolarSystemGenerator : MonoBehaviour
                 satelliteOrbiter.semiMajorAxis = initialOrbit;
                 satelliteOrbiter.semiMinorAxis = initialOrbit;
                 satelliteOrbiter.currentAngle = Random.Range(0f, 360f);
+            }
+            
+            Orbiter childSatelliteOrbiter = childSatellite.GetComponent<Orbiter>();
+            if (childSatelliteOrbiter != null)
+            {
+                childSatelliteOrbiter.centralBody = satellite;
+
+                childSatelliteOrbiter.semiMajorAxis = 5f;
+                childSatelliteOrbiter.semiMinorAxis = 5f;
+                childSatelliteOrbiter.currentAngle = Random.Range(0f, 360f);
             }
 
             Rigidbody satelliteRb = satellite.GetComponent<Rigidbody>();

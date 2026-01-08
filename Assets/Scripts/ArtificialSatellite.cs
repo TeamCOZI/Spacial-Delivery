@@ -182,28 +182,37 @@ public class ArtificialSatellite : MonoBehaviour
         propBlock.SetFloat("_IsVisible", 1f);
         mainRenderer.SetPropertyBlock(propBlock);
 
-        float targetWorldSize = frustumHeight * screenHeightFraction * GameSettings.IconSize;
-        float finalSize = isHovered
-        ? baseFocusSize * targetWorldSize * hoverScaleMultiplier
-        : baseFocusSize * targetWorldSize;
+        Transform parentTransform = transform.parent;
 
-        if (transform.parent != null)
+        if (parentTransform != null && parentTransform.GetComponent<ArtificialSatellite>() != null)
         {
-            Vector3 parentScale = transform.parent.lossyScale;
-            if (parentScale.x != 0 && parentScale.y != 0 && parentScale.z != 0)
+            targetScale = Vector3.one;
+        }
+        else
+        {
+            float targetWorldSize = frustumHeight * screenHeightFraction * GameSettings.IconSize;
+            float finalSize = isHovered
+            ? baseFocusSize * targetWorldSize * hoverScaleMultiplier
+            : baseFocusSize * targetWorldSize;
+
+            if (transform.parent != null)
             {
-                targetScale = new Vector3(
-                    finalSize / parentScale.x,
-                    finalSize / parentScale.y,
-                    finalSize / parentScale.z
-                );
+                Vector3 parentScale = transform.parent.lossyScale;
+                if (parentScale.x != 0 && parentScale.y != 0 && parentScale.z != 0)
+                {
+                    targetScale = new Vector3(
+                        finalSize / parentScale.x,
+                        finalSize / parentScale.y,
+                        finalSize / parentScale.z
+                    );
+                }
             }
+
+            targetScale = Vector3.one * finalSize;
         }
 
-        targetScale = Vector3.one * finalSize;
-
         if (gravityComponent != null) gravityComponent.SetRadiusVisualVisibility(false);
-        if (orbitVisualizer != null) orbitVisualizer.SetVisibility(false);
+        if (orbitVisualizer != null) orbitVisualizer.SetVisibility(true);
         if (rangeVisualizer != null) rangeVisualizer.gameObject.SetActive(false);
     }
 

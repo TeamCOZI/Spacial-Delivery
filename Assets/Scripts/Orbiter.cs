@@ -106,6 +106,23 @@ public class Orbiter : MonoBehaviour
 
         Vector3 orbitPosition = new Vector3(rotatedX, rotatedY, 0);
 
-        return centralBody.transform.position + orbitPosition;
+        if (centralBody != null)
+        {
+            Vector3 parentPosition;
+            Orbiter parentOrbiter = centralBody.GetComponent<Orbiter>();
+            if (parentOrbiter != null)
+            {
+                parentPosition = parentOrbiter.GetPositionAngle(parentOrbiter.currentAngle);
+            }
+            else
+            {
+                parentPosition = centralBody.transform.position;
+            }
+            return parentPosition + (centralBody.transform.rotation * orbitPosition);
+        }
+        else
+        {
+            return transform.position;
+        }
     }
 }

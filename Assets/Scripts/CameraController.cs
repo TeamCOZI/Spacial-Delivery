@@ -77,6 +77,22 @@ public class CameraController : MonoBehaviour
 
         if (Keyboard.current != null && Keyboard.current.cKey.wasPressedThisFrame && SelectedPrefab != null)
         {
+            ArtificialSatellite satellite = SelectedPrefab.GetComponent<ArtificialSatellite>();
+
+            if (satellite != null)
+            {
+                Orbiter orbiter = satellite.GetComponent<Orbiter>();
+                if (orbiter != null && orbiter.centralBody != null)
+                {
+                    Planet parentPlanet = orbiter.centralBody.GetComponent<Planet>();
+                    if (parentPlanet != null)
+                    {
+                        SelectAndActivateSpecialView(parentPlanet.transform);
+                        return;
+                    }
+                }
+            }
+            
             UpdateSelection(null);
             targetXY = Vector2.zero;
             targetZ = -75000f;
@@ -228,6 +244,10 @@ public class CameraController : MonoBehaviour
         {
             preSelectionRotation = transform.rotation;
             currentOffset = transform.position - newSelection.position;
+            dragOffsetXY = Vector2.zero;
+        }
+        else if (SelectedPrefab != null && newSelection != null)
+        {
             dragOffsetXY = Vector2.zero;
         }
         else if (SelectedPrefab != null && newSelection == null)

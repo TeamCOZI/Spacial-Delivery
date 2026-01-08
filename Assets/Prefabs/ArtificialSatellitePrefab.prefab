@@ -153,8 +153,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Orbiter
   centralBody: {fileID: 0}
-  semiMajorAxis: 5
-  semiMinorAxis: 5
+  semiMajorAxis: 3
+  semiMinorAxis: 3
   orbitTiltDegrees: 0
   orbitSpeed: 30
   clockwise: 0
