@@ -180,19 +180,19 @@ public class FocusInfoUI : MonoBehaviour
         // ATM
         if (planet != null)
         {
-            if (planet.atm >= 2401)
+            if (planet.atm >= 4000)
             {
                 atmText.text = "기압 : 매우 높음";
             }
-            else if (planet.atm >= 1201)
+            else if (planet.atm >= 2000)
             {
                 atmText.text = "기압 : 높음";
             }
-            else if (planet.atm >= 300)
+            else if (planet.atm >= 1000)
             {
                 atmText.text = "기압 : 평범함";
             }
-            else if (planet.atm >= 60)
+            else if (planet.atm >= 300)
             {
                 atmText.text = "기압 : 낮음";
             }

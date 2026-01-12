@@ -226,8 +226,9 @@ public class SolarSystemGenerator : MonoBehaviour
             {
                 planetPlanet.planetClass_ = planetClass.terrestrial;
                 planetPlanet.heat = initialHeat;
-                if (planetPlanet.heat > 150) planetPlanet.atm = 0f;
-                else planetPlanet.atm = (int)(planetGravity.gravity * 2 * (0.2f * (int)(planetPlanet.heat / 10)));
+                if (planetPlanet.heat >= 150) planetPlanet.atm = 0f;
+                else if (planetPlanet.heat >= 0) planetPlanet.atm = (int)(planetGravity.gravity * planetPlanet.heat * 0.2f);
+                else planetPlanet.atm = (int)(planetGravity.gravity * planetPlanet.heat * -0.02f);
             }
 
             // Add planet to planets list for assigning orbit speed later.
@@ -322,7 +323,7 @@ public class SolarSystemGenerator : MonoBehaviour
                 {
                     planetPlanet.planetClass_ = planetClass.jovian;
                     planetPlanet.heat = initialHeat;
-                    planetPlanet.atm = planetGravity.gravity * 3;
+                    planetPlanet.atm = 0f;
                 }
 
                 // Add planet to planets list for assigning orbit speed later.
