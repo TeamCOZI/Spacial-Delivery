@@ -1,9 +1,9 @@
 using UnityEngine;
 
-public class Orbiter : MonoBehaviour
+public class Revolution : MonoBehaviour
 {
     [Header("Orbit Target")]
-    public GameObject centralBody;
+    public GameObject center;
 
     [Header("Orbit Shape")]
     public float semiMajorAxis = 10f;
@@ -11,7 +11,7 @@ public class Orbiter : MonoBehaviour
     public float orbitTiltDegrees = 0f;
 
     [Header("Orbit Speed")]
-    public float orbitSpeed = 30f;
+    public float revolutionSpeed = 30f;
     public bool clockwise = false;
 
     [Header("Initial Setup")]
@@ -25,14 +25,14 @@ public class Orbiter : MonoBehaviour
     private void Start()
     {
         rb = GetComponent<Rigidbody>();
-        baseOrbitSpeed = orbitSpeed;
+        baseOrbitSpeed = revolutionSpeed;
 
         if (TimeManager.Instance != null)
         {
             TimeManager.Instance.Register(this);
         }
 
-        if (centralBody == null)
+        if (center == null)
         {
             enabled = false;
             return;
@@ -50,7 +50,7 @@ public class Orbiter : MonoBehaviour
 
     private void FixedUpdate()
     {
-        if (centralBody != null)
+        if (center != null)
         {
             float direction = clockwise ? -1f : 1f;
             currentAngle += baseOrbitSpeed * timeMultiplier * direction * Time.fixedDeltaTime;
@@ -106,19 +106,19 @@ public class Orbiter : MonoBehaviour
 
         Vector3 orbitPosition = new Vector3(rotatedX, rotatedY, 0);
 
-        if (centralBody != null)
+        if (center != null)
         {
             Vector3 parentPosition;
-            Orbiter parentOrbiter = centralBody.GetComponent<Orbiter>();
+            Revolution parentOrbiter = center.GetComponent<Revolution>();
             if (parentOrbiter != null)
             {
                 parentPosition = parentOrbiter.GetPositionAngle(parentOrbiter.currentAngle);
             }
             else
             {
-                parentPosition = centralBody.transform.position;
+                parentPosition = center.transform.position;
             }
-            return parentPosition + (centralBody.transform.rotation * orbitPosition);
+            return parentPosition + (center.transform.rotation * orbitPosition);
         }
         else
         {

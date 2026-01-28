@@ -45,7 +45,7 @@ public class Package : MonoBehaviour
 
     protected virtual void FixedUpdate()
     {
-        ApplyGravity();
+        //();
         ApplyRecordedThrust();
 
         if (Vector3.Distance(transform.position, lastPathPoint) > MinPathPointDistance)
@@ -73,9 +73,9 @@ public class Package : MonoBehaviour
         }
     }
 
-    protected void ApplyGravity()
+    /*protected void ApplyGravity()
     {
-        foreach (var source in Gravity.AllSources)
+        foreach (var source in Gravity.Gravities)
         {
             Vector3 direction = source.transform.position - rb.position;
             float distance = direction.magnitude;
@@ -96,5 +96,5 @@ public class Package : MonoBehaviour
 
             rb.AddForce(force);
         }
-    }
+    }*/
 }

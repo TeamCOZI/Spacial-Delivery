@@ -1,5 +1,4 @@
 using System;
-using UnityEditor;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -77,14 +76,14 @@ public class CameraController : MonoBehaviour
 
         if (Keyboard.current != null && Keyboard.current.cKey.wasPressedThisFrame && SelectedPrefab != null)
         {
-            ArtificialSatellite satellite = SelectedPrefab.GetComponent<ArtificialSatellite>();
+            Satellite satellite = SelectedPrefab.GetComponent<Satellite>();
 
             if (satellite != null)
             {
-                Orbiter orbiter = satellite.GetComponent<Orbiter>();
-                if (orbiter != null && orbiter.centralBody != null)
+                Revolution orbiter = satellite.GetComponent<Revolution>();
+                if (orbiter != null && orbiter.center != null)
                 {
-                    Planet parentPlanet = orbiter.centralBody.GetComponent<Planet>();
+                    Planet parentPlanet = orbiter.center.GetComponent<Planet>();
                     if (parentPlanet != null)
                     {
                         SelectAndActivateSpecialView(parentPlanet.transform);
@@ -101,7 +100,7 @@ public class CameraController : MonoBehaviour
 
         if (targetSpaceship == null && Mouse.current.leftButton.wasPressedThisFrame)
         {
-            Ray ray = Camera.main.ScreenPointToRay(Mouse.current.position.ReadValue());
+            Ray ray = UnityEngine.Camera.main.ScreenPointToRay(Mouse.current.position.ReadValue());
             if (Physics.Raycast(ray, out RaycastHit hit))
             {
                 if (hit.collider.CompareTag(prefabTag) || hit.collider.CompareTag(spaceshipTag))
@@ -120,21 +119,21 @@ public class CameraController : MonoBehaviour
     {
         if (FocusManager.Instance == null) return;
 
-        Ray ray = Camera.main.ScreenPointToRay(Mouse.current.position.ReadValue());
+        Ray ray = UnityEngine.Camera.main.ScreenPointToRay(Mouse.current.position.ReadValue());
         if (Physics.Raycast(ray, out RaycastHit hit))
         {
             if (hit.collider.CompareTag(prefabTag) || hit.collider.CompareTag(spaceshipTag))
             {
-                FocusManager.Instance.SetHoveredObject(hit.transform);
+                //FocusManager.Instance.SetHoveredObject(hit.transform);
             }
             else
             {
-                FocusManager.Instance.SetHoveredObject(null);
+                //FocusManager.Instance.SetHoveredObject(null);
             }
         }
         else
         {
-            FocusManager.Instance.SetHoveredObject(null);
+            //FocusManager.Instance.SetHoveredObject(null);
         }
     }
 
@@ -171,24 +170,24 @@ public class CameraController : MonoBehaviour
                     Gravity gravity = SelectedPrefab.GetComponent<Gravity>();
                     if (gravity != null)
                     {
-                        bool unfocusByZ = targetZ < gravity.gravityRadius * -11;
+                        bool unfocusByZ = targetZ < gravity.GravityRadius * -11;
 
                         float xyDistanceFromTarget = Vector2.Distance(
                             new Vector2(transform.position.x, transform.position.y),
                             new Vector2(SelectedPrefab.position.x, SelectedPrefab.position.y)
                         );
-                        bool unfocusByXY = xyDistanceFromTarget > gravity.gravityRadius;
+                        bool unfocusByXY = xyDistanceFromTarget > gravity.GravityRadius;
 
                         if (unfocusByXY || unfocusByZ)
                         {
-                            ArtificialSatellite satellite = SelectedPrefab.GetComponent<ArtificialSatellite>();
+                            Satellite satellite = SelectedPrefab.GetComponent<Satellite>();
 
                             if (satellite != null)
                             {
-                                Orbiter orbiter = satellite.GetComponent<Orbiter>();
-                                if (orbiter != null && orbiter.centralBody != null)
+                                Revolution orbiter = satellite.GetComponent<Revolution>();
+                                if (orbiter != null && orbiter.center != null)
                                 {
-                                    Planet parentPlanet = orbiter.centralBody.GetComponent<Planet>();
+                                    Planet parentPlanet = orbiter.center.GetComponent<Planet>();
                                     if (parentPlanet != null)
                                     {
                                         SelectAndActivateSpecialView(parentPlanet.transform);
@@ -257,7 +256,7 @@ public class CameraController : MonoBehaviour
 
             if (FocusManager.Instance != null)
             {
-                FocusManager.Instance.SetFocus(null);
+                //FocusManager.Instance.SetFocus(null);
             }
         }
 
@@ -271,7 +270,7 @@ public class CameraController : MonoBehaviour
 
         if (FocusManager.Instance != null)
         {
-            FocusManager.Instance.SetFocus(SelectedPrefab);
+            //FocusManager.Instance.SetFocus(SelectedPrefab);
         }
 
         if (_currentlyControlledSpaceship != null)
@@ -293,7 +292,7 @@ public class CameraController : MonoBehaviour
         }
         else if (gravityComponent != null)
         {
-            float newZ = gravityComponent.gravityRadius * -9;
+            float newZ = gravityComponent.GravityRadius * -9;
             targetZ = Mathf.Clamp(newZ, minZ, maxZ);
         }
         else
@@ -323,7 +322,7 @@ public class CameraController : MonoBehaviour
                 }
                 if (FocusManager.Instance != null && centralStar != null)
                 {
-                    FocusManager.Instance.SetFocus(centralStar.transform);
+                    //FocusManager.Instance.SetFocus(centralStar.transform);
                 }
             }
 
@@ -399,7 +398,7 @@ public class CameraController : MonoBehaviour
 
     private Vector3 GetWorldPosOnXYPlane(Vector3 screenPos)
     {
-        Ray ray = Camera.main.ScreenPointToRay(screenPos);
+        Ray ray = UnityEngine.Camera.main.ScreenPointToRay(screenPos);
         Plane xyPlane = new Plane(Vector3.forward, Vector3.zero);
         if (xyPlane.Raycast(ray, out float distance))
         {

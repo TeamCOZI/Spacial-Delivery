@@ -117,7 +117,7 @@ public class Launcher : MonoBehaviour
 
                 if (playerSpaceshipPrefab != null)
                 {
-                    UpdateTrajectoryDots(finalLaunchVelocity, playerSpaceshipPrefab.GetComponent<Rigidbody>().mass, launchCenter);
+                    //UpdateTrajectoryDots(finalLaunchVelocity, playerSpaceshipPrefab.GetComponent<Rigidbody>().mass, launchCenter);
                 }
 
                 if (Mouse.current.leftButton.wasReleasedThisFrame)
@@ -243,14 +243,14 @@ public class Launcher : MonoBehaviour
         if (aimingCircleUI != null) aimingCircleUI.SetActive(false);
     }
 
-    private void UpdateTrajectoryDots(Vector3 initialVelocity, float mass, Vector3 startPos)
+    /*private void UpdateTrajectoryDots(Vector3 initialVelocity, float mass, Vector3 startPos)
     {
         HideAllDots();
 
         Dictionary<Gravity, float> simulatedAngles = new Dictionary<Gravity, float>();
-        foreach (var source in Gravity.AllSources)
+        foreach (var source in Gravity.Gravities)
         {
-            Orbiter o = source.GetComponent<Orbiter>();
+            Revolution o = source.GetComponent<Revolution>();
             if (o != null)
             {
                 simulatedAngles[source] = o.currentAngle;
@@ -267,9 +267,9 @@ public class Launcher : MonoBehaviour
             pathPoints.Add(currentPosition);
 
             Vector3 gravityForce = Vector3.zero;
-            foreach (var source in Gravity.AllSources)
+            foreach (var source in Gravity.gravities)
             {
-                Orbiter o = source.GetComponent<Orbiter>();
+                Revolution o = source.GetComponent<Revolution>();
                 if (o != null && simulatedAngles.ContainsKey(source))
                 {
                     Vector3 sourceFuturePosition = o.GetPositionAngle(simulatedAngles[source]);
@@ -286,13 +286,13 @@ public class Launcher : MonoBehaviour
             currentVelocity += gravityForce / mass * timeStep;
             currentPosition += currentVelocity * timeStep;
 
-            foreach (var source in Gravity.AllSources)
+            foreach (var source in Gravity.gravities)
             {
-                Orbiter o = source.GetComponent<Orbiter>();
+                Revolution o = source.GetComponent<Revolution>();
                 if (o != null && simulatedAngles.ContainsKey(source))
                 {
                     float direction = o.clockwise ? -1f : 1f;
-                    simulatedAngles[source] += o.orbitSpeed * o.timeMultiplier * direction * timeStep;
+                    simulatedAngles[source] += o.revolutionSpeed * o.timeMultiplier * direction * timeStep;
                 }
             }
 
@@ -323,7 +323,7 @@ public class Launcher : MonoBehaviour
             dot.transform.localScale = Vector3.one * dotScale;
             activeDots.Add(dot);
         }
-    }
+    }*/
 
     private void HideAllDots()
     {

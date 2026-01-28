@@ -1,7 +1,7 @@
 using UnityEngine;
 using System.Collections.Generic;
 
-[RequireComponent(typeof(Orbiter))]
+[RequireComponent(typeof(Revolution))]
 public class OrbitVisualizer : MonoBehaviour
 {
     public enum VisualizationMode { Dots, Line }
@@ -24,11 +24,11 @@ public class OrbitVisualizer : MonoBehaviour
     public bool useScreenSpaceWidth = true;
     public float screenSpaceWidth = 1f;
 
-    private Orbiter orbiter;
+    private Revolution orbiter;
     private Transform centralBody;
     private Vector3 lastCentralBodyPosition;
     private bool isInitialized = false;
-    private Camera mainCamera;
+    private UnityEngine.Camera mainCamera;
     private CameraController cameraController;
 
     private ObjectPool dotPool;
@@ -39,8 +39,8 @@ public class OrbitVisualizer : MonoBehaviour
 
     private void Awake()
     {
-        orbiter = GetComponent<Orbiter>();
-        mainCamera = Camera.main;
+        orbiter = GetComponent<Revolution>();
+        mainCamera = UnityEngine.Camera.main;
 
     if (mainCamera != null)
         {
@@ -61,14 +61,14 @@ public class OrbitVisualizer : MonoBehaviour
 
     private void Start()
     {
-        orbiter = GetComponent<Orbiter>();
-        if (orbiter.centralBody == null || dotPrefab == null)
+        orbiter = GetComponent<Revolution>();
+        if (orbiter.center == null || dotPrefab == null)
         {
             enabled = false;
             return;
         }
 
-        centralBody = orbiter.centralBody.transform;
+        centralBody = orbiter.center.transform;
         lastCentralBodyPosition = centralBody.position;
 
         if (mode == VisualizationMode.Dots)

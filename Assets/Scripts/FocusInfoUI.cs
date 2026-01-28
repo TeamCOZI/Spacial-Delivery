@@ -73,8 +73,8 @@ public class FocusInfoUI : MonoBehaviour
 
         Star star = target.GetComponent<Star>();
         Planet planet = target.GetComponent<Planet>();
-        ArtificialSatellite satellite = target.GetComponent<ArtificialSatellite>();
-        Orbiter orbiter = target.GetComponent<Orbiter>();
+        Satellite satellite = target.GetComponent<Satellite>();
+        Revolution orbiter = target.GetComponent<Revolution>();
         Gravity gravity = target.GetComponent<Gravity>();
 
         // Classification
@@ -84,7 +84,7 @@ public class FocusInfoUI : MonoBehaviour
         }
         else if (planet != null)
         {
-            if (planet.planetClass_ == planetClass.terrestrial) classificationText.text = "분류 : 암석형 행성";
+            if (planet.planetType == PlanetType.terrestrial) classificationText.text = "분류 : 암석형 행성";
             else classificationText.text = "분류 : 가스형 행성";
         }
         else if (satellite != null)
@@ -149,7 +149,7 @@ public class FocusInfoUI : MonoBehaviour
         }
 
         // Gravity
-        if (gravity != null)
+        /*if (gravity != null)
         {
             if (gravity.gravity >= 5000)
             {
@@ -175,7 +175,7 @@ public class FocusInfoUI : MonoBehaviour
         else
         {
             gravityText.text = "중력 : N/A";
-        }
+        }*/
 
         // ATM
         if (planet != null)
@@ -233,14 +233,14 @@ public class FocusInfoUI : MonoBehaviour
         if (star != null)
         {
             String planetsToPrint = "행성 : ";
-            for (int i = 0; i < star.planets.Count; i++)
+            for (int i = 0; i < star.ChildPlanets.Count; i++)
             {
-                if (i == 0) planetsToPrint += $"{star.planets[i].name}";
-                else planetsToPrint += $" ,{star.planets[i].name}";
+                if (i == 0) planetsToPrint += $"{star.ChildPlanets[i].name}";
+                else planetsToPrint += $" ,{star.ChildPlanets[i].name}";
             }
             satellitesText.text = planetsToPrint;
         }
-        else if (planet != null)
+        /*else if (planet != null)
         {
             String satellitesToPrint = "위성 : ";
             for (int i = 0; i < planet.satellites.Count; i++)
@@ -249,7 +249,7 @@ public class FocusInfoUI : MonoBehaviour
                 else satellitesToPrint += $" ,{planet.satellites[i].name}";
             }
             satellitesText.text = satellitesToPrint;
-        }
+        }*/
         else
         {
             satellitesText.text = "위성 : N/A";
@@ -258,7 +258,7 @@ public class FocusInfoUI : MonoBehaviour
         // Central Body
         if (orbiter != null)
         {
-            centralBodyText.text = $"공전 모체 : {orbiter.centralBody.name}";
+            centralBodyText.text = $"공전 모체 : {orbiter.center.name}";
         }
         else
         {
@@ -268,7 +268,7 @@ public class FocusInfoUI : MonoBehaviour
         // Period
         if (orbiter != null)
         {
-            periodText.text = $"공전 주기 : {(int)(360f / orbiter.orbitSpeed)}";
+            periodText.text = $"공전 주기 : {(int)(360f / orbiter.revolutionSpeed)}";
         }
 
         // Resources

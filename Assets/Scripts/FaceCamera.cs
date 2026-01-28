@@ -6,9 +6,9 @@ public class FaceCamera : MonoBehaviour
 
     private void Start()
     {
-        if (Camera.main != null)
+        if (UnityEngine.Camera.main != null)
         {
-            mainCameraTransform = Camera.main.transform;
+            mainCameraTransform = UnityEngine.Camera.main.transform;
         }
     }
 

@@ -1,89 +1,134 @@
-using Unity.VisualScripting;
+using System.Collections.Generic;
 using UnityEngine;
 
+[RequireComponent(typeof(Renderer), typeof(Gravity), typeof(GravityField))]
 public class Icon : MonoBehaviour
 {
     [Header("Icon Settings")]
-    public GameObject iconCircle;
-    public float screenHeightFraction = 0.01f;
+    public Material iconMaterial;
+    public float iconScaleMultiply;
+    public float iconHeight;
 
-    private Renderer mainRenderer;
-    private Gravity gravityComponent;
-    private float tanHalFov;
-    private bool isVisible = true;
+    [Header("Hover Settings")]
+    public float hoverScaleMultiply = 2f;
 
-    void Start()
+    private GameObject icon;
+    private float tanFovHalf;
+    private bool isFocus = false;
+    private bool isHover = false;
+
+    private void Awake()
     {
-        mainRenderer = GetComponent<Renderer>();
-        gravityComponent = GetComponent<Gravity>();
-
-        if (Camera.main != null)
+        if (iconMaterial == null)
         {
-            tanHalFov = Mathf.Tan(Camera.main.fieldOfView * 0.5f * Mathf.Deg2Rad);
-        }
-
-        if (iconCircle != null)
-        {
-            iconCircle.SetActive(false);
-        }
-
-        if (mainRenderer == null || gravityComponent == null)
-        {
-            Debug.LogWarning($"Icon on {gameObject.name} is missing Renderer or Gravity Component.");
-            enabled = false;
-        }
-    }
-
-    void Update()
-    {
-        if (Camera.main == null || !isVisible)
-        {
+            Debug.LogError("Focus is missing required component.");
             return;
         }
 
-        HandleVisibilityByDistance();
+        if (Camera.main != null) tanFovHalf = Mathf.Tan(Camera.main.fieldOfView * 0.5f * Mathf.Deg2Rad);
     }
 
-    private void HandleVisibilityByDistance()
+    private void Start()
     {
-        bool isFocused = Camera.main.transform.position.z > gravityComponent.gravityRadius * -10;
+        GenerateIcon();
+    }
 
-        if (isFocused)
+    private void LateUpdate()
+    {
+        UpdateIcon();
+    }
+
+    private void OnEnable()
+    {
+        FocusManager.Instance.RegisterIcon(this);
+    }
+
+    private void OnDisable()
+    {
+        FocusManager.Instance.DeregisterIcon(this);
+    }
+
+    private void GenerateIcon()
+    {
+        icon = new GameObject("Icon");
+        icon.tag = "Icon";
+        icon.transform.SetParent(transform);
+
+        icon.AddComponent<MeshFilter>().sharedMesh = GetComponent<MeshFilter>().sharedMesh;
+        icon.AddComponent<MeshCollider>();
+
+        MeshRenderer iconMeshRenderer = icon.AddComponent<MeshRenderer>();
+        MeshRenderer meshRenderer = GetComponent<MeshRenderer>();
+
+        if (meshRenderer != null)
         {
-            mainRenderer.enabled = true;
-            if (iconCircle != null)
-            {
-                iconCircle.SetActive(false);
-            }
+            List<Material> materials = new List<Material>(meshRenderer.materials) { iconMaterial };
+
+            iconMeshRenderer.materials = materials.ToArray();
+        }
+    }
+
+    private void UpdateIcon()
+    {
+        icon.transform.position = transform.position;
+
+        if (Camera.main == null) return;
+        
+        float cameraZ = Mathf.Abs(Camera.main.transform.position.z);
+        float iconScale = 2.0f * cameraZ * tanFovHalf * iconHeight * GameSettings.IconSize;
+
+        Gravity gravity = GetComponent<Gravity>();
+        if (gravity == null)
+        {
+            Debug.LogError("Focus is missing required component.");
+            return;
+        }
+
+        if (iconScale < gravity.GravityRadius * 2)
+        {
+            if (icon.activeSelf) icon.SetActive(false);
+
+            if (FocusManager.currentFocus == transform) isFocus = true;
+
+            return;
         }
         else
         {
-            mainRenderer.enabled = false;
+            Transform parent = transform.parent;
+            bool parentIsIcon = false;
 
-            if (iconCircle != null)
+            while (!parentIsIcon && parent != null && parent.GetComponent<Icon>() != null)
             {
-                iconCircle.SetActive(true);
+                parentIsIcon = parent.GetComponent<Icon>().icon.activeSelf;
 
-                float zDistance = Mathf.Abs(Camera.main.transform.position.z);
-                float frustumHeight = 2.0f * zDistance * tanHalFov;
-                float targetWorldSize = frustumHeight * screenHeightFraction;
-                iconCircle.transform.localScale = Vector3.one * targetWorldSize;
+                if (parentIsIcon)
+                {
+                    icon.SetActive(false);
+
+                    return;
+                }
+
+                parent = parent.parent;
+            }
+            
+            if (!icon.activeSelf) icon.SetActive(true);
+
+            float finalIconScale = isHover ? iconScale * hoverScaleMultiply : iconScale;
+
+            icon.transform.localScale = Vector3.one * finalIconScale / transform.lossyScale.x;
+
+            // Unfocus by Z.
+            if (isFocus)
+            {
+                if (FocusManager.currentFocus == transform) FocusManager.Instance.SetFocus(null);
+                
+                isFocus = false;
             }
         }
     }
-
-    public void SetVisibility(bool visible)
+    
+    public bool IsHover
     {
-        isVisible = visible;
-        mainRenderer.enabled = visible;
-        if (iconCircle != null)
-        {
-            iconCircle.SetActive(visible);
-        }
-
-        if (!visible)
-        {
-            if (iconCircle != null) iconCircle.SetActive(false);
-        }
+        set { isHover = value; }
     }
 }

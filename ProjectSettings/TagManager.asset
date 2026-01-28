@@ -7,6 +7,7 @@ TagManager:
   - Prefab
   - PlayerSpaceship
   - Package
+  - Icon
   layers:
   - Default
   - TransparentFX

@@ -17,6 +17,9 @@ GameObject:
   - component: {fileID: -8469202198271204161}
   - component: {fileID: 9182590517738302766}
   - component: {fileID: 2736910221931276061}
+  - component: {fileID: 8250430521989624919}
+  - component: {fileID: -3927113245203813851}
+  - component: {fileID: 4704087858879888151}
   m_Layer: 0
   m_Name: ArtificialSatellitePrefab
   m_TagString: Prefab
@@ -136,10 +139,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a7d9de27ad49944479631e221b77ec75, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Gravity
-  gravity: 100
   gravityRadius: 10
-  lineColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
-  lineWidth: 0.1
 --- !u!114 &6168921824087046230
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -152,11 +152,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b2275b5cf02cc1d4d880b392e6abb453, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Orbiter
-  centralBody: {fileID: 0}
+  center: {fileID: 0}
   semiMajorAxis: 3
   semiMinorAxis: 3
   orbitTiltDegrees: 0
-  orbitSpeed: 30
+  revolutionSpeed: 30
   clockwise: 0
   currentAngle: 0
   timeMultiplier: 1
@@ -208,6 +208,10 @@ MonoBehaviour:
   hoverScaleMultiplier: 2
   hoverTransitionSpeed: 0.1
   isHovered: 0
+  magneticField: 0
+  solarWind: 0
+  atm: 0
+  heat: 0
 --- !u!64 &2736910221931276061
 MeshCollider:
   m_ObjectHideFlags: 0
@@ -230,6 +234,50 @@ MeshCollider:
   m_Convex: 0
   m_CookingOptions: 30
   m_Mesh: {fileID: 10207, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!114 &8250430521989624919
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2920431155874509688}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c13cf02ce12b48446a025ab46947c7e4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::GravityField
+  lineColor: {r: 1, g: 1, b: 1, a: 1}
+  lineWidth: 1
+--- !u!114 &-3927113245203813851
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2920431155874509688}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0faf5e956a0f70144a7ac1f0b1feb841, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Focus
+  iconMaterial: {fileID: 2100000, guid: 4946815949113344bab5643ef4bcc476, type: 2}
+  iconScaleMultiply: 1.2
+  iconHeight: 0.05
+  hoverScaleMultiply: 2
+--- !u!114 &4704087858879888151
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2920431155874509688}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c3f76e748fe67c941a070cbe0ab1c460, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Resource
+  aTMType: 0
+  heatType: 0
 --- !u!1 &6652885947565325395
 GameObject:
   m_ObjectHideFlags: 0

@@ -1,0 +1,79 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8fc8d2d45bf6d3d4881c14b91efd7631, type: 3}
+  m_Name: SolarSystemSettings
+  m_EditorClassIdentifier: Assembly-CSharp::SolarSystemSettings
+  starPrefab: {fileID: 4716304030622375498, guid: 3b7783f47acfcc84cb0a9282a301fa92, type: 3}
+  planetPrefab: {fileID: 4237555138149932560, guid: 6bb846589fa052441952deaf3c00fcc5, type: 3}
+  asteroidBeltPrefab: {fileID: 2474534874965160233, guid: e3889078b4476da478a34c2bbc7686e7, type: 3}
+  satellitePrefab: {fileID: 2920431155874509688, guid: 6ac475fd236a10349b693fd0d90da06a, type: 3}
+  planetOrbitIncreaseMultiplyMin: 1.1
+  planetOrbitIncreaseMultiplyMax: 1.25
+  planetOrbitIncreaseMultiplyDistribution:
+    mean: 0.2
+    stdDev: 0.05
+  planetInitialOrbit: 3000
+  planetInitialOrbitIncrease: 3500
+  planetATMRatio: 0.0002
+  planetMinPeriod: 600
+  planetMaxPeriod: 3600
+  satelliteOrbitIncreaseMultiplyMin: 1.2
+  satelliteOrbitIncreaseMulitplyMax: 1.5
+  satelliteOrbitIncreaseMulitplyDistribuiton:
+    mean: 0.2
+    stdDev: 0.05
+  satelliteInitialOrbit: 250
+  satelliteInitialOrbitIncrease: 500
+  satelliteATMRatio: 0.0001
+  satelliteMinPeriod: 60
+  satelliteMaxPeriod: 120
+  starData:
+    starFactorMin: 215
+    starFactorMax: 215
+    starFactorDistribution:
+      mean: 0.5
+      stdDev: 0.3
+    starScaleRatio: 5
+    starMassRatio: 50000
+    starGravityRadiusRatio: 200
+    starLightColor: {r: 1, g: 0, b: 0, a: 1}
+    starLightIntensityRatio: 0.01
+    starLightRadiusRatio: 1
+  terrestrialPlanetData:
+    planetFactorMin: 5
+    planetFactorMax: 10
+    planetFactorDistribution:
+      mean: 0.5
+      stdDev: 0.3
+    planetScaleRatio: 1
+    planetMassRatio: 3000
+    planetGravityRadiusRatio: 10
+  jovianPlanetData:
+    planetFactorMin: 30
+    planetFactorMax: 60
+    planetFactorDistribution:
+      mean: 0.5
+      stdDev: 0.3
+    planetScaleRatio: 5
+    planetMassRatio: 3000
+    planetGravityRadiusRatio: 30
+  satelliteData:
+    satelliteFactorMin: 1
+    satelliteFactorMax: 2
+    satelliteFactorDistribution:
+      mean: 0
+      stdDev: 0
+    satelliteScaleRatio: 1
+    satelliteMassRatio: 300
+    satelliteGravityRadiusRatio: 10
+  asteroidBeltData:
+    asteroidBeltThreshold: 0.3

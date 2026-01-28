@@ -25,9 +25,9 @@ public class PlayerSpaceship : Package
 
     private void Start()
     {
-        if (Camera.main != null)
+        if (UnityEngine.Camera.main != null)
         {
-            mainCameraController = Camera.main.GetComponent<CameraController>();
+            mainCameraController = UnityEngine.Camera.main.GetComponent<CameraController>();
         }
     }
 
@@ -52,7 +52,7 @@ public class PlayerSpaceship : Package
 
     protected override void FixedUpdate()
     {
-        ApplyGravity();
+        //ApplyGravity();
 
         if (Vector3.Distance(transform.position, lastPathPoint) > MinPathPointDistance)
         {

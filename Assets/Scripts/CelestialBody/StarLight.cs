@@ -2,7 +2,7 @@ using UnityEngine;
 using System.Collections.Generic;
 
 [RequireComponent(typeof(MeshFilter), typeof(MeshRenderer))]
-public class VolumetricLight : MonoBehaviour
+public class StarLight : MonoBehaviour
 {
     [Header("Light Setting")]
     public float viewRadius = 20f;

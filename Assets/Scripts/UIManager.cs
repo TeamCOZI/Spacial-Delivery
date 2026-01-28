@@ -20,7 +20,7 @@ public class UIManager : MonoBehaviour
     [SerializeField] private Button confirmRouteButton;
     [SerializeField] private Button declineRouteButton;
 
-    private ArtificialSatellite _targetSatellite;
+    private Satellite _targetSatellite;
 
     private void Awake()
     {
@@ -64,7 +64,7 @@ public class UIManager : MonoBehaviour
         }
     }
 
-    public void ShowConfirmationPanel(ArtificialSatellite satelliteToConfirm)
+    public void ShowConfirmationPanel(Satellite satelliteToConfirm)
     {
         if (confirmationPanel != null)
         {

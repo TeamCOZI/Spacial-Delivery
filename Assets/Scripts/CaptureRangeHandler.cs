@@ -3,12 +3,12 @@ using UnityEngine;
 [RequireComponent(typeof(SphereCollider))]
 public class CaptureRangeHandler : MonoBehaviour
 {
-    private ArtificialSatellite parentSatellite;
+    private Satellite parentSatellite;
     private SphereCollider sphereCollider;
 
     void Awake()
     {
-        parentSatellite = GetComponentInParent<ArtificialSatellite>();
+        parentSatellite = GetComponentInParent<Satellite>();
         if (parentSatellite == null)
         {
             Debug.LogError("Parent satellite not found.", this);

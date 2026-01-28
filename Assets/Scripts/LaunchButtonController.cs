@@ -14,7 +14,7 @@ public class LaunchButtonController : MonoBehaviour
         bool shouldShow = false;
         if (cameraController.SelectedPrefab != null && cameraController.SelectedPrefab.gameObject.activeInHierarchy)
         {
-            if (cameraController.SelectedPrefab.GetComponent<ArtificialSatellite>() != null)
+            if (cameraController.SelectedPrefab.GetComponent<Satellite>() != null)
             {
                 shouldShow = true;
             }

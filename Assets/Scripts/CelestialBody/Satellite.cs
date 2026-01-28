@@ -2,7 +2,7 @@ using UnityEngine;
 using System.Collections.Generic;
 using TMPro;
 
-public class ArtificialSatellite : MonoBehaviour
+public class Satellite : MonoBehaviour, CelestialBody
 {
     [Header("Capture Settings")]
     public float captureRange = 3f;
@@ -45,14 +45,14 @@ public class ArtificialSatellite : MonoBehaviour
     private LaunchData pendingLaunchData;
 
     private CameraController cameraController;
-    private OrbitVisualizer orbitVisualizer;
-    private Gravity gravityComponent;
 
     private CaptureRangeHandler captureHandler;
     private MeshCollider meshCollider;
 
-    public float heat { get; set; }
-    public float atm { get; set; }
+    public int magneticField;
+    public int solarWind;
+    public int atm;
+    public int heat;
 
     private void Awake()
     {
@@ -78,12 +78,10 @@ public class ArtificialSatellite : MonoBehaviour
             }
         }
 
-        if (Camera.main != null)
+        if (UnityEngine.Camera.main != null)
         {
-            cameraController = Camera.main.GetComponent<CameraController>();
+            cameraController = UnityEngine.Camera.main.GetComponent<CameraController>();
         }
-        orbitVisualizer = GetComponent<OrbitVisualizer>();
-        gravityComponent = GetComponent<Gravity>();
 
         mainRenderer = GetComponent<Renderer>();
         if (mainRenderer == null)
@@ -91,22 +89,6 @@ public class ArtificialSatellite : MonoBehaviour
             Debug.LogError("Renderer component not found in artificial satellite.", this);
         }
         propBlock = new MaterialPropertyBlock();
-    }
-
-    private void OnEnable()
-    {
-        if (FocusManager.Instance != null)
-        {
-            FocusManager.Instance.RegisterSatellite(this);
-        }
-    }
-
-    private void OnDisable()
-    {
-        if (FocusManager.Instance != null)
-        {
-            FocusManager.Instance.DeregisterSatellite(this);
-        }
     }
 
     private void Start()
@@ -151,86 +133,6 @@ public class ArtificialSatellite : MonoBehaviour
             routeInfoText.text = $"Current Period Frame: {currentPeriodFrame}\nPeriod Start Frame: {TimeManager.Instance.PeriodStartFrame}";
             routeInfoText.gameObject.SetActive(true);
         }
-    }
-
-    public void ShowDetailView()
-    {
-        if (meshCollider != null) meshCollider.enabled = true;
-
-        mainRenderer.enabled = true;
-        foreach(var r in GetComponentsInChildren<Renderer>()) { r.enabled = true; }
-
-        mainRenderer.GetPropertyBlock(propBlock);
-        propBlock.SetFloat("_IsVisible", 0f);
-        mainRenderer.SetPropertyBlock(propBlock);
-
-        targetScale = originalScale;
-
-        if (gravityComponent != null) gravityComponent.SetRadiusVisualVisibility(true);
-        if (orbitVisualizer != null) orbitVisualizer.SetVisibility(true);
-        if (rangeVisualizer != null) rangeVisualizer.gameObject.SetActive(true);
-    }
-
-    public void ShowAsIcon(float frustumHeight)
-    {
-        if (meshCollider != null) meshCollider.enabled = true;
-
-        mainRenderer.enabled = true;
-        foreach(var r in GetComponentsInChildren<Renderer>()) { r.enabled = true; }
-
-        mainRenderer.GetPropertyBlock(propBlock);
-        propBlock.SetFloat("_IsVisible", 1f);
-        mainRenderer.SetPropertyBlock(propBlock);
-
-        Transform parentTransform = transform.parent;
-
-        if (parentTransform != null && parentTransform.GetComponent<ArtificialSatellite>() != null)
-        {
-            targetScale = Vector3.one;
-        }
-        else
-        {
-            float targetWorldSize = frustumHeight * screenHeightFraction * GameSettings.IconSize;
-            float finalSize = isHovered
-            ? baseFocusSize * targetWorldSize * hoverScaleMultiplier
-            : baseFocusSize * targetWorldSize;
-
-            if (transform.parent != null)
-            {
-                Vector3 parentScale = transform.parent.lossyScale;
-                if (parentScale.x != 0 && parentScale.y != 0 && parentScale.z != 0)
-                {
-                    targetScale = new Vector3(
-                        finalSize / parentScale.x,
-                        finalSize / parentScale.y,
-                        finalSize / parentScale.z
-                    );
-                }
-            }
-
-            targetScale = Vector3.one * finalSize;
-        }
-
-        if (gravityComponent != null) gravityComponent.SetRadiusVisualVisibility(false);
-        if (orbitVisualizer != null) orbitVisualizer.SetVisibility(true);
-        if (rangeVisualizer != null) rangeVisualizer.gameObject.SetActive(false);
-    }
-
-    public void Hide()
-    {
-        if (meshCollider != null) meshCollider.enabled = false;
-
-        mainRenderer.enabled = false;
-        foreach(var r in GetComponentsInChildren<Renderer>()) { r.enabled = false; }
-
-        if (gravityComponent != null) gravityComponent.SetRadiusVisualVisibility(false);
-        if (orbitVisualizer != null) orbitVisualizer.SetVisibility(false);
-        if (rangeVisualizer != null) rangeVisualizer.gameObject.SetActive(false);
-    }
-
-    public void SetHover(bool hover)
-    {
-        isHovered = hover;
     }
 
     private void OnValidate()
@@ -365,7 +267,7 @@ public class ArtificialSatellite : MonoBehaviour
             {
                 if (effectCanvas.worldCamera == null)
                 {
-                    effectCanvas.worldCamera = Camera.main;
+                    effectCanvas.worldCamera = UnityEngine.Camera.main;
                 }
             }
 
@@ -373,28 +275,93 @@ public class ArtificialSatellite : MonoBehaviour
         }
     }
 
-    public void SetVisibility(bool isVisible)
+    public int GetHeat()
     {
-        var meshRenderer = GetComponent<MeshRenderer>();
-        if (meshRenderer != null)
+        return heat;
+    }
+
+    public void SetHeat(int heat)
+    {
+        this.heat = heat;
+    }
+
+    public int GetATM()
+    {
+        return atm;
+    }
+
+    public void SetATM(int ATM)
+    {
+        this.atm = ATM;
+    }
+
+    public Dictionary<string, string> UpdateFocusInfo()
+    {
+        Rigidbody rigidbodyComponent = GetComponent<Rigidbody>();
+        Revolution revolutionComponent = GetComponent<Revolution>();
+        Resource resourceComponent = GetComponent<Resource>();
+
+        if (rigidbodyComponent == null || revolutionComponent == null || resourceComponent == null)
         {
-            meshRenderer.enabled = isVisible;
+            Debug.LogError("Planet is missing required components.");
+            return null;
         }
 
-        foreach(Renderer r in GetComponentsInChildren<Renderer>())
-        {
-            r.enabled = isVisible;
-        }
+        string satelliteName = name;
 
-        if (orbitVisualizer != null)
-        {
-            orbitVisualizer.SetVisibility(isVisible);
-        }
+        string satelliteCelestialBodyType = "위성";
 
-        Gravity gravityComponent = GetComponent<Gravity>();
-        if (gravityComponent != null)
+        string satelliteHeat;
+        if (heat >= 300) satelliteHeat = "초고온";
+        else if (heat >= 30) satelliteHeat = "고온";
+        else if (heat >= -10) satelliteHeat = "평범함";
+        else if (heat >= -200) satelliteHeat = "저온";
+        else satelliteHeat = "초저온";
+
+        string satelliteMass;
+        int mass = Mathf.RoundToInt(rigidbodyComponent.mass);
+        if (mass >= 1000000) satelliteMass = "매우 강함";
+        else if (mass >= 90000) satelliteMass = "강함";
+        else if (mass >= 15000) satelliteMass = "평범함";
+        else if (mass >= 3000) satelliteMass = "약함";
+        else satelliteMass = "매우 약함";
+
+        string satelliteATM;
+        if (atm >= 600) satelliteATM = "매우 높음";
+        else if (atm >= 200) satelliteATM = "높음";
+        else if (atm >= 100) satelliteATM = "평범함";
+        else if (atm >= 50) satelliteATM = "낮음";
+        else  satelliteATM = "매우 낮음";
+
+        string satelliteSolarWind;
+        if (solarWind >= 8000) satelliteSolarWind = "매우 강함";
+        else if (solarWind >= 6000) satelliteSolarWind = "강함";
+        else if (solarWind >= 4000) satelliteSolarWind = "평범함";
+        else if (solarWind >= 2000) satelliteSolarWind = "약함";
+        else satelliteSolarWind = "매우 약함";
+
+        string satelliteCenter = revolutionComponent.center.name;
+
+        string satelliteChildren = "N/A";
+
+        string satellitePeriod = Mathf.RoundToInt(360f / revolutionComponent.revolutionSpeed).ToString();
+        
+        string satelliteResource = "N/A";
+
+        Dictionary<string, string> focusInfo = new Dictionary<string, string>
         {
-            gravityComponent.SetRadiusVisualVisibility(isVisible);
-        }
+            { "이름", satelliteName },
+            { "분류", satelliteCelestialBodyType },
+            { "온도", satelliteHeat },
+            { "중력", satelliteMass },
+            { "기압", satelliteATM },
+            { "태양풍", satelliteSolarWind },
+            { "질량 중심 천체", satelliteCenter },
+            { "포획 천체", satelliteChildren },
+            { "공전 주기", satellitePeriod },
+            { "매장 자원", satelliteResource }
+        };
+
+        return focusInfo;
     }
 }
