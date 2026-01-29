@@ -16,18 +16,18 @@ MonoBehaviour:
   planetPrefab: {fileID: 4237555138149932560, guid: 6bb846589fa052441952deaf3c00fcc5, type: 3}
   asteroidBeltPrefab: {fileID: 2474534874965160233, guid: e3889078b4476da478a34c2bbc7686e7, type: 3}
   satellitePrefab: {fileID: 2920431155874509688, guid: 6ac475fd236a10349b693fd0d90da06a, type: 3}
-  planetOrbitIncreaseMultiplyMin: 1.1
-  planetOrbitIncreaseMultiplyMax: 1.25
+  planetOrbitIncreaseMultiplyMin: 1.2
+  planetOrbitIncreaseMultiplyMax: 1.2
   planetOrbitIncreaseMultiplyDistribution:
-    mean: 0.2
-    stdDev: 0.05
-  planetInitialOrbit: 3000
-  planetInitialOrbitIncrease: 3500
+    mean: 0.5
+    stdDev: 0.3
+  planetInitialOrbit: 1500
+  planetInitialOrbitIncrease: 3000
   planetATMRatio: 0.0002
   planetMinPeriod: 600
   planetMaxPeriod: 3600
   satelliteOrbitIncreaseMultiplyMin: 1.2
-  satelliteOrbitIncreaseMulitplyMax: 1.5
+  satelliteOrbitIncreaseMulitplyMax: 1.7
   satelliteOrbitIncreaseMulitplyDistribuiton:
     mean: 0.2
     stdDev: 0.05
@@ -37,8 +37,8 @@ MonoBehaviour:
   satelliteMinPeriod: 60
   satelliteMaxPeriod: 120
   starData:
-    starFactorMin: 215
-    starFactorMax: 215
+    starFactorMin: 230
+    starFactorMax: 230
     starFactorDistribution:
       mean: 0.5
       stdDev: 0.3
@@ -50,7 +50,7 @@ MonoBehaviour:
     starLightRadiusRatio: 1
   terrestrialPlanetData:
     planetFactorMin: 5
-    planetFactorMax: 10
+    planetFactorMax: 5
     planetFactorDistribution:
       mean: 0.5
       stdDev: 0.3
@@ -70,8 +70,8 @@ MonoBehaviour:
     satelliteFactorMin: 1
     satelliteFactorMax: 2
     satelliteFactorDistribution:
-      mean: 0
-      stdDev: 0
+      mean: 0.5
+      stdDev: 0.3
     satelliteScaleRatio: 1
     satelliteMassRatio: 300
     satelliteGravityRadiusRatio: 10

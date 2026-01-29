@@ -84,6 +84,8 @@ public class Icon : MonoBehaviour
             return;
         }
 
+        Transform parent = transform.parent;
+
         if (iconScale < gravity.GravityRadius * 2)
         {
             if (icon.activeSelf) icon.SetActive(false);
@@ -92,9 +94,14 @@ public class Icon : MonoBehaviour
 
             return;
         }
+        else if (iconScale > parent.lossyScale.x && parent.GetComponent<Star>() == null)
+        {
+            if (icon.activeSelf) icon.SetActive(false);
+
+            return;
+        }
         else
         {
-            Transform parent = transform.parent;
             bool parentIsIcon = false;
 
             while (!parentIsIcon && parent != null && parent.GetComponent<Icon>() != null)

@@ -1,13 +1,9 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public interface CelestialBody
+public interface UpdateFocusInfo
 {
     Dictionary<string, string> UpdateFocusInfo();
-    int GetHeat();
-    void SetHeat(int heat);
-    int GetATM();
-    void SetATM(int ATM);
 }
 
 public static class Utility

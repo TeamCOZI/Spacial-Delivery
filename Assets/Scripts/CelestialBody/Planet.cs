@@ -3,11 +3,12 @@ using UnityEngine;
 
 public enum PlanetType { terrestrial, jovian }
 
-public class Planet : MonoBehaviour, CelestialBody
+public class Planet : MonoBehaviour, UpdateFocusInfo, CelestialBody
 {
     [Header("Planet Settings")]
     public PlanetType planetType;
     public int position;
+
     public int magneticField;
     public int solarWind;
     public int atm;
@@ -16,6 +17,30 @@ public class Planet : MonoBehaviour, CelestialBody
     public int scale;
 
     private List<GameObject> childSatellites;
+
+    public int MagneticField
+    {
+        get { return magneticField; }
+        set { magneticField = value; }
+    }
+
+    public int SolarWind
+    {
+        get { return solarWind; }
+        set { solarWind = value; }
+    }
+
+    public int ATM
+    {
+        get { return atm; }
+        set { atm = value; }
+    }
+
+    public int Heat
+    {
+        get { return heat; }
+        set { heat = value; }
+    }
 
     public Dictionary<string, string> UpdateFocusInfo()
     {
@@ -95,26 +120,6 @@ public class Planet : MonoBehaviour, CelestialBody
         };
 
         return focusInfo;
-    }
-
-    public int GetHeat()
-    {
-        return heat;
-    }
-
-    public void SetHeat(int heat)
-    {
-        this.heat = heat;
-    }
-
-    public int GetATM()
-    {
-        return atm;
-    }
-
-    public void SetATM(int ATM)
-    {
-        this.atm = ATM;
     }
     
     public List<GameObject> ChildSatellites

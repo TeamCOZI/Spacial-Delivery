@@ -86,7 +86,7 @@ public class UIManager : MonoBehaviour
     {
         if (_targetSatellite != null)
         {
-            _targetSatellite.ConfirmRoute();
+            //_targetSatellite.ConfirmRoute();
         }
         HideConfirmationPanel();
     }
@@ -95,7 +95,7 @@ public class UIManager : MonoBehaviour
     {
         if (_targetSatellite != null)
         {
-            _targetSatellite.DeclineRoute();
+            //_targetSatellite.DeclineRoute();
         }
         HideConfirmationPanel();
     }

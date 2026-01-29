@@ -29,8 +29,8 @@ public class SolarSystemGenerator : MonoBehaviour
 
         int planetIter = 0;
 
-        // Initial orbit = Star scale + Initial orbit increase
-        // Orbit = Previous planet orbit + Previous planet gravity radius + Planet Gravity Radius + Previous orbit increase * Orbit increase multiply
+        // Initial orbit = Star scale + Initial orbit increase + Planet gravity radius
+        // Orbit = Previous planet orbit + Previous planet gravity radius + Planet Gravity Radius + Previous orbit increase * if (Planet 1_ ? 1 : Orbit increase multiply
         float planetOrbit = star.transform.localScale.x + solarSystemSettings.planetInitialOrbit;
         float planetOrbitIncrease = solarSystemSettings.planetInitialOrbitIncrease;
         float previousPlanetGravityRadius = 0;
@@ -83,7 +83,7 @@ public class SolarSystemGenerator : MonoBehaviour
         while (planetOrbit < star.GetComponent<Gravity>().GravityRadius)
         {
             // Jovian
-            if (Random.Range(0, 10) < 5)
+            if (Random.Range(0, 10) < 8)
             {
                 GameObject planet = solarSystemFactory.GeneratePlanet(star, ref planetIter, false, ref planetOrbit, ref planetOrbitIncrease, ref previousPlanetGravityRadius);
 

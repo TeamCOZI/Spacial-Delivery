@@ -38,7 +38,7 @@ public class FocusManager : MonoBehaviour
 
         if (currentFocus != null)
         {
-            Dictionary<string, string> focusInfo = transform.GetComponent<CelestialBody>().UpdateFocusInfo();
+            Dictionary<string, string> focusInfo = transform.GetComponent<UpdateFocusInfo>().UpdateFocusInfo();
 
             foreach(KeyValuePair<string, string> info in focusInfo) focusInfoText.text += info.Key + " : " + info.Value + "\n\n";
         }

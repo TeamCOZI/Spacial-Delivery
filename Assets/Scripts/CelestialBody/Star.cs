@@ -4,7 +4,7 @@ using UnityEngine;
 public enum starType { MainSequenceStar, RedGiant }
 
 [RequireComponent(typeof(Light))]
-public class Star : MonoBehaviour, CelestialBody
+public class Star : MonoBehaviour, UpdateFocusInfo
 {
     [Header("Star Settings")]
     public starType starType;

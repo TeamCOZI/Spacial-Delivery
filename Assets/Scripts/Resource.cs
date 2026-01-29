@@ -158,12 +158,12 @@ public class Resource : MonoBehaviour
         {
             if (aTMType == 4)
             {
-                celestialBodyComponent.SetHeat(celestialBodyComponent.GetHeat() + 200);
+                celestialBodyComponent.Heat += 200;
                 heatType = 3;
             }
             else if (aTMType == 0)
             {
-                celestialBodyComponent.SetHeat(celestialBodyComponent.GetHeat() + 150);
+                celestialBodyComponent.Heat += 150;
                 heatType = 3;
             }
         }
@@ -171,7 +171,7 @@ public class Resource : MonoBehaviour
         {
             if (aTMType == 4 || aTMType == 3 || aTMType == 2)
             {
-                celestialBodyComponent.SetATM(Mathf.RoundToInt(celestialBodyComponent.GetATM() * 0.01f));
+                celestialBodyComponent.ATM = Mathf.RoundToInt(celestialBodyComponent.ATM * 0.01f);
                 aTMType = 0;
             }
         }
@@ -180,9 +180,9 @@ public class Resource : MonoBehaviour
 
         resource = new Dictionary<ResourceType, A>
         {
-            { ResourceType.Mineral, mineral[aTMType, heatType] },
-            { ResourceType.Water, water[aTMType, heatType] },
-            { ResourceType.Gas, gas[aTMType, heatType] }
+            { ResourceType.Mineral, mineral[4 - aTMType, 4 - heatType] },
+            { ResourceType.Water, water[4 - aTMType, 4 - heatType] },
+            { ResourceType.Gas, gas[4 - aTMType, 4 - heatType] }
         };
     }
 
