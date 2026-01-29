@@ -12,129 +12,129 @@ public class Resource : MonoBehaviour
     {
         // ATM 5
         {
-            new A() {{ResourceState.Crystal, 2}, {ResourceState.Liquid, 5}},
-            new A() {{ResourceState.Crystal, 2}, {ResourceState.Vapor, 3}},
-            null,
-            null,
-            null
+            /* Heat 5 */ new A() {{ResourceState.Crystal, 2}, {ResourceState.Liquid, 5}},
+            /* Heat 4 */ new A() {{ResourceState.Crystal, 2}, {ResourceState.Vapor, 3}},
+            /* Heat 3 */ null,
+            /* Heat 2 */ null,
+            /* Heat 1 */ null
         },
         // ATM 4
         {
-            new A() {{ResourceState.Crystal, 2}, {ResourceState.Liquid, 5}},
-            new A() {{ResourceState.Crystal, 2}, {ResourceState.Vapor, 3}},
-            new A() {{ResourceState.Crystal, 2}},
-            null,
-            null
+            /* Heat 5 */ new A() {{ResourceState.Crystal, 2}, {ResourceState.Liquid, 5}},
+            /* Heat 4 */ new A() {{ResourceState.Crystal, 2}, {ResourceState.Vapor, 3}},
+            /* Heat 3 */ new A() {{ResourceState.Crystal, 2}},
+            /* Heat 2 */ null,
+            /* Heat 1 */ null
         },
         // ATM 3
         {
-            new A() {{ResourceState.Liquid, 5}, {ResourceState.Crystal, 2}},
-            new A() {{ResourceState.Crystal, 3}},
-            new A() {{ResourceState.Crystal, 2}},
-            new A() {{ResourceState.Crystal, 2}},
-            null
+            /* Heat 5 */ new A() {{ResourceState.Liquid, 5}, {ResourceState.Crystal, 2}},
+            /* Heat 4 */ new A() {{ResourceState.Crystal, 3}},
+            /* Heat 3 */ new A() {{ResourceState.Crystal, 2}},
+            /* Heat 2 */ new A() {{ResourceState.Crystal, 2}},
+            /* Heat 1 */ null
         },
         // ATM 2
         {
-            new A() {{ResourceState.Crystal, 5}},
-            new A() {{ResourceState.Crystal, 3}},
-            new A() {{ResourceState.Crystal, 2}},
-            new A() {{ResourceState.Crystal, 2}},
-            null
+            /* Heat 5 */ new A() {{ResourceState.Crystal, 5}},
+            /* Heat 4 */ new A() {{ResourceState.Crystal, 3}},
+            /* Heat 3 */ new A() {{ResourceState.Crystal, 2}},
+            /* Heat 2 */ new A() {{ResourceState.Crystal, 2}},
+            /* Heat 1 */ null
         },
         // ATM 1
         {
-            new A() {{ResourceState.Crystal, 5}},
-            new A() {{ResourceState.Crystal, 5}},
-            null,
-            null,
-            null
+            /* Heat 5 */ new A() {{ResourceState.Crystal, 5}},
+            /* Heat 4 */ new A() {{ResourceState.Crystal, 5}},
+            /* Heat 3 */ null,
+            /* Heat 2 */ null,
+            /* Heat 1 */ null
         }
     };
     public static A[,] water = new A[,]
     {
         // ATM 5
         {
-            null,
-            null,
-            null,
-            new A() {{ResourceState.Liquid, 3}, {ResourceState.Vapor, 1}},
-            null
+            /* Heat 5 */ null,
+            /* Heat 4 */ null,
+            /* Heat 3 */ null,
+            /* Heat 2 */ new A() {{ResourceState.Liquid, 3}, {ResourceState.Vapor, 1}},
+            /* Heat 1 */ null
         },
         // ATM 4
         {
-            null,
-            null,
-            new A() {{ResourceState.Liquid, 1}, {ResourceState.Vapor, 1}},
-            new A() {{ResourceState.Liquid, 3}},
-            null
+            /* Heat 5 */ null,
+            /* Heat 4 */ null,
+            /* Heat 3 */ new A() {{ResourceState.Liquid, 1}, {ResourceState.Vapor, 1}},
+            /* Heat 2 */ new A() {{ResourceState.Liquid, 3}},
+            /* Heat 1 */ null
         },
         // ATM 3
         {
-            null,
-            null,
-            new A() {{ResourceState.Liquid, 2}},
-            new A() {{ResourceState.Crystal, 1}},
-            null
+            /* Heat 5 */ null,
+            /* Heat 4 */ null,
+            /* Heat 3 */ new A() {{ResourceState.Liquid, 2}},
+            /* Heat 2 */ new A() {{ResourceState.Crystal, 1}},
+            /* Heat 1 */ null
         },
         // ATM 2
         {
-            null,
-            null,
-            new A() {{ResourceState.Crystal, 1}, {ResourceState.Liquid, 1}},
-            new A() {{ResourceState.Crystal, 1}},
-            new A() {{ResourceState.Crystal, 2}}
+            /* Heat 5 */ null,
+            /* Heat 4 */ null,
+            /* Heat 3 */ new A() {{ResourceState.Crystal, 1}, {ResourceState.Liquid, 1}},
+            /* Heat 2 */ new A() {{ResourceState.Crystal, 1}},
+            /* Heat 1 */ new A() {{ResourceState.Crystal, 2}}
         },
         // ATM 1
         {
-            null,
-            null,
-            null,
-            new A() {{ResourceState.Crystal, 1}},
-            new A() {{ResourceState.Crystal, 1}}
+            /* Heat 5 */ null,
+            /* Heat 4 */ null,
+            /* Heat 3 */ null,
+            /* Heat 2 */ new A() {{ResourceState.Crystal, 1}},
+            /* Heat 1 */ new A() {{ResourceState.Crystal, 1}}
         }
     };
     public static A[,] gas = new A[,]
     {
         // ATM 5
         {
-            new A() {{ResourceState.Vapor, 3}},
-            new A() {{ResourceState.Vapor, 3}},
-            null,
-            new A() {{ResourceState.Liquid, 4}, {ResourceState.Vapor, 1}},
-            null
+            /* Heat 5 */ new A() {{ResourceState.Vapor, 3}},
+            /* Heat 4 */ new A() {{ResourceState.Vapor, 3}},
+            /* Heat 3 */ null,
+            /* Heat 2 */ new A() {{ResourceState.Liquid, 4}, {ResourceState.Vapor, 1}},
+            /* Heat 1 */ null
         },
         // ATM 4
         {
-            new A() {{ResourceState.Vapor, 2}},
-            new A() {{ResourceState.Vapor, 2}},
-            new A() {{ResourceState.Vapor, 1}},
-            new A() {{ResourceState.Liquid, 4}},
-            null
+            /* Heat 5 */ new A() {{ResourceState.Vapor, 2}},
+            /* Heat 4 */ new A() {{ResourceState.Vapor, 2}},
+            /* Heat 3 */ new A() {{ResourceState.Vapor, 1}},
+            /* Heat 2 */ new A() {{ResourceState.Liquid, 4}},
+            /* Heat 1 */ null
         },
         // ATM 3
         {
-            new A() {{ResourceState.Vapor, 1}},
-            new A() {{ResourceState.Vapor, 2}},
-            new A() {{ResourceState.Vapor, 1}},
-            new A() {{ResourceState.Crystal, 1}},
-            null
+            /* Heat 5 */ new A() {{ResourceState.Vapor, 1}},
+            /* Heat 4 */ new A() {{ResourceState.Vapor, 2}},
+            /* Heat 3 */ new A() {{ResourceState.Vapor, 1}},
+            /* Heat 2 */ new A() {{ResourceState.Crystal, 1}},
+            /* Heat 1 */ null
         },
         // ATM 2
         {
-            null,
-            new A() {{ResourceState.Vapor, 2}},
-            new A() {{ResourceState.Vapor, 1}},
-            new A() {{ResourceState.Crystal, 1}},
-            new A() {{ResourceState.Crystal, 2}}
+            /* Heat 5 */ null,
+            /* Heat 4 */ new A() {{ResourceState.Vapor, 2}},
+            /* Heat 3 */ new A() {{ResourceState.Vapor, 1}},
+            /* Heat 2 */ new A() {{ResourceState.Crystal, 1}},
+            /* Heat 1 */ new A() {{ResourceState.Crystal, 2}}
         },
         // ATM 1
         {
-            null,
-            null,
-            null,
-            new A() {{ResourceState.Crystal, 2}},
-            new A() {{ResourceState.Crystal, 2}}
+            /* Heat 5 */ null,
+            /* Heat 4 */ null,
+            /* Heat 3 */ null,
+            /* Heat 2 */ new A() {{ResourceState.Crystal, 2}},
+            /* Heat 1 */ new A() {{ResourceState.Crystal, 2}}
         }
     };
 
@@ -143,47 +143,63 @@ public class Resource : MonoBehaviour
 
     public Dictionary<ResourceType, A> resource;
 
-    public void Initialize(int ATM, int Heat)
+    public void Initialize(bool isJovian, int ATM, int Heat, bool hasPlasma)
     {
-        SetATMHeatType(ATM, Heat);
-
-        CelestialBody celestialBodyComponent = transform.GetComponent<CelestialBody>();
-        if (celestialBodyComponent == null)
+        if (isJovian)
         {
-            Debug.LogError("Resource is missing required component.");
-            return;
-        }
-
-        if (heatType == 2)
-        {
-            if (aTMType == 4)
+            resource = new Dictionary<ResourceType, A>
             {
-                celestialBodyComponent.Heat += 200;
-                heatType = 3;
-            }
-            else if (aTMType == 0)
+                {ResourceType.Gas, new A {{ResourceState.Liquid, 5}, {ResourceState.Vapor, 5}}},
+                {ResourceType.Plasma, new A {{ResourceState.Plasma, 1}}}
+            };
+        }
+        else
+        {
+            SetATMHeatType(ATM, Heat);
+
+            CelestialBody celestialBodyComponent = transform.GetComponent<CelestialBody>();
+            if (celestialBodyComponent == null)
             {
-                celestialBodyComponent.Heat += 150;
-                heatType = 3;
+                Debug.LogError("Resource is missing required component.");
+                return;
+            }
+
+            if (heatType == 2)
+            {
+                if (aTMType == 4)
+                {
+                    celestialBodyComponent.Heat += 200;
+                    heatType = 3;
+                }
+                else if (aTMType == 0)
+                {
+                    celestialBodyComponent.Heat += 150;
+                    heatType = 3;
+                }
+            }
+            else if (heatType == 0)
+            {
+                if (aTMType == 4 || aTMType == 3 || aTMType == 2)
+                {
+                    celestialBodyComponent.ATM = Mathf.RoundToInt(celestialBodyComponent.ATM * 0.01f);
+                    aTMType = 0;
+                }
+            }
+
+            SetATMHeatType(ATM, Heat);
+
+            resource = new Dictionary<ResourceType, A>
+            {
+                { ResourceType.Mineral, mineral[4 - aTMType, 4 - heatType] },
+                { ResourceType.Water, water[4 - aTMType, 4 - heatType] },
+                { ResourceType.Gas, gas[4 - aTMType, 4 - heatType] }
+            };
+
+            if (((aTMType == 0 && heatType == 3) || (aTMType == 0 && heatType == 4) || (aTMType == 1 && heatType == 4)) && hasPlasma)
+            {
+                resource.Add(ResourceType.Plasma, new A() {{ResourceState.Plasma, 1}});
             }
         }
-        else if (heatType == 0)
-        {
-            if (aTMType == 4 || aTMType == 3 || aTMType == 2)
-            {
-                celestialBodyComponent.ATM = Mathf.RoundToInt(celestialBodyComponent.ATM * 0.01f);
-                aTMType = 0;
-            }
-        }
-
-        SetATMHeatType(ATM, Heat);
-
-        resource = new Dictionary<ResourceType, A>
-        {
-            { ResourceType.Mineral, mineral[4 - aTMType, 4 - heatType] },
-            { ResourceType.Water, water[4 - aTMType, 4 - heatType] },
-            { ResourceType.Gas, gas[4 - aTMType, 4 - heatType] }
-        };
     }
 
     private void SetATMHeatType(int ATM, int Heat)

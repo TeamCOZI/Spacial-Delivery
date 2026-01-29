@@ -1,7 +1,7 @@
 using UnityEngine;
 using System.Collections.Generic;
 
-public class Satellite : MonoBehaviour, UpdateFocusInfo
+public class Satellite : MonoBehaviour, UpdateFocusInfo, CelestialBody
 {
     public int magneticField;
     public int solarWind;
@@ -9,6 +9,8 @@ public class Satellite : MonoBehaviour, UpdateFocusInfo
     public int heat;
 
     public float scale;
+
+    private List<GameObject> childSatellites = new List<GameObject>();
 
     public int MagneticField
     {
@@ -73,9 +75,9 @@ public class Satellite : MonoBehaviour, UpdateFocusInfo
         else  satelliteATM = "매우 낮음";
 
         string satelliteSolarWind;
-        if (solarWind >= 8000) satelliteSolarWind = "매우 강함";
-        else if (solarWind >= 6000) satelliteSolarWind = "강함";
-        else if (solarWind >= 4000) satelliteSolarWind = "평범함";
+        if (solarWind >= 5000) satelliteSolarWind = "매우 강함";
+        else if (solarWind >= 4100) satelliteSolarWind = "강함";
+        else if (solarWind >= 3500) satelliteSolarWind = "평범함";
         else if (solarWind >= 2000) satelliteSolarWind = "약함";
         else satelliteSolarWind = "매우 약함";
 
@@ -85,7 +87,16 @@ public class Satellite : MonoBehaviour, UpdateFocusInfo
 
         string satellitePeriod = Mathf.RoundToInt(360f / revolutionComponent.revolutionSpeed).ToString();
         
-        string satelliteResource = "N/A";
+        string satelliteResource = "";
+        resourceComponent.Initialize(false, atm, heat, solarWind - magneticField >= 6000);
+        foreach (KeyValuePair<ResourceType, Dictionary<ResourceState, int>> resource in resourceComponent.resource)
+        {
+            if (resource.Value == null) continue;
+
+            satelliteResource += resource.Key.ToString() + " - ";
+
+            foreach (KeyValuePair<ResourceState, int> value in resource.Value) satelliteResource += value.Key.ToString() + " * " + value.Value + ", ";
+        }
 
         Dictionary<string, string> focusInfo = new Dictionary<string, string>
         {
@@ -102,5 +113,11 @@ public class Satellite : MonoBehaviour, UpdateFocusInfo
         };
 
         return focusInfo;
+    }
+
+    public List<GameObject> ChildSatellites
+    {
+        get { return childSatellites; }
+        set { childSatellites = value; }
     }
 }

@@ -13,6 +13,9 @@ public struct StarGenerationData
     public float starMassRatio;
     public float starGravityRadiusRatio;
 
+    public float starHeatRatio;
+    public float starSolarWindRatio;
+
     [Header("Star Light Settings")]
     public Color starLightColor;
     public float starLightIntensityRatio;

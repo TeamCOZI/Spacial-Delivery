@@ -65,26 +65,6 @@ public class Star : MonoBehaviour, UpdateFocusInfo
 
         return focusInfo;
     }
-
-public int GetHeat()
-    {
-        return 0;
-    }
-
-    public void SetHeat(int heat)
-    {
-        
-    }
-
-    public int GetATM()
-    {
-        return 0;
-    }
-
-    public void SetATM(int ATM)
-    {
-        
-    }
     
     public List<GameObject> ChildPlanets
     {

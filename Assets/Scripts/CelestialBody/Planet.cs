@@ -16,7 +16,7 @@ public class Planet : MonoBehaviour, UpdateFocusInfo, CelestialBody
 
     public int scale;
 
-    private List<GameObject> childSatellites;
+    private List<GameObject> childSatellites = new List<GameObject>();
 
     public int MagneticField
     {
@@ -81,9 +81,9 @@ public class Planet : MonoBehaviour, UpdateFocusInfo, CelestialBody
         else  planetATM = "매우 낮음";
 
         string planetSolarWind;
-        if (solarWind >= 8000) planetSolarWind = "매우 강함";
-        else if (solarWind >= 6000) planetSolarWind = "강함";
-        else if (solarWind >= 4000) planetSolarWind = "평범함";
+        if (solarWind >= 5000) planetSolarWind = "매우 강함";
+        else if (solarWind >= 4100) planetSolarWind = "강함";
+        else if (solarWind >= 3500) planetSolarWind = "평범함";
         else if (solarWind >= 2000) planetSolarWind = "약함";
         else planetSolarWind = "매우 약함";
 
@@ -95,7 +95,7 @@ public class Planet : MonoBehaviour, UpdateFocusInfo, CelestialBody
         string planetPeriod = Mathf.RoundToInt(360f / revolutionComponent.revolutionSpeed).ToString();
         
         string planetResource = "";
-        resourceComponent.Initialize(this.atm, heat);
+        resourceComponent.Initialize(planetType == PlanetType.jovian, atm, heat, solarWind - magneticField >= 6000);
         foreach (KeyValuePair<ResourceType, Dictionary<ResourceState, int>> resource in resourceComponent.resource)
         {
             if (resource.Value == null) continue;
