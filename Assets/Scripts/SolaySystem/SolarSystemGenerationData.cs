@@ -15,11 +15,6 @@ public struct StarGenerationData
 
     public float starHeatRatio;
     public float starSolarWindRatio;
-
-    [Header("Star Light Settings")]
-    public Color starLightColor;
-    public float starLightIntensityRatio;
-    public float starLightRadiusRatio;
 }
 
 [System.Serializable]

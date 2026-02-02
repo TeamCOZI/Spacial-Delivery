@@ -45,7 +45,7 @@ public class Planet : MonoBehaviour, UpdateFocusInfo, CelestialBody
     public Dictionary<string, string> UpdateFocusInfo()
     {
         Rigidbody rigidbodyComponent = GetComponent<Rigidbody>();
-        Revolution revolutionComponent = GetComponent<Revolution>();
+        OrbitRevolution revolutionComponent = GetComponent<OrbitRevolution>();
         Resource resourceComponent = GetComponent<Resource>();
 
         if (rigidbodyComponent == null || revolutionComponent == null || resourceComponent == null)
@@ -92,10 +92,10 @@ public class Planet : MonoBehaviour, UpdateFocusInfo, CelestialBody
         string planetChildren = "";
         foreach (GameObject childSatellite in childSatellites) planetChildren += childSatellite.name + ", ";
 
-        string planetPeriod = Mathf.RoundToInt(360f / revolutionComponent.revolutionSpeed).ToString();
+        string planetPeriod = Mathf.RoundToInt(360f / revolutionComponent.revolutionPeriod).ToString();
         
         string planetResource = "";
-        resourceComponent.Initialize(planetType == PlanetType.jovian, atm, heat, solarWind - magneticField >= 6000);
+        resourceComponent.Initialize(planetType == PlanetType.jovian, atm, heat, solarWind - magneticField >= 5000);
         foreach (KeyValuePair<ResourceType, Dictionary<ResourceState, int>> resource in resourceComponent.resource)
         {
             if (resource.Value == null) continue;

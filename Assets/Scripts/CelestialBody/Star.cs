@@ -3,16 +3,12 @@ using UnityEngine;
 
 public enum starType { MainSequenceStar, RedGiant }
 
-[RequireComponent(typeof(Light))]
 public class Star : MonoBehaviour, UpdateFocusInfo
 {
     [Header("Star Settings")]
     public starType starType;
     public int heat;
     public int solarWind;
-    public Color lightColor;
-    public int lightIntensity;
-    public int lightRadius;
 
     private List<GameObject> childPlanets = new List<GameObject>();
 

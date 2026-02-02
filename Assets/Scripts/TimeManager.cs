@@ -14,7 +14,7 @@ public class TimeManager : MonoBehaviour
     public static event Action OnGlobalPeriodCompleted;
 
     private List<BaseTimeRecorder> statefulRecorders = new List<BaseTimeRecorder>();
-    private List<Revolution> statelessOrbiters = new List<Revolution>();
+    private List<OrbitRevolution> statelessOrbiters = new List<OrbitRevolution>();
     private enum TimeState { Playing, Paused, FastForward, Rewinding, Replaying }
     private TimeState currentState;
 
@@ -207,7 +207,7 @@ public class TimeManager : MonoBehaviour
         }
     }
 
-    public void Register(Revolution orbiter)
+    public void Register(OrbitRevolution orbiter)
     {
         if (!statelessOrbiters.Contains(orbiter))
         {
@@ -216,7 +216,7 @@ public class TimeManager : MonoBehaviour
         }
     }
 
-    public void Deregister(Revolution orbiter)
+    public void Deregister(OrbitRevolution orbiter)
     {
         if (statelessOrbiters.Contains(orbiter))
         {

@@ -88,9 +88,18 @@
                     "initialStateCheck": false
                 },
                 {
-                    "name": "Parent",
+                    "name": "FocusParent",
                     "type": "Button",
                     "id": "df076056-b764-4179-80a3-f68d9d1b902b",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
+                    "name": "GenerateArtificialSatellite",
+                    "type": "Button",
+                    "id": "9ac6ec83-ed62-44c7-8189-a08a15ebb8e5",
                     "expectedControlType": "",
                     "processors": "",
                     "interactions": "",
@@ -490,7 +499,18 @@
                     "interactions": "",
                     "processors": "",
                     "groups": "",
-                    "action": "Parent",
+                    "action": "FocusParent",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "328cb6fe-a298-4713-b21d-cb56066823e6",
+                    "path": "<Keyboard>/v",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "GenerateArtificialSatellite",
                     "isComposite": false,
                     "isPartOfComposite": false
                 }

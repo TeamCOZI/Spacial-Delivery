@@ -41,7 +41,7 @@ public class AsteroidBelt : MonoBehaviour
         {
             GameObject asteroid = Instantiate(asteroidPrefab, transform);
 
-            Revolution orbiter = asteroid.GetComponent<Revolution>();
+            OrbitRevolution orbiter = asteroid.GetComponent<OrbitRevolution>();
             if (orbiter == null)
             {
                 Destroy(asteroid);
@@ -54,8 +54,8 @@ public class AsteroidBelt : MonoBehaviour
             orbiter.semiMajorAxis = semiMajorAxis * randonMultiplier;
             orbiter.semiMinorAxis = semiMinorAxis * randonMultiplier;
             orbiter.orbitTiltDegrees = beltTiltDegrees;
-            orbiter.revolutionSpeed = revolutionSpeed;
-            orbiter.clockwise = clockwise;
+            orbiter.revolutionPeriod = revolutionSpeed;
+            orbiter.isClockwise = clockwise;
             orbiter.currentAngle = Random.Range(0f, 360f);
         }
     }

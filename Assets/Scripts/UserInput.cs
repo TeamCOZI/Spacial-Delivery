@@ -1,4 +1,5 @@
 using System;
+using System.Runtime.CompilerServices;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -16,13 +17,18 @@ public class UserInput : MonoBehaviour
 
     private PlayerInput playerInput;
 
+    // Temp
+    public GameObject artificialSatellitePrefab;
+    public event Action<bool> destroyEvent;
+
     private void Awake()
     {
         if (Instance != null && Instance != this) Destroy(this);
         else Instance = this;
 
         playerInput = GetComponent<PlayerInput>();
-        playerInput.actions["Parent"].performed += FocusParent;
+        playerInput.actions["FocusParent"].performed += FocusParent;
+        playerInput.actions["GenerateArtificialSatellite"].performed += GenerateArtificialSatellite;
     }
 
     private void Update()
@@ -104,6 +110,39 @@ public class UserInput : MonoBehaviour
 
     private void FocusParent(InputAction.CallbackContext context)
     {
-        if (FocusManager.currentFocus != null && FocusManager.currentFocus.GetComponent<Revolution>() != null) focusEvent?.Invoke(FocusManager.currentFocus.parent);
+        if (FocusManager.currentFocus != null && FocusManager.currentFocus.GetComponent<OrbitRevolution>() != null) focusEvent?.Invoke(FocusManager.currentFocus.parent);
+    }
+
+    private void GenerateArtificialSatellite(InputAction.CallbackContext context)
+    {
+        Transform transform = FocusManager.currentFocus;
+        if ((transform.GetComponent<Planet>() != null || transform.GetComponent<Satellite>() != null) && transform.GetComponentInChildren<ArtificialSatellite>() == null)
+        {
+            GameObject artificialSatellite = Instantiate(artificialSatellitePrefab, transform);
+            artificialSatellite.name = transform.name + " - Artificial Satellite";
+
+            ArtificialSatellite artificialSatelliteComponent = artificialSatellite.GetComponent<ArtificialSatellite>();
+            OrbitRevolution orbitRevolutionComponent = artificialSatellite.GetComponent<OrbitRevolution>();
+
+            if (artificialSatelliteComponent == null || orbitRevolutionComponent == null)
+            {
+                Debug.LogError("Artificial satellite is missing required components.");
+                return;
+            }
+
+            artificialSatellite.transform.localScale = Vector3.one * Mathf.RoundToInt(artificialSatelliteComponent.scale / transform.localScale.x);
+
+            orbitRevolutionComponent.semiMajorAxis = Mathf.RoundToInt((transform.lossyScale.x + artificialSatelliteComponent.altitude) * 10) / 10;
+            orbitRevolutionComponent.semiMinorAxis = Mathf.RoundToInt((transform.lossyScale.x + artificialSatelliteComponent.altitude) * 10) / 10;
+
+            if (transform.GetComponent<OrbitRevolution>() == null)
+            {
+                Debug.LogError("Parent is missing required component.");
+                return;
+            }
+
+            orbitRevolutionComponent.revolutionPeriod = transform.GetComponent<OrbitRevolution>().revolutionPeriod * 0.5f;
+            orbitRevolutionComponent.currentAngle = 0f;
+        }
     }
 }

@@ -627,7 +627,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8b478cf4d053b3e498e1c961721e7b10, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SolarSystemGenerator
-  cameraController: {fileID: 330585548}
+  cameraController: {fileID: 0}
   focusManager: {fileID: 1249268004}
   solarSystemSettings: {fileID: 11400000, guid: bf1d5a431da100749ba4e94718cfd220, type: 2}
 --- !u!1 &235712709
@@ -678,7 +678,6 @@ GameObject:
   - component: {fileID: 330585545}
   - component: {fileID: 330585544}
   - component: {fileID: 330585547}
-  - component: {fileID: 330585548}
   - component: {fileID: 330585549}
   - component: {fileID: 330585550}
   - component: {fileID: 330585551}
@@ -808,34 +807,6 @@ MonoBehaviour:
     m_VarianceClampScale: 0.9
     m_ContrastAdaptiveSharpening: 0
   m_Version: 2
---- !u!114 &330585548
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 330585543}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 72c865c4f82441c48a9f1a7cc7e8a152, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::CameraController
-  zoomSpeed: 3000
-  defaultZ: -10000
-  minZ: -100000
-  maxZ: -10
-  selectZoom: 50
-  smoothTime: 0.15
-  prefabTag: Prefab
-  spaceshipTag: PlayerSpaceship
-  spaceshipFollowDistance: 30
-  spaceshipFollowHeight: 30
-  angledOffset: {x: 0, y: 0, z: -100}
-  angledRotation: {x: 0, y: 0, z: 0}
-  defaultSpaceshipDistance: 17.5
-  minSpaceshipDistance: 10
-  maxSpaceshipDistance: 3000
-  spaceshipZoomSpeed: 500
 --- !u!114 &330585549
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1176,7 +1147,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 533a3f9831810c342afe3b1c2013fd6f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::FocusInfoUI
-  cameraController: {fileID: 330585548}
+  cameraController: {fileID: 0}
   focusPanel: {fileID: 445603378}
   nameText: {fileID: 1955511066}
   classificationText: {fileID: 0}
@@ -4374,7 +4345,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::FuelUI
   fuelSlider: {fileID: 106629403}
   fuelText: {fileID: 1253228601}
-  cameraController: {fileID: 330585548}
+  cameraController: {fileID: 0}
 --- !u!1 &1955511064
 GameObject:
   m_ObjectHideFlags: 0
@@ -4862,7 +4833,7 @@ MonoBehaviour:
   focusInfoPanel: {fileID: 0}
   iconSizeSlider: {fileID: 1215373835}
   launchButton: {fileID: 875179845}
-  cameraController: {fileID: 330585548}
+  cameraController: {fileID: 0}
   confirmRouteButton: {fileID: 0}
   declineRouteButton: {fileID: 0}
 --- !u!4 &2036264329
@@ -5214,7 +5185,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3ef53418238ca454c8212f49e204004b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Launcher
-  cameraController: {fileID: 330585548}
+  cameraController: {fileID: 0}
   packagePrefab: {fileID: 7973281092498103026, guid: 4f411cd82d8d7b94c8547010afea9e98, type: 3}
   playerSpaceshipPrefab: {fileID: 7973281092498103026, guid: 58bd2a64cb6491d4ea4e181f7a1f919f, type: 3}
   dummyPackagePrefab: {fileID: 454386822080372244, guid: f47f8de02923960459eeeab0cb61f5bb, type: 3}
@@ -5284,7 +5255,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ec3c5528b7fb73c46b25a481e4cd8a7e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::LaunchButtonController
-  cameraController: {fileID: 330585548}
+  cameraController: {fileID: 0}
 --- !u!1001 &3451650721998005646
 PrefabInstance:
   m_ObjectHideFlags: 0

@@ -12,18 +12,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8fc8d2d45bf6d3d4881c14b91efd7631, type: 3}
   m_Name: SolarSystemSettings
   m_EditorClassIdentifier: Assembly-CSharp::SolarSystemSettings
-  starPrefab: {fileID: 4716304030622375498, guid: 3b7783f47acfcc84cb0a9282a301fa92, type: 3}
-  planetPrefab: {fileID: 4237555138149932560, guid: 6bb846589fa052441952deaf3c00fcc5, type: 3}
+  starPrefab: {fileID: 7321778206912378689, guid: 49361f2bebba69c4296d042e47d9f4b0, type: 3}
+  planetPrefab: {fileID: 1871638478444080574, guid: 4731d692f23e3cc43b1458f9ed3f52e7, type: 3}
   asteroidBeltPrefab: {fileID: 2474534874965160233, guid: e3889078b4476da478a34c2bbc7686e7, type: 3}
-  satellitePrefab: {fileID: 2920431155874509688, guid: 6ac475fd236a10349b693fd0d90da06a, type: 3}
-  planetOrbitIncreaseMultiplyMin: 1.15
-  planetOrbitIncreaseMultiplyMax: 1.15
+  satellitePrefab: {fileID: 3375803047301886354, guid: 04460bc4f55801745b72c68d4cdf36ba, type: 3}
+  planetOrbitIncreaseMultiplyMin: 1.1
+  planetOrbitIncreaseMultiplyMax: 1.2
   planetOrbitIncreaseMultiplyDistribution:
     mean: 0.5
     stdDev: 0.3
   planetInitialOrbit: 1500
   planetInitialOrbitIncrease: 3000
-  planetATMRatio: 0.0002
   planetMinPeriod: 600
   planetMaxPeriod: 3600
   satelliteOrbitIncreaseMultiplyMin: 1.2
@@ -33,12 +32,11 @@ MonoBehaviour:
     stdDev: 0.05
   satelliteInitialOrbit: 250
   satelliteInitialOrbitIncrease: 500
-  satelliteATMRatio: 0.0001
   satelliteMinPeriod: 60
   satelliteMaxPeriod: 120
   starData:
-    starFactorMin: 200
-    starFactorMax: 230
+    starFactorMin: 210
+    starFactorMax: 220
     starFactorDistribution:
       mean: 0.5
       stdDev: 0.3
@@ -47,9 +45,6 @@ MonoBehaviour:
     starGravityRadiusRatio: 200
     starHeatRatio: 22
     starSolarWindRatio: 55
-    starLightColor: {r: 1, g: 0, b: 0, a: 1}
-    starLightIntensityRatio: 0.01
-    starLightRadiusRatio: 1
   terrestrialPlanetData:
     planetFactorMin: 5
     planetFactorMax: 10

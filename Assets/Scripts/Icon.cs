@@ -6,8 +6,8 @@ public class Icon : MonoBehaviour
 {
     [Header("Icon Settings")]
     public Material iconMaterial;
-    public float iconScaleMultiply;
-    public float iconHeight;
+    public float iconScaleMultiply = 1.2f;
+    public float iconHeight = 0.05f;
 
     [Header("Hover Settings")]
     public float hoverScaleMultiply = 2f;
@@ -21,7 +21,7 @@ public class Icon : MonoBehaviour
     {
         if (iconMaterial == null)
         {
-            Debug.LogError("Focus is missing required component.");
+            Debug.LogError("Icon is missing required component.");
             return;
         }
 

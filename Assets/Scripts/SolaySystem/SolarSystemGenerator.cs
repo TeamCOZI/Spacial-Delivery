@@ -3,8 +3,7 @@ using UnityEngine;
 
 public class SolarSystemGenerator : MonoBehaviour
 {
-    [Header("Camera Settings")]
-    public CameraController cameraController;
+    [Header("Focus Settings")]
     public FocusManager focusManager;
 
     [Header("Generation Settings")]
@@ -12,7 +11,7 @@ public class SolarSystemGenerator : MonoBehaviour
 
     void Start()
     {
-        if (cameraController == null || focusManager == null)
+        if (focusManager == null)
         {
             Debug.LogError("Solar system generator is missing required components.");
             return;
@@ -62,8 +61,8 @@ public class SolarSystemGenerator : MonoBehaviour
 
             for (int i = 0; i < satelliteIter; i++)
             {
-                Revolution revolutionComponent = satellites[i].GetComponent<Revolution>();
-                revolutionComponent.revolutionSpeed = 360f / satellitePeriods[i];
+                OrbitRevolution revolutionComponent = satellites[i].GetComponent<OrbitRevolution>();
+                revolutionComponent.revolutionPeriod = 360f / satellitePeriods[i];
             }
 
             planet.GetComponent<Planet>().ChildSatellites = satellites;
@@ -107,8 +106,8 @@ public class SolarSystemGenerator : MonoBehaviour
 
                 for (int i = 0; i < satelliteIter; i++)
                 {
-                    Revolution revolutionComponent = satellites[i].GetComponent<Revolution>();
-                    revolutionComponent.revolutionSpeed = 360f / satellitePeriods[i];
+                    OrbitRevolution revolutionComponent = satellites[i].GetComponent<OrbitRevolution>();
+                    revolutionComponent.revolutionPeriod = 360f / satellitePeriods[i];
                 }
 
                 planet.GetComponent<Planet>().ChildSatellites = satellites;
@@ -143,8 +142,8 @@ public class SolarSystemGenerator : MonoBehaviour
 
                 for (int i = 0; i < satelliteIter; i++)
                 {
-                    Revolution revolutionComponent = satellites[i].GetComponent<Revolution>();
-                    revolutionComponent.revolutionSpeed = 360f / satellitePeriods[i];
+                    OrbitRevolution revolutionComponent = satellites[i].GetComponent<OrbitRevolution>();
+                    revolutionComponent.revolutionPeriod = 360f / satellitePeriods[i];
                 }
                 
                 planet.GetComponent<Planet>().ChildSatellites = satellites;
@@ -167,8 +166,8 @@ public class SolarSystemGenerator : MonoBehaviour
             }
             else
             {
-                Revolution revolutionComponent = planets[i].GetComponent<Revolution>();
-                revolutionComponent.revolutionSpeed = 360f / planetPeriods[i];
+                OrbitRevolution revolutionComponent = planets[i].GetComponent<OrbitRevolution>();
+                revolutionComponent.revolutionPeriod = 360f / planetPeriods[i];
             }
         }
 

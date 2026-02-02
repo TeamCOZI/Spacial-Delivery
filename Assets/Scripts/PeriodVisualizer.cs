@@ -14,7 +14,7 @@ public class PeriodVisualizer : MonoBehaviour
 
     public int totalPeriodLcm = 0;
 
-    private readonly List<Revolution> registeredOrbiters = new List<Revolution>();
+    private readonly List<OrbitRevolution> registeredOrbiters = new List<OrbitRevolution>();
 
     private void Awake()
     {
@@ -30,8 +30,8 @@ public class PeriodVisualizer : MonoBehaviour
 
     private void Start()
     {
-        Revolution[] allOrbiters = FindObjectsByType<Revolution>(FindObjectsSortMode.None);
-        foreach (Revolution orbiter in allOrbiters)
+        OrbitRevolution[] allOrbiters = FindObjectsByType<OrbitRevolution>(FindObjectsSortMode.None);
+        foreach (OrbitRevolution orbiter in allOrbiters)
         {
             RegisterOrbiter(orbiter);
         }
@@ -39,7 +39,7 @@ public class PeriodVisualizer : MonoBehaviour
         UpdatePeriodVisualizer();
     }
 
-    public void RegisterOrbiter(Revolution orbiter)
+    public void RegisterOrbiter(OrbitRevolution orbiter)
     {
         if (!registeredOrbiters.Contains(orbiter))
         {
@@ -48,7 +48,7 @@ public class PeriodVisualizer : MonoBehaviour
         UpdatePeriodVisualizer();
     }
 
-    public void DeregisterOrbiter(Revolution orbiter)
+    public void DeregisterOrbiter(OrbitRevolution orbiter)
     {
         if (registeredOrbiters.Contains(orbiter))
         {
@@ -64,7 +64,7 @@ public class PeriodVisualizer : MonoBehaviour
             return;
         }
 
-        var activeOrbiters = registeredOrbiters.Where(o => o.revolutionSpeed > 0).ToList();
+        var activeOrbiters = registeredOrbiters.Where(o => o.revolutionPeriod > 0).ToList();
 
         if (activeOrbiters.Count == 0)
         {
@@ -74,7 +74,7 @@ public class PeriodVisualizer : MonoBehaviour
 
         periodVisualizerContainer.SetActive(true);
 
-        List<int> periods = activeOrbiters.Select(o => Mathf.RoundToInt(360f / o.revolutionSpeed)).ToList();
+        List<int> periods = activeOrbiters.Select(o => Mathf.RoundToInt(360f / o.revolutionPeriod)).ToList();
 
         foreach (Transform child in periodVisualizerContainer.transform)
         {
@@ -85,10 +85,10 @@ public class PeriodVisualizer : MonoBehaviour
 
         CreatePeriodRow($"전체 주기: {totalPeriodLcm}", totalPeriodLcm, totalPeriodLcm, periodVisualizerContainer.transform);
 
-        var SortedOrbiters = activeOrbiters.OrderByDescending(o => 360f / o.revolutionSpeed);
+        var SortedOrbiters = activeOrbiters.OrderByDescending(o => 360f / o.revolutionPeriod);
         foreach (var orbiter in SortedOrbiters)
         {
-            int period = Mathf.RoundToInt(360f / orbiter.revolutionSpeed);
+            int period = Mathf.RoundToInt(360f / orbiter.revolutionPeriod);
             CreatePeriodRow($"{orbiter.gameObject.name} - 주기: {orbiter}", period, totalPeriodLcm, periodVisualizerContainer.transform);
         }
     }

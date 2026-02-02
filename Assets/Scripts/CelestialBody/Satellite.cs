@@ -39,7 +39,7 @@ public class Satellite : MonoBehaviour, UpdateFocusInfo, CelestialBody
     public Dictionary<string, string> UpdateFocusInfo()
     {
         Rigidbody rigidbodyComponent = GetComponent<Rigidbody>();
-        Revolution revolutionComponent = GetComponent<Revolution>();
+        OrbitRevolution revolutionComponent = GetComponent<OrbitRevolution>();
         Resource resourceComponent = GetComponent<Resource>();
 
         if (rigidbodyComponent == null || revolutionComponent == null || resourceComponent == null)
@@ -85,10 +85,10 @@ public class Satellite : MonoBehaviour, UpdateFocusInfo, CelestialBody
 
         string satelliteChildren = "N/A";
 
-        string satellitePeriod = Mathf.RoundToInt(360f / revolutionComponent.revolutionSpeed).ToString();
+        string satellitePeriod = Mathf.RoundToInt(360f / revolutionComponent.revolutionPeriod).ToString();
         
         string satelliteResource = "";
-        resourceComponent.Initialize(false, atm, heat, solarWind - magneticField >= 6000);
+        resourceComponent.Initialize(false, atm, heat, solarWind - magneticField >= 5000);
         foreach (KeyValuePair<ResourceType, Dictionary<ResourceState, int>> resource in resourceComponent.resource)
         {
             if (resource.Value == null) continue;

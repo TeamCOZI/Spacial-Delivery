@@ -40,9 +40,6 @@ public class SolarSystemFactory
         starComponent.solarWind = Mathf.RoundToInt(starFactor * solarSystemSettings.starData.starSolarWindRatio);
 
         starComponent.starType = starType.MainSequenceStar;
-        starComponent.lightColor = Color.red;
-        starComponent.lightIntensity = Mathf.RoundToInt(starFactor * solarSystemSettings.starData.starLightIntensityRatio);
-        starComponent.lightRadius = Mathf.RoundToInt(starFactor * solarSystemSettings.starData.starLightRadiusRatio);
 
         return star;
     }
@@ -56,7 +53,7 @@ public class SolarSystemFactory
         Planet planetComponent = planet.GetComponent<Planet>();
         Rigidbody rigidbodyComponent = planet.GetComponent<Rigidbody>();
         Gravity gravityComponent = planet.GetComponent<Gravity>();
-        Revolution revolutionComponent = planet.GetComponent<Revolution>();
+        OrbitRevolution revolutionComponent = planet.GetComponent<OrbitRevolution>();
 
         if (planetComponent == null || rigidbodyComponent == null || gravityComponent == null || revolutionComponent == null)
         {
@@ -90,7 +87,7 @@ public class SolarSystemFactory
         Star starComponent = star.GetComponent<Star>();
 
         planetComponent.planetType = isTerrestrial ? PlanetType.terrestrial : PlanetType.jovian;
-        planetComponent.position = Mathf.RoundToInt(97 - (planetOrbit - star.transform.localScale.x) / star.GetComponent<Gravity>().GravityRadius * 100);
+        planetComponent.position = Mathf.RoundToInt(97 - (planetOrbit - star.transform.lossyScale.x) / star.GetComponent<Gravity>().GravityRadius * 100);
         planetComponent.solarWind = Mathf.RoundToInt(planetComponent.position * 0.012f * starComponent.solarWind);
         planetComponent.heat = Mathf.RoundToInt(starComponent.heat * 0.11f - 20 * (100 - planetComponent.position));
 
@@ -116,7 +113,7 @@ public class SolarSystemFactory
         Satellite satelliteComponent = satellite.GetComponent<Satellite>();
         Rigidbody rigidbodyComponent = satellite.GetComponent<Rigidbody>();
         Gravity gravityComponent = satellite.GetComponent<Gravity>();
-        Revolution revolutionComponent = satellite.GetComponent<Revolution>();
+        OrbitRevolution revolutionComponent = satellite.GetComponent<OrbitRevolution>();
 
         if (satelliteComponent == null || rigidbodyComponent == null || gravityComponent == null || revolutionComponent == null)
         {
@@ -168,6 +165,8 @@ public class SolarSystemFactory
         satelliteOrbit += gravityComponent.GravityRadius + satelliteOrbitIncrease;
 
         satelliteIter++;
+
+        satelliteComponent.UpdateFocusInfo();
 
         return satellite;
     }
@@ -260,5 +259,7 @@ public class SolarSystemFactory
         }
         // Solar Wind
         planetComponent.solarWind = Mathf.RoundToInt(planetComponent.solarWind * 0.5f - planetComponent.magneticField);
+
+        planetComponent.UpdateFocusInfo();
     }
 }

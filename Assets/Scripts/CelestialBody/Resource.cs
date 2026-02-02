@@ -138,6 +138,50 @@ public class Resource : MonoBehaviour
         }
     };
 
+    public static Color[,] color = new Color[,]
+    {
+        // ATM 5
+        {
+            /* Heat 5 */ new Color32(255, 0, 0, 255),
+            /* Heat 4 */ new Color32(255, 192, 0, 255),
+            /* Heat 3 */ new Color32(255, 192, 0, 255),
+            /* Heat 2 */ new Color32(218, 233, 248, 255),
+            /* Heat 1 */ new Color32(202, 237, 251, 255)
+        },
+        // ATM 4
+        {
+            /* Heat 5 */ new Color32(255, 0, 0, 255),
+            /* Heat 4 */ new Color32(255, 192, 0, 255),
+            /* Heat 3 */ new Color32(71, 211, 89, 255),
+            /* Heat 2 */ new Color32(218, 233, 248, 255),
+            /* Heat 1 */ new Color32(202, 237, 251, 255)
+        },
+        // ATM 3
+        {
+            /* Heat 5 */ new Color32(255, 0, 0, 255),
+            /* Heat 4 */ new Color32(255, 255, 0, 255),
+            /* Heat 3 */ new Color32(218, 242, 208, 255),
+            /* Heat 2 */ new Color32(251, 226, 213, 255),
+            /* Heat 1 */ new Color32(202, 237, 251, 255)
+        },
+        // ATM 2
+        {
+            /* Heat 5 */ new Color32(217, 217, 217, 255),
+            /* Heat 4 */ new Color32(255, 255, 0, 255),
+            /* Heat 3 */ new Color32(255, 255, 255, 255),
+            /* Heat 2 */ new Color32(251, 226, 213, 255),
+            /* Heat 1 */ new Color32(202, 237, 251, 255)
+        },
+        // ATM 1
+        {
+            /* Heat 5 */ new Color32(217, 217, 217, 255),
+            /* Heat 4 */ new Color32(217, 217, 217, 255),
+            /* Heat 3 */ new Color32(217, 217, 217, 255),
+            /* Heat 2 */ new Color32(202, 237, 251, 255),
+            /* Heat 1 */ new Color32(202, 237, 251, 255)
+        }
+    };
+
     public int aTMType;
     public int heatType;
 
@@ -152,6 +196,7 @@ public class Resource : MonoBehaviour
                 {ResourceType.Gas, new A {{ResourceState.Liquid, 5}, {ResourceState.Vapor, 5}}},
                 {ResourceType.Plasma, new A {{ResourceState.Plasma, 1}}}
             };
+            if (transform.GetComponent<MeshRenderer>() != null) transform.GetComponent<MeshRenderer>().material.color = new Color32(227, 176, 11, 255);
         }
         else
         {
@@ -199,6 +244,7 @@ public class Resource : MonoBehaviour
             {
                 resource.Add(ResourceType.Plasma, new A() {{ResourceState.Plasma, 1}});
             }
+            if (transform.GetComponent<MeshRenderer>() != null) transform.GetComponent<MeshRenderer>().material.color = color[4 - aTMType, 4 - heatType];
         }
     }
 

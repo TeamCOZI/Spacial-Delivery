@@ -1,11 +1,9 @@
 using System;
 using UnityEngine;
 
-[RequireComponent(typeof(Camera))]
+[RequireComponent(typeof(Camera), typeof(Rigidbody))]
 public class CameraManager : MonoBehaviour
 {
-    public Camera cameraComponent;
-
     public Action<Vector2> dragOffsetEvent;
 
     [Header("Default Settings")]
@@ -25,6 +23,8 @@ public class CameraManager : MonoBehaviour
     private Vector3 offset;
     private Vector2 dragOffset;
     private float zoomOffset;
+
+    private Camera cameraComponent;
 
     private Vector3 currentVelocity;
 
@@ -56,7 +56,7 @@ public class CameraManager : MonoBehaviour
 
         offset = Vector3.SmoothDamp(offset, new Vector3(0, 0, zoomOffset), ref currentVelocity, smoothTime);
 
-        cameraComponent.transform.position = target + offset + new Vector3(dragOffset.x, dragOffset.y, 0);
+        transform.position = target + offset + new Vector3(dragOffset.x, dragOffset.y, 0);
     }
 
     private void UpdateFocus(Transform transform)
