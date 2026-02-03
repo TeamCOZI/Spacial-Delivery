@@ -34,8 +34,14 @@ public struct PlanetGenerationData
 [System.Serializable]
 public struct AsteroidBeltGenerationData
 {
+    [Header("Asteroid Belt Factor Settings")]
+    public float asteroidBeltFactorMin;
+    public float asteroidBeltFactorMax;
+    public Utility.NormalDistributionSettings asteroidBeltFactorDistribution;
+    
     [Header("Asteriod Belt Settings")]
     public float asteroidBeltThreshold;
+    public float asteroidBeltWidthRatio;
 }
 
 [System.Serializable]

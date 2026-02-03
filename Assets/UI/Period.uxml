@@ -1,0 +1,14 @@
+<ui:UXML xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" noNamespaceSchemaLocation="../../UIElementsSchema/UIElements.xsd" editor-extension-mode="False">
+    <ui:VisualElement style="flex-grow: 1; align-items: center; justify-content: flex-end;">
+        <ui:VisualElement style="flex-grow: initial; width: 60%; height: 20%; flex-direction: column;">
+            <ui:VisualElement style="flex-grow: 1; flex-direction: row;">
+                <ui:VisualElement style="flex-grow: initial; width: 10%; justify-content: center;">
+                    <ui:Label text="Label" />
+                </ui:VisualElement>
+                <ui:VisualElement style="flex-grow: 1; justify-content: center;">
+                    <ui:ProgressBar value="22" title="my-progress" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

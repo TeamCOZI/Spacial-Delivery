@@ -14,15 +14,15 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::SolarSystemSettings
   starPrefab: {fileID: 7321778206912378689, guid: 49361f2bebba69c4296d042e47d9f4b0, type: 3}
   planetPrefab: {fileID: 1871638478444080574, guid: 4731d692f23e3cc43b1458f9ed3f52e7, type: 3}
-  asteroidBeltPrefab: {fileID: 2474534874965160233, guid: e3889078b4476da478a34c2bbc7686e7, type: 3}
+  asteroidBeltPrefab: {fileID: 2605883079689149314, guid: d133910efb53c254b9eb9516f0c51d31, type: 3}
   satellitePrefab: {fileID: 3375803047301886354, guid: 04460bc4f55801745b72c68d4cdf36ba, type: 3}
   planetOrbitIncreaseMultiplyMin: 1.1
   planetOrbitIncreaseMultiplyMax: 1.2
   planetOrbitIncreaseMultiplyDistribution:
     mean: 0.5
     stdDev: 0.3
-  planetInitialOrbit: 1500
-  planetInitialOrbitIncrease: 3000
+  planetInitialOrbit: 15000
+  planetInitialOrbitIncrease: 30000
   planetMinPeriod: 600
   planetMaxPeriod: 3600
   satelliteOrbitIncreaseMultiplyMin: 1.2
@@ -30,19 +30,19 @@ MonoBehaviour:
   satelliteOrbitIncreaseMulitplyDistribuiton:
     mean: 0.2
     stdDev: 0.05
-  satelliteInitialOrbit: 250
-  satelliteInitialOrbitIncrease: 500
+  satelliteInitialOrbit: 17000
+  satelliteInitialOrbitIncrease: 5000
   satelliteMinPeriod: 60
   satelliteMaxPeriod: 120
   starData:
-    starFactorMin: 210
-    starFactorMax: 220
+    starFactorMin: 215
+    starFactorMax: 215
     starFactorDistribution:
       mean: 0.5
       stdDev: 0.3
-    starScaleRatio: 5
+    starScaleRatio: 500
     starMassRatio: 50000
-    starGravityRadiusRatio: 200
+    starGravityRadiusRatio: 5000
     starHeatRatio: 22
     starSolarWindRatio: 55
   terrestrialPlanetData:
@@ -51,26 +51,32 @@ MonoBehaviour:
     planetFactorDistribution:
       mean: 0.5
       stdDev: 0.3
-    planetScaleRatio: 1
+    planetScaleRatio: 800
     planetMassRatio: 3000
-    planetGravityRadiusRatio: 10
+    planetGravityRadiusRatio: 2000
   jovianPlanetData:
-    planetFactorMin: 30
-    planetFactorMax: 60
+    planetFactorMin: 5
+    planetFactorMax: 10
     planetFactorDistribution:
       mean: 0.5
       stdDev: 0.3
-    planetScaleRatio: 5
+    planetScaleRatio: 2000
     planetMassRatio: 3000
-    planetGravityRadiusRatio: 30
+    planetGravityRadiusRatio: 6000
   satelliteData:
     satelliteFactorMin: 1
     satelliteFactorMax: 2
     satelliteFactorDistribution:
       mean: 0.5
       stdDev: 0.5
-    satelliteScaleRatio: 1
+    satelliteScaleRatio: 800
     satelliteMassRatio: 3000
-    satelliteGravityRadiusRatio: 10
+    satelliteGravityRadiusRatio: 1000
   asteroidBeltData:
+    asteroidBeltFactorMin: 30
+    asteroidBeltFactorMax: 60
+    asteroidBeltFactorDistribution:
+      mean: 0.5
+      stdDev: 0.3
     asteroidBeltThreshold: 0.4
+    asteroidBeltWidthRatio: 30

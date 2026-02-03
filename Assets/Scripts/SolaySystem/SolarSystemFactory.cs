@@ -89,8 +89,8 @@ public class SolarSystemFactory
 
         planetComponent.planetType = isTerrestrial ? PlanetType.terrestrial : PlanetType.jovian;
         planetComponent.position = Mathf.RoundToInt(97 - (planetOrbit - star.transform.lossyScale.x) / star.GetComponent<Gravity>().GravityRadius * 100);
-        planetComponent.solarWind = Mathf.RoundToInt(planetComponent.position * 0.012f * starComponent.solarWind);
-        planetComponent.heat = Mathf.RoundToInt(starComponent.heat * 0.11f - 20 * (100 - planetComponent.position));
+        planetComponent.solarWind = Mathf.RoundToInt(starComponent.solarWind * planetComponent.position * 0.01f);
+        planetComponent.heat = Mathf.RoundToInt(starComponent.heat * 0.1f * (planetComponent.position * 0.03f - 2));
 
         // Reassigning for next iteration.
         if (planetIter > 0)
@@ -143,19 +143,18 @@ public class SolarSystemFactory
         Planet planetComponent = planet.GetComponent<Planet>();
 
         // Magnetic Field
-        satelliteComponent.magneticField = Mathf.RoundToInt(satellite.transform.lossyScale.x * 100 + satelliteComponent.ChildSatellites.Count * 1000);
+        satelliteComponent.magneticField = Mathf.RoundToInt(satellite.transform.lossyScale.x / 8 + satelliteComponent.ChildSatellites.Count * 100);
+        
+        // Solar Wind
+        satelliteComponent.solarWind = Mathf.RoundToInt(planetComponent.solarWind - satelliteComponent.magneticField);
 
         // ATM
-        satelliteComponent.atm = Mathf.RoundToInt((rigidbodyComponent.mass * 0.1f - (planetComponent.solarWind * 0.2f - satelliteComponent.magneticField)) * planetComponent.heat * 0.001f + 50);
-        if (satelliteComponent.atm <= 0) satelliteComponent.atm = Mathf.RoundToInt(rigidbodyComponent.mass * 0.001f + satelliteComponent.magneticField * 0.05f);
+        satelliteComponent.atm = Mathf.RoundToInt((rigidbodyComponent.mass - satelliteComponent.solarWind) * 0.01f + planetComponent.heat - 270);
+        if (satelliteComponent.solarWind > 10500 || satelliteComponent.atm <= 0) satelliteComponent.atm = Mathf.RoundToInt(rigidbodyComponent.mass * 0.0001f);
 
         // Heat
-        if (satelliteComponent.atm >= 50) satelliteComponent.heat = Mathf.RoundToInt((planetComponent.heat + Mathf.Pow(satelliteComponent.atm, 3) * 0.000001f) * 1.25f - 50);
+        if (satelliteComponent.atm >= 50) satelliteComponent.heat = Mathf.RoundToInt(planetComponent.heat + Mathf.Pow(satelliteComponent.atm, 5) * 0.0000000001f - (100 - planetComponent.position) * 15);
         else if (Mathf.Abs(planetComponent.heat) <= 150) satelliteComponent.heat = Mathf.RoundToInt(150 * planetComponent.heat / Mathf.Abs(planetComponent.heat) + planetComponent.heat * 0.3f);
-        else satelliteComponent.heat = planetComponent.heat;
-
-        // Solar Wind
-        satelliteComponent.solarWind = Mathf.RoundToInt(planetComponent.solarWind * 0.5f - satelliteComponent.magneticField);
 
         // Reassigning for next iteration.
         if (satelliteIter > 0)
@@ -187,11 +186,14 @@ public class SolarSystemFactory
             return null;
         }
 
-        planetOrbit += previousPlanetGravityRadius + asteroidBeltComponent.asteroidBeltWidth;
+        float asteroidBeltFactor = Mathf.Lerp(solarSystemSettings.asteroidBeltData.asteroidBeltFactorMin, solarSystemSettings.asteroidBeltData.asteroidBeltFactorMax, Utility.normalDistribution(solarSystemSettings.asteroidBeltData.asteroidBeltFactorDistribution.mean, solarSystemSettings.asteroidBeltData.asteroidBeltFactorDistribution.stdDev));
+        planetOrbit += previousPlanetGravityRadius;
 
-        asteroidBeltComponent.center = star;
-        asteroidBeltComponent.semiMajorAxis = Mathf.RoundToInt(planetOrbit);
-        asteroidBeltComponent.semiMinorAxis = Mathf.RoundToInt(planetOrbit);
+        previousPlanetGravityRadius = asteroidBeltFactor * solarSystemSettings.asteroidBeltData.asteroidBeltWidthRatio;
+        planetOrbit += previousPlanetGravityRadius;
+
+        asteroidBeltComponent.asteroidBeltOrbit = Mathf.RoundToInt(planetOrbit);
+        asteroidBeltComponent.asteroidBeltWidth = Mathf.RoundToInt(previousPlanetGravityRadius);
 
         planetOrbitIncrease *= Mathf.Lerp(solarSystemSettings.planetOrbitIncreaseMultiplyMin, solarSystemSettings.planetOrbitIncreaseMultiplyMax, Utility.normalDistribution(solarSystemSettings.planetOrbitIncreaseMultiplyDistribution.mean, solarSystemSettings.planetOrbitIncreaseMultiplyDistribution.stdDev));
 
@@ -239,15 +241,19 @@ public class SolarSystemFactory
         Rigidbody rigidbodyComponent = planet.GetComponent<Rigidbody>();
 
         // Magnetic Field
-        planetComponent.magneticField = Mathf.RoundToInt(planet.transform.lossyScale.x * 100 + planetComponent.ChildSatellites.Count * 1000);
+        planetComponent.magneticField = Mathf.RoundToInt(planet.transform.lossyScale.x / 8 + planetComponent.ChildSatellites.Count * 100);
+        
+        // Solar Wind
+        planetComponent.solarWind = Mathf.RoundToInt(planetComponent.solarWind - planetComponent.magneticField);
+
         if (planetComponent.planetType == PlanetType.terrestrial)
         {
             // Terrestrial ATM
-            planetComponent.atm = Mathf.RoundToInt((rigidbodyComponent.mass * 0.1f - (planetComponent.solarWind * 0.2f - planetComponent.magneticField)) * planetComponent.heat * 0.001f + 50);
-            if (planetComponent.atm <= 0) planetComponent.atm = Mathf.RoundToInt(rigidbodyComponent.mass * 0.001f + planetComponent.magneticField * 0.05f);
+            planetComponent.atm = Mathf.RoundToInt((rigidbodyComponent.mass - planetComponent.solarWind) * 0.01f + planetComponent.heat - 270);
+            if (planetComponent.solarWind > 10500 || planetComponent.atm <= 0) planetComponent.atm = Mathf.RoundToInt(rigidbodyComponent.mass * 0.0001f);
 
             // Terrestrial Heat
-            if (planetComponent.atm >= 50) planetComponent.heat = Mathf.RoundToInt((planetComponent.heat + Mathf.Pow(planetComponent.atm, 3) * 0.000001f) * 1.25f - 50);
+            if (planetComponent.atm >= 50) planetComponent.heat = Mathf.RoundToInt(planetComponent.heat + Mathf.Pow(planetComponent.atm, 5) * 0.0000000001f - (100 - planetComponent.position) * 15);
             else if (Mathf.Abs(planetComponent.heat) <= 150) planetComponent.heat = Mathf.RoundToInt(150 * planetComponent.heat / Mathf.Abs(planetComponent.heat) + planetComponent.heat * 0.3f);
         }
         else
@@ -258,8 +264,6 @@ public class SolarSystemFactory
             // Jovian Heat
             planetComponent.heat = Mathf.RoundToInt(rigidbodyComponent.mass * 0.2f);
         }
-        // Solar Wind
-        planetComponent.solarWind = Mathf.RoundToInt(planetComponent.solarWind * 0.5f - planetComponent.magneticField);
 
         planetComponent.UpdateFocusInfo();
     }

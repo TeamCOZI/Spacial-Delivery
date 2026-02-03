@@ -1,6 +1,6 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
---- !u!1 &2474534874965160233
+--- !u!1 &2605883079689149314
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -8,9 +8,8 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 4070678242875951396}
-  - component: {fileID: 9026647718035356350}
-  - component: {fileID: 5751718771048797873}
+  - component: {fileID: 6753679816677641537}
+  - component: {fileID: 6102220567640686298}
   m_Layer: 0
   m_Name: AsteroidBeltPrefab
   m_TagString: Untagged
@@ -18,13 +17,13 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!4 &4070678242875951396
+--- !u!4 &6753679816677641537
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2474534874965160233}
+  m_GameObject: {fileID: 2605883079689149314}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
@@ -33,55 +32,19 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &9026647718035356350
+--- !u!114 &6102220567640686298
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2474534874965160233}
+  m_GameObject: {fileID: 2605883079689149314}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: ea1b5434e26bab94586d4124b906fe33, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::AsteroidbeltGenerator
-  centralBody: {fileID: 0}
-  asteroidPrefab: {fileID: 8109227045949665818, guid: d2e15bfe1eea6aa41a4fbd34ca3bf41c, type: 3}
-  numberOfAsteroids: 10
-  clockwise: 0
-  beltSemiMajorAxis: 30
-  beltSemiMinorAxis: 30
-  beltTiltDegrees: 0
-  beltWidth: 10
-  colliderResolution: 32
-  orbitSpeed: 10
-  lineMaterial: {fileID: 2100000, guid: a1d39fa4af94f3049813558381f63ad8, type: 2}
-  lineWidth: 0.5
-  lineColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
---- !u!54 &5751718771048797873
-Rigidbody:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2474534874965160233}
-  serializedVersion: 5
-  m_Mass: 1
-  m_LinearDamping: 0
-  m_AngularDamping: 0.05
-  m_CenterOfMass: {x: 0, y: 0, z: 0}
-  m_InertiaTensor: {x: 1, y: 1, z: 1}
-  m_InertiaRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ImplicitCom: 1
-  m_ImplicitTensor: 1
-  m_UseGravity: 1
-  m_IsKinematic: 0
-  m_Interpolate: 0
-  m_Constraints: 0
-  m_CollisionDetection: 0
+  m_EditorClassIdentifier: Assembly-CSharp::AsteroidBelt
+  lineColor: {r: 0, g: 1, b: 0, a: 1}
+  staticLlineWidth: 0.005
+  asteroidBeltOrbit: 0
+  asteroidBeltWidth: 0

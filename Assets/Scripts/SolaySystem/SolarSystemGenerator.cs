@@ -45,12 +45,13 @@ public class SolarSystemGenerator : MonoBehaviour
             {
                 Destroy(planet);
                 planetIter--;
+                planetOrbit -= planetOrbitIncrease;
                 break;
             }
 
             int satelliteIter = 0;
 
-            float satelliteOrbit = planet.transform.localScale.x + solarSystemSettings.satelliteInitialOrbit;
+            float satelliteOrbit = planet.transform.lossyScale.x + solarSystemSettings.satelliteInitialOrbit;
             float satelliteOrbitIncrease = solarSystemSettings.satelliteInitialOrbitIncrease;
             float previousSatelliteGravityRadius = 0;
 
@@ -110,7 +111,7 @@ public class SolarSystemGenerator : MonoBehaviour
 
                 int satelliteIter = 0;
 
-                float satelliteOrbit = planet.transform.localScale.x + solarSystemSettings.satelliteInitialOrbit;
+                float satelliteOrbit = planet.transform.lossyScale.x + solarSystemSettings.satelliteInitialOrbit;
                 float satelliteOrbitIncrease = solarSystemSettings.satelliteInitialOrbitIncrease;
                 float previousSatelliteGravityRadius = 0;
 
@@ -160,7 +161,7 @@ public class SolarSystemGenerator : MonoBehaviour
 
                 int satelliteIter = 0;
 
-                float satelliteOrbit = planet.transform.localScale.x + solarSystemSettings.satelliteInitialOrbit;
+                float satelliteOrbit = planet.transform.lossyScale.x + solarSystemSettings.satelliteInitialOrbit;
                 float satelliteOrbitIncrease = solarSystemSettings.satelliteInitialOrbitIncrease;
                 float previousSatelliteGravityRadius = 0;
 
@@ -205,11 +206,7 @@ public class SolarSystemGenerator : MonoBehaviour
 
         for (int i = 0; i < planetIter; i++)
         {   
-            if (i == asteroidBeltIndex)
-            {
-                AsteroidBelt asteroidBeltComponent = planets[i].GetComponent<AsteroidBelt>();
-                asteroidBeltComponent.revolutionSpeed = planetPeriods[i];
-            }
+            if (i == asteroidBeltIndex) continue;
             else
             {
                 OrbitRevolution revolutionComponent = planets[i].GetComponent<OrbitRevolution>();

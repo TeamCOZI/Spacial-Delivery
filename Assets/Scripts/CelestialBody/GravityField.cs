@@ -20,7 +20,7 @@ public class GravityField : MonoBehaviour
         gravityComponent = GetComponent<Gravity>();
         if (Camera.main == null)
         {
-            Debug.LogError("Camera is missing");
+            Debug.LogError("Camera is missing.");
             return;
         }
         cameraComponent = Camera.main;
