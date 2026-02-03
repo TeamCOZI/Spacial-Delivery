@@ -45,7 +45,7 @@ public class OrbitVisualizer : MonoBehaviour
         lineRendererComponent = revolutionOrbit.AddComponent<LineRenderer>();
 
         lineRendererComponent.loop = true;
-        lineRendererComponent.positionCount = 360;
+        lineRendererComponent.positionCount = 3600;
 
         lineRendererComponent.material = new Material(Shader.Find("Universal Render Pipeline/Unlit"));
         lineRendererComponent.material.color = lineColor;

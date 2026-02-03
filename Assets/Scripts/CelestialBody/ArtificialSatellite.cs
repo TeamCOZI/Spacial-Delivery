@@ -5,7 +5,7 @@ using UnityEngine;
 public class ArtificialSatellite : MonoBehaviour, UpdateFocusInfo
 {
     [Header("Artificial Satellite Settings")]
-    public float scale = 0.01f;
+    public float scale = 0.1f;
     public float altitude = 1f;
 
     private OrbitRevolution orbitRevolution;
@@ -31,5 +31,10 @@ public class ArtificialSatellite : MonoBehaviour, UpdateFocusInfo
         };
 
         return focusInfo;
+    }
+
+    public void Destroy()
+    {
+        Destroy(this);
     }
 }

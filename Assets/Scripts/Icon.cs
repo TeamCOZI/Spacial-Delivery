@@ -53,6 +53,7 @@ public class Icon : MonoBehaviour
         icon = new GameObject("Icon");
         icon.tag = "Icon";
         icon.transform.SetParent(transform);
+        icon.transform.localRotation = Quaternion.identity;
 
         icon.AddComponent<MeshFilter>().sharedMesh = GetComponent<MeshFilter>().sharedMesh;
         icon.AddComponent<MeshCollider>();

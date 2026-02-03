@@ -77,6 +77,7 @@ public class SolarSystemFactory
         previousPlanetGravityRadius = planetFactor * planetData.planetGravityRadiusRatio;
         gravityComponent.GravityRadius = Mathf.RoundToInt(previousPlanetGravityRadius);
         planetOrbit += previousPlanetGravityRadius;
+        
 
         revolutionComponent.center = star;
         revolutionComponent.semiMajorAxis = Mathf.RoundToInt(planetOrbit);

@@ -29,6 +29,7 @@ public class UserInput : MonoBehaviour
         playerInput = GetComponent<PlayerInput>();
         playerInput.actions["FocusParent"].performed += FocusParent;
         playerInput.actions["GenerateArtificialSatellite"].performed += GenerateArtificialSatellite;
+        playerInput.actions["DestroyArtificialSatellite"].performed += DestroyArtificialSatellite;
     }
 
     private void Update()
@@ -116,7 +117,7 @@ public class UserInput : MonoBehaviour
     private void GenerateArtificialSatellite(InputAction.CallbackContext context)
     {
         Transform transform = FocusManager.currentFocus;
-        if ((transform.GetComponent<Planet>() != null || transform.GetComponent<Satellite>() != null) && transform.GetComponentInChildren<ArtificialSatellite>() == null)
+        if (transform.GetComponent<Planet>() != null || transform.GetComponent<Satellite>() != null)
         {
             GameObject artificialSatellite = Instantiate(artificialSatellitePrefab, transform);
             artificialSatellite.name = transform.name + " - Artificial Satellite";
@@ -130,8 +131,9 @@ public class UserInput : MonoBehaviour
                 return;
             }
 
-            artificialSatellite.transform.localScale = Vector3.one * Mathf.RoundToInt(artificialSatelliteComponent.scale / transform.localScale.x);
+            artificialSatellite.transform.localScale = Vector3.one * Mathf.RoundToInt(artificialSatelliteComponent.scale / transform.localScale.x) * 0.01f;
 
+            orbitRevolutionComponent.center = transform.gameObject;
             orbitRevolutionComponent.semiMajorAxis = Mathf.RoundToInt((transform.lossyScale.x + artificialSatelliteComponent.altitude) * 10) / 10;
             orbitRevolutionComponent.semiMinorAxis = Mathf.RoundToInt((transform.lossyScale.x + artificialSatelliteComponent.altitude) * 10) / 10;
 
@@ -144,5 +146,11 @@ public class UserInput : MonoBehaviour
             orbitRevolutionComponent.revolutionPeriod = transform.GetComponent<OrbitRevolution>().revolutionPeriod * 0.5f;
             orbitRevolutionComponent.currentAngle = 0f;
         }
+    }
+
+    private void DestroyArtificialSatellite(InputAction.CallbackContext context)
+    {
+        ArtificialSatellite artificialSatellite = FocusManager.currentFocus.GetComponent<ArtificialSatellite>();
+        if (artificialSatellite!= null) artificialSatellite.Destroy();
     }
 }

@@ -22,14 +22,14 @@ public class SolarSystemGenerator : MonoBehaviour
 
     public void GenerateSolarSystem()
     {
-        SolarSystemFactory solarSystemFactory = new SolarSystemFactory(solarSystemSettings, this.transform);
+        SolarSystemFactory solarSystemFactory = new SolarSystemFactory(solarSystemSettings, transform);
 
         GameObject star = solarSystemFactory.GenerateStar();
 
         int planetIter = 0;
 
         // Initial orbit = Star scale + Initial orbit increase + Planet gravity radius
-        // Orbit = Previous planet orbit + Previous planet gravity radius + Planet Gravity Radius + Previous orbit increase * if (Planet 1_ ? 1 : Orbit increase multiply
+        // Orbit = Previous planet orbit + Previous planet gravity radius + Planet Gravity Radius + Previous orbit increase * if (Planet 1) ? 1 : Orbit increase multiply
         float planetOrbit = star.transform.localScale.x + solarSystemSettings.planetInitialOrbit;
         float planetOrbitIncrease = solarSystemSettings.planetInitialOrbitIncrease;
         float previousPlanetGravityRadius = 0;
@@ -37,9 +37,16 @@ public class SolarSystemGenerator : MonoBehaviour
         List<GameObject> planets = new List<GameObject>();
         
         // Instantiating inner planets.
-        while (planetOrbit < star.GetComponent<Gravity>().GravityRadius * solarSystemSettings.asteroidBeltData.asteroidBeltThreshold)
+        while (true)
         {
             GameObject planet = solarSystemFactory.GeneratePlanet(star, ref planetIter, true, ref planetOrbit, ref planetOrbitIncrease, ref previousPlanetGravityRadius);
+
+            if (planetOrbit > star.GetComponent<Gravity>().GravityRadius * solarSystemSettings.asteroidBeltData.asteroidBeltThreshold)
+            {
+                Destroy(planet);
+                planetIter--;
+                break;
+            }
 
             int satelliteIter = 0;
 
@@ -50,19 +57,27 @@ public class SolarSystemGenerator : MonoBehaviour
             List<GameObject> satellites = new List<GameObject>();
 
             // Instantiating satellites.
-            while (satelliteOrbit < planet.GetComponent<Gravity>().GravityRadius)
+            while (true)
             {
                 GameObject satellite = solarSystemFactory.GenerateSatellite(planet, ref satelliteIter, ref satelliteOrbit, ref satelliteOrbitIncrease, ref previousSatelliteGravityRadius);
+
+                if (satelliteOrbit > planet.GetComponent<Gravity>().GravityRadius)
+                {
+                    Destroy(satellite);
+                    satelliteIter--;
+                    break;
+                }
 
                 satellites.Add(satellite);
             }
 
-            List<int> satellitePeriods = solarSystemFactory.GeneratePeriods(solarSystemSettings.satelliteMinPeriod, solarSystemSettings.satelliteMaxPeriod, satelliteIter);
+            //List<int> satellitePeriods = solarSystemFactory.GeneratePeriods(solarSystemSettings.satelliteMinPeriod, solarSystemSettings.satelliteMaxPeriod, satelliteIter);
+            List<float> satellitePeriods = new List<float> {0.5f, 1f, 1.5f, 2f};
 
             for (int i = 0; i < satelliteIter; i++)
             {
                 OrbitRevolution revolutionComponent = satellites[i].GetComponent<OrbitRevolution>();
-                revolutionComponent.revolutionPeriod = 360f / satellitePeriods[i];
+                revolutionComponent.revolutionPeriod = satellitePeriods[i];
             }
 
             planet.GetComponent<Planet>().ChildSatellites = satellites;
@@ -79,12 +94,19 @@ public class SolarSystemGenerator : MonoBehaviour
         planets.Add(asteroidBelt);
 
         // Instantiating outer planets.
-        while (planetOrbit < star.GetComponent<Gravity>().GravityRadius)
+        while (true)
         {
             // Jovian
             if (Random.Range(0, 10) < 8)
             {
                 GameObject planet = solarSystemFactory.GeneratePlanet(star, ref planetIter, false, ref planetOrbit, ref planetOrbitIncrease, ref previousPlanetGravityRadius);
+
+                if (planetOrbit > star.GetComponent<Gravity>().GravityRadius)
+                {
+                    Destroy(planet);
+                    planetIter--;
+                    break;
+                }
 
                 int satelliteIter = 0;
 
@@ -99,15 +121,23 @@ public class SolarSystemGenerator : MonoBehaviour
                 {
                     GameObject satellite = solarSystemFactory.GenerateSatellite(planet, ref satelliteIter, ref satelliteOrbit, ref satelliteOrbitIncrease, ref previousSatelliteGravityRadius);
 
+                    if (satelliteOrbit > planet.GetComponent<Gravity>().GravityRadius)
+                    {
+                        Destroy(satellite);
+                        satelliteIter--;
+                        break;
+                    }
+
                     satellites.Add(satellite);
                 }
 
-                List<int> satellitePeriods = solarSystemFactory.GeneratePeriods(solarSystemSettings.satelliteMinPeriod, solarSystemSettings.satelliteMaxPeriod, satelliteIter);
+                //List<int> satellitePeriods = solarSystemFactory.GeneratePeriods(solarSystemSettings.satelliteMinPeriod, solarSystemSettings.satelliteMaxPeriod, satelliteIter);
+                List<float> satellitePeriods = new List<float> {0.5f, 1f, 1.5f, 2f};
 
                 for (int i = 0; i < satelliteIter; i++)
                 {
                     OrbitRevolution revolutionComponent = satellites[i].GetComponent<OrbitRevolution>();
-                    revolutionComponent.revolutionPeriod = 360f / satellitePeriods[i];
+                    revolutionComponent.revolutionPeriod = satellitePeriods[i];
                 }
 
                 planet.GetComponent<Planet>().ChildSatellites = satellites;
@@ -121,6 +151,13 @@ public class SolarSystemGenerator : MonoBehaviour
             {
                 GameObject planet = solarSystemFactory.GeneratePlanet(star, ref planetIter, true, ref planetOrbit, ref planetOrbitIncrease, ref previousPlanetGravityRadius);
 
+                if (planetOrbit > star.GetComponent<Gravity>().GravityRadius)
+                {
+                    Destroy(planet);
+                    planetIter--;
+                    break;
+                }
+
                 int satelliteIter = 0;
 
                 float satelliteOrbit = planet.transform.localScale.x + solarSystemSettings.satelliteInitialOrbit;
@@ -134,16 +171,24 @@ public class SolarSystemGenerator : MonoBehaviour
                 {
                     GameObject satellite = solarSystemFactory.GenerateSatellite(planet, ref satelliteIter, ref satelliteOrbit, ref satelliteOrbitIncrease, ref previousSatelliteGravityRadius);
 
+                    if (satelliteOrbit > planet.GetComponent<Gravity>().GravityRadius)
+                    {
+                        Destroy(satellite);
+                        satelliteIter--;
+                        break;
+                    }
+
                     satellites.Add(satellite);
                 }
 
                 // Assigning satellites revolution speed.
-                List<int> satellitePeriods = solarSystemFactory.GeneratePeriods(solarSystemSettings.satelliteMinPeriod, solarSystemSettings.satelliteMaxPeriod, satelliteIter);
+                //List<int> satellitePeriods = solarSystemFactory.GeneratePeriods(solarSystemSettings.satelliteMinPeriod, solarSystemSettings.satelliteMaxPeriod, satelliteIter);
+                List<float> satellitePeriods = new List<float> {0.5f, 1f, 1.5f, 2f};
 
                 for (int i = 0; i < satelliteIter; i++)
                 {
                     OrbitRevolution revolutionComponent = satellites[i].GetComponent<OrbitRevolution>();
-                    revolutionComponent.revolutionPeriod = 360f / satellitePeriods[i];
+                    revolutionComponent.revolutionPeriod = satellitePeriods[i];
                 }
                 
                 planet.GetComponent<Planet>().ChildSatellites = satellites;
@@ -155,19 +200,20 @@ public class SolarSystemGenerator : MonoBehaviour
         }
 
         // Assigning planets revolution speed.
-        List<int> planetPeriods = solarSystemFactory.GeneratePeriods(solarSystemSettings.planetMinPeriod, solarSystemSettings.planetMaxPeriod, planetIter);
+        //List<int> planetPeriods = solarSystemFactory.GeneratePeriods(solarSystemSettings.planetMinPeriod, solarSystemSettings.planetMaxPeriod, planetIter);
+        List<int> planetPeriods = new List<int>{1, 2, 3, 4, 6, 8, 9, 18};
 
         for (int i = 0; i < planetIter; i++)
         {   
             if (i == asteroidBeltIndex)
             {
                 AsteroidBelt asteroidBeltComponent = planets[i].GetComponent<AsteroidBelt>();
-                asteroidBeltComponent.revolutionSpeed = 360f / planetPeriods[i];
+                asteroidBeltComponent.revolutionSpeed = planetPeriods[i];
             }
             else
             {
                 OrbitRevolution revolutionComponent = planets[i].GetComponent<OrbitRevolution>();
-                revolutionComponent.revolutionPeriod = 360f / planetPeriods[i];
+                revolutionComponent.revolutionPeriod = planetPeriods[i];
             }
         }
 
