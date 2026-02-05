@@ -62,10 +62,10 @@ public class Planet : MonoBehaviour, UpdateFocusInfo, CelestialBody
         else planetHeat = "초저온";
 
         string planetMass;
-        if (biomeSettings.mass == 5) planetMass = "매우 강함";
-        else if (biomeSettings.mass == 4) planetMass = "강함";
-        else if (biomeSettings.mass == 3) planetMass = "평범함";
-        else if (biomeSettings.mass == 2) planetMass = "약함";
+        if (biomeSettings.gravity == 5) planetMass = "매우 강함";
+        else if (biomeSettings.gravity == 4) planetMass = "강함";
+        else if (biomeSettings.gravity == 3) planetMass = "평범함";
+        else if (biomeSettings.gravity == 2) planetMass = "약함";
         else planetMass = "매우 약함";
 
         string planetATM;

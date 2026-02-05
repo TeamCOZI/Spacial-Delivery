@@ -62,10 +62,10 @@ public class Satellite : MonoBehaviour, UpdateFocusInfo, CelestialBody
         else satelliteHeat = "초저온";
 
         string satelliteMass;
-        if (biomeSettings.mass == 5) satelliteMass = "매우 강함";
-        else if (biomeSettings.mass == 4) satelliteMass = "강함";
-        else if (biomeSettings.mass == 3) satelliteMass = "평범함";
-        else if (biomeSettings.mass == 2) satelliteMass = "약함";
+        if (biomeSettings.gravity == 5) satelliteMass = "매우 강함";
+        else if (biomeSettings.gravity == 4) satelliteMass = "강함";
+        else if (biomeSettings.gravity == 3) satelliteMass = "평범함";
+        else if (biomeSettings.gravity == 2) satelliteMass = "약함";
         else satelliteMass = "매우 약함";
 
         string satelliteATM;
