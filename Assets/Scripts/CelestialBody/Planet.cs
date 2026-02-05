@@ -1,13 +1,10 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public enum PlanetType { terrestrial, jovian }
-
 public class Planet : MonoBehaviour, UpdateFocusInfo, CelestialBody
 {
     [Header("Planet Settings")]
-    public PlanetType planetType;
-    public int position;
+    public BiomeSettings biomeSettings;
 
     public int magneticField;
     public int solarWind;
@@ -46,9 +43,8 @@ public class Planet : MonoBehaviour, UpdateFocusInfo, CelestialBody
     {
         Rigidbody rigidbodyComponent = GetComponent<Rigidbody>();
         OrbitRevolution revolutionComponent = GetComponent<OrbitRevolution>();
-        Resource resourceComponent = GetComponent<Resource>();
 
-        if (rigidbodyComponent == null || revolutionComponent == null || resourceComponent == null)
+        if (rigidbodyComponent == null || revolutionComponent == null)
         {
             Debug.LogError("Planet is missing required components.");
             return null;
@@ -56,28 +52,27 @@ public class Planet : MonoBehaviour, UpdateFocusInfo, CelestialBody
 
         string planetName = name;
 
-        string planetCelestialBodyType = planetType == PlanetType.terrestrial ? "암석형 행성" : "가스형 행성";
+        string planetBiomeType = biomeSettings.biomeType.ToString();
 
         string planetHeat;
-        if (heat >= 300) planetHeat = "초고온";
-        else if (heat >= 30) planetHeat = "고온";
-        else if (heat >= -10) planetHeat = "평범함";
-        else if (heat >= -200) planetHeat = "저온";
+        if (biomeSettings.heat == 5) planetHeat = "초고온";
+        else if (biomeSettings.heat == 4) planetHeat = "고온";
+        else if (biomeSettings.heat == 3) planetHeat = "중간";
+        else if (biomeSettings.heat == 2) planetHeat = "저온";
         else planetHeat = "초저온";
 
         string planetMass;
-        int mass = Mathf.RoundToInt(rigidbodyComponent.mass);
-        if (mass >= 1000000) planetMass = "매우 강함";
-        else if (mass >= 90000) planetMass = "강함";
-        else if (mass >= 15000) planetMass = "평범함";
-        else if (mass >= 3000) planetMass = "약함";
+        if (biomeSettings.mass == 5) planetMass = "매우 강함";
+        else if (biomeSettings.mass == 4) planetMass = "강함";
+        else if (biomeSettings.mass == 3) planetMass = "평범함";
+        else if (biomeSettings.mass == 2) planetMass = "약함";
         else planetMass = "매우 약함";
 
         string planetATM;
-        if (atm >= 600) planetATM = "매우 높음";
-        else if (atm >= 200) planetATM = "높음";
-        else if (atm >= 100) planetATM = "평범함";
-        else if (atm >= 50) planetATM = "낮음";
+        if (biomeSettings.atm == 5) planetATM = "매우 높음";
+        else if (biomeSettings.atm == 4) planetATM = "높음";
+        else if (biomeSettings.atm == 3) planetATM = "평범함";
+        else if (biomeSettings.atm == 2) planetATM = "낮음";
         else  planetATM = "매우 낮음";
 
         string planetSolarWind;
@@ -92,23 +87,21 @@ public class Planet : MonoBehaviour, UpdateFocusInfo, CelestialBody
         string planetChildren = "";
         foreach (GameObject childSatellite in childSatellites) planetChildren += childSatellite.name + ", ";
 
-        string planetPeriod = Mathf.RoundToInt(360f / revolutionComponent.revolutionPeriod).ToString();
+        string planetPeriod = revolutionComponent.revolutionPeriod.ToString();
         
         string planetResource = "";
-        resourceComponent.Initialize(planetType == PlanetType.jovian, atm, heat, solarWind - magneticField >= 5000);
-        foreach (KeyValuePair<ResourceType, Dictionary<ResourceState, int>> resource in resourceComponent.resource)
+        foreach (resource resource in new resource[] { biomeSettings.mineral, biomeSettings.water, biomeSettings.gas, biomeSettings.plasma })
         {
-            if (resource.Value == null) continue;
-
-            planetResource += resource.Key.ToString() + " - ";
-
-            foreach (KeyValuePair<ResourceState, int> value in resource.Value) planetResource += value.Key.ToString() + " * " + value.Value + ", ";
+            if (resource.crystal > 0) planetResource += "Crystal * " + resource.crystal.ToString() + ", ";
+            if (resource.liquid > 0) planetResource += "Liquid * " + resource.liquid.ToString() + ", ";
+            if (resource.vapor > 0) planetResource += "Vapor * " + resource.vapor.ToString() + ", ";
+            if (resource.plasma > 0) planetResource += "Plasma * " + resource.plasma.ToString() + ", ";
         }
 
         Dictionary<string, string> focusInfo = new Dictionary<string, string>
         {
             { "이름", planetName },
-            { "분류", planetCelestialBodyType },
+            { "분류", planetBiomeType },
             { "온도", planetHeat },
             { "중력", planetMass },
             { "기압", planetATM},

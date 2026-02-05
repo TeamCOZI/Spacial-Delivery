@@ -16,67 +16,26 @@ MonoBehaviour:
   planetPrefab: {fileID: 1871638478444080574, guid: 4731d692f23e3cc43b1458f9ed3f52e7, type: 3}
   asteroidBeltPrefab: {fileID: 2605883079689149314, guid: d133910efb53c254b9eb9516f0c51d31, type: 3}
   satellitePrefab: {fileID: 3375803047301886354, guid: 04460bc4f55801745b72c68d4cdf36ba, type: 3}
-  planetOrbitIncreaseMultiplyMin: 1.1
-  planetOrbitIncreaseMultiplyMax: 1.2
-  planetOrbitIncreaseMultiplyDistribution:
-    mean: 0.5
-    stdDev: 0.3
-  planetInitialOrbit: 15000
-  planetInitialOrbitIncrease: 30000
-  planetMinPeriod: 600
-  planetMaxPeriod: 3600
-  satelliteOrbitIncreaseMultiplyMin: 1.2
-  satelliteOrbitIncreaseMulitplyMax: 1.7
-  satelliteOrbitIncreaseMulitplyDistribuiton:
-    mean: 0.2
-    stdDev: 0.05
-  satelliteInitialOrbit: 17000
-  satelliteInitialOrbitIncrease: 5000
-  satelliteMinPeriod: 60
-  satelliteMaxPeriod: 120
-  starData:
-    starFactorMin: 215
-    starFactorMax: 215
-    starFactorDistribution:
-      mean: 0.5
-      stdDev: 0.3
-    starScaleRatio: 500
-    starMassRatio: 50000
-    starGravityRadiusRatio: 5000
-    starHeatRatio: 22
-    starSolarWindRatio: 55
-  terrestrialPlanetData:
-    planetFactorMin: 5
-    planetFactorMax: 10
-    planetFactorDistribution:
-      mean: 0.5
-      stdDev: 0.3
-    planetScaleRatio: 800
-    planetMassRatio: 3000
-    planetGravityRadiusRatio: 2000
-  jovianPlanetData:
-    planetFactorMin: 5
-    planetFactorMax: 10
-    planetFactorDistribution:
-      mean: 0.5
-      stdDev: 0.3
-    planetScaleRatio: 2000
-    planetMassRatio: 3000
-    planetGravityRadiusRatio: 6000
-  satelliteData:
-    satelliteFactorMin: 1
-    satelliteFactorMax: 2
-    satelliteFactorDistribution:
-      mean: 0.5
-      stdDev: 0.5
-    satelliteScaleRatio: 800
-    satelliteMassRatio: 3000
-    satelliteGravityRadiusRatio: 1000
-  asteroidBeltData:
-    asteroidBeltFactorMin: 30
-    asteroidBeltFactorMax: 60
-    asteroidBeltFactorDistribution:
-      mean: 0.5
-      stdDev: 0.3
-    asteroidBeltThreshold: 0.4
-    asteroidBeltWidthRatio: 30
+  starScale: 500
+  starMass: 500
+  planetInitialOrbit: 500
+  planetInitialOrbitIncrease: 1500
+  planetOrbitIncreaseMultiply: 1.1
+  satelliteInitialOrbit: 100
+  satelliteInitialOrbitIncrease: 150
+  satelliteOrbitIncreaseMultiply: 1.1
+  asteroidBeltWidth: 350
+  alpine: {fileID: 11400000, guid: f4c463512f2aa64479894f3973d42d12, type: 2}
+  antartic: {fileID: 11400000, guid: 55c71d46d5b8d4b4990d1165da585652, type: 2}
+  desert: {fileID: 11400000, guid: 29bbfa9146a6bda479a47de833b2e4ac, type: 2}
+  gasGiant: {fileID: 11400000, guid: 13a234343e46144478f2eddebb85e63c, type: 2}
+  glacier: {fileID: 11400000, guid: b5424ab0ebbbebd48a0b81b2f26ddd17, type: 2}
+  greenHouse: {fileID: 11400000, guid: 2dcfd03b137cf46458b312ddde8bad9f, type: 2}
+  iceGiant: {fileID: 11400000, guid: 8f57067adba2b2542b3b6fe59d0fac5f, type: 2}
+  iron: {fileID: 11400000, guid: 286e1a771df5388469429d8f42b36d4f, type: 2}
+  lava: {fileID: 11400000, guid: 009991f09241d2b4c927292253a309d7, type: 2}
+  ocean: {fileID: 11400000, guid: ec1b2433d09fc4e4c88951508ee5a6a2, type: 2}
+  temperate: {fileID: 11400000, guid: 024cf32e512ca944a9f81cc3b3cc5f32, type: 2}
+  tropics: {fileID: 11400000, guid: 96156fa4951f4094fbcc5bdfc9921d4e, type: 2}
+  glacierSatellite: {fileID: 11400000, guid: 4232227bef6a30441af56b44168cf239, type: 2}
+  ironSatellite: {fileID: 11400000, guid: d6faed6daa57ab648aae7cfc202086f2, type: 2}

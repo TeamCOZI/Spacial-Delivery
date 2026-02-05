@@ -18,7 +18,7 @@ GameObject:
   - component: {fileID: 3451003416056997688}
   m_Layer: 0
   m_Name: StarPrefab
-  m_TagString: Untagged
+  m_TagString: Prefab
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -155,8 +155,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Star
   starType: 0
-  heat: 0
-  solarWind: 0
 --- !u!114 &2400405246408498607
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -183,4 +181,4 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::GravityField
   lineColor: {r: 1, g: 1, b: 1, a: 1}
-  lineWidth: 1
+  staticLlineWidth: 0.005

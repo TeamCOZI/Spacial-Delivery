@@ -20,9 +20,8 @@ public class SolarSystemFactory
 
         Star starComponent = star.GetComponent<Star>();
         Rigidbody rigidbodyComponent = star.GetComponent<Rigidbody>();
-        Gravity gravityComponent = star.GetComponent<Gravity>();
 
-        if (starComponent == null || gravityComponent == null || rigidbodyComponent == null)
+        if (starComponent == null || rigidbodyComponent == null)
         {
             Debug.LogError("Star Prefab is missing required components.");
             Object.Destroy(star);
@@ -30,22 +29,52 @@ public class SolarSystemFactory
         }
 
         // Generates and assigns random factor.
-        float starFactor = Mathf.Lerp(solarSystemSettings.starData.starFactorMin, solarSystemSettings.starData.starFactorMax, Utility.normalDistribution(solarSystemSettings.starData.starFactorDistribution.mean, solarSystemSettings.starData.starFactorDistribution.stdDev));
-
-        star.transform.localScale = Vector3.one * Mathf.RoundToInt(starFactor * solarSystemSettings.starData.starScaleRatio);
-        rigidbodyComponent.mass = Mathf.RoundToInt(starFactor * solarSystemSettings.starData.starMassRatio);
-        gravityComponent.GravityRadius = Mathf.RoundToInt(starFactor * solarSystemSettings.starData.starGravityRadiusRatio);
-        
-        starComponent.heat = Mathf.RoundToInt(starFactor * solarSystemSettings.starData.starHeatRatio);
-        starComponent.solarWind = Mathf.RoundToInt(starFactor * solarSystemSettings.starData.starSolarWindRatio);
+        star.transform.localScale = Vector3.one * solarSystemSettings.starScale;
+        rigidbodyComponent.mass = solarSystemSettings.starMass;
 
         starComponent.starType = starType.MainSequenceStar;
 
         return star;
     }
 
+    public BiomeSettings PlanetBiomeSettings(int iter)
+    {
+        BiomeSettings biomeSettings;
+        switch (iter)
+        {
+            case 0:
+                int random = Random.Range(0, 2);
+                if (random == 0) biomeSettings = solarSystemSettings.iron;
+                else biomeSettings = solarSystemSettings.lava;
+                break;
+            case 1:
+                random = Random.Range(0, 2);
+                if (random == 0) biomeSettings = solarSystemSettings.greenHouse;
+                else biomeSettings = solarSystemSettings.desert;
+                break;
+            case 2:
+                random = Random.Range(0, 4);
+                if (random == 0) biomeSettings = solarSystemSettings.tropics;
+                else if (random == 1) biomeSettings = solarSystemSettings.temperate;
+                else if (random == 2) biomeSettings = solarSystemSettings.ocean;
+                else biomeSettings = solarSystemSettings.alpine;
+                break;
+            case 3:
+                random = Random.Range(0, 2);
+                if (random == 0) biomeSettings = solarSystemSettings.antartic;
+                else biomeSettings = solarSystemSettings.glacier;
+                break;
+            default:
+                random = Random.Range(0, 2);
+                if (random == 0) biomeSettings = solarSystemSettings.gasGiant;
+                else biomeSettings = solarSystemSettings.iceGiant;
+                break;
+        }
+        return biomeSettings;
+    }
+
     // Generation Step 2 - Generate planets of star.
-    public GameObject GeneratePlanet(GameObject star, ref int planetIter, bool isTerrestrial, ref float planetOrbit, ref float planetOrbitIncrease, ref float previousPlanetGravityRadius)
+    public GameObject GeneratePlanet(GameObject star, int planetIter, float planetOrbit, BiomeSettings planetBiomeSettings)
     {
         GameObject planet = Object.Instantiate(solarSystemSettings.planetPrefab, star.transform);
         planet.name = "Planet " + (planetIter + 1);
@@ -62,51 +91,38 @@ public class SolarSystemFactory
             return null;
         }
 
-        PlanetGenerationData planetData;
-        if (isTerrestrial) planetData = solarSystemSettings.terrestrialPlanetData;
-        else planetData = solarSystemSettings.jovianPlanetData;
+        planetComponent.biomeSettings = planetBiomeSettings;
 
-        // Generates and assigns random factor.
-        float planetFactor = Mathf.Lerp(planetData.planetFactorMin, planetData.planetFactorMax, Utility.normalDistribution(planetData.planetFactorDistribution.mean, planetData.planetFactorDistribution.stdDev));
-        if (planetIter == 2) planetFactor = Mathf.Lerp(7, planetData.planetFactorMax, Utility.normalDistribution(planetData.planetFactorDistribution.mean, planetData.planetFactorDistribution.stdDev));
-        planetOrbit += previousPlanetGravityRadius;
+        planet.GetComponent<MeshRenderer>().material.color = planetBiomeSettings.color;
 
-        planet.transform.localScale = Vector3.one * Mathf.RoundToInt(planetFactor * planetData.planetScaleRatio) / star.transform.lossyScale.x;
+        planet.transform.localScale = Vector3.one * planetBiomeSettings.scale / star.transform.localScale.x;
         planetComponent.scale = Mathf.RoundToInt(planet.transform.lossyScale.x);
-        rigidbodyComponent.mass = Mathf.RoundToInt(planetFactor * planetData.planetMassRatio);
-        previousPlanetGravityRadius = planetFactor * planetData.planetGravityRadiusRatio;
-        gravityComponent.GravityRadius = Mathf.RoundToInt(previousPlanetGravityRadius);
-        planetOrbit += previousPlanetGravityRadius;
-        
+        rigidbodyComponent.mass = planetBiomeSettings.mass;
+        gravityComponent.GravityRadius = planetBiomeSettings.gravityRadius;
 
         revolutionComponent.center = star;
         revolutionComponent.semiMajorAxis = Mathf.RoundToInt(planetOrbit);
         revolutionComponent.semiMinorAxis = Mathf.RoundToInt(planetOrbit);
         revolutionComponent.currentAngle = Random.Range(0, 360);
+        revolutionComponent.revolutionPeriod = new int[] { 1, 2, 3, 4, 6, 8, 9, 18, 36, 72}[planetIter];
 
-        // Assigns Planet type, Heat.
-        Star starComponent = star.GetComponent<Star>();
-
-        planetComponent.planetType = isTerrestrial ? PlanetType.terrestrial : PlanetType.jovian;
-        planetComponent.position = Mathf.RoundToInt(97 - (planetOrbit - star.transform.lossyScale.x) / star.GetComponent<Gravity>().GravityRadius * 100);
-        planetComponent.solarWind = Mathf.RoundToInt(starComponent.solarWind * planetComponent.position * 0.01f);
-        planetComponent.heat = Mathf.RoundToInt(starComponent.heat * 0.1f * (planetComponent.position * 0.03f - 2));
-
-        // Reassigning for next iteration.
-        if (planetIter > 0)
-        {
-            planetOrbitIncrease *= Mathf.Lerp(solarSystemSettings.planetOrbitIncreaseMultiplyMin, solarSystemSettings.planetOrbitIncreaseMultiplyMax, Utility.normalDistribution(solarSystemSettings.planetOrbitIncreaseMultiplyDistribution.mean, solarSystemSettings.planetOrbitIncreaseMultiplyDistribution.stdDev));
-        }
-
-        planetOrbit += planetOrbitIncrease;
-
-        planetIter++;
+        planetComponent.UpdateFocusInfo();
 
         return planet;
     }
     
+    public BiomeSettings SatelliteBiomeSettings(int iter)
+    {
+        BiomeSettings biomeSettings;
+
+        if (iter < 3) biomeSettings = solarSystemSettings.ironSatellite;
+        else biomeSettings = solarSystemSettings.glacierSatellite;
+
+        return biomeSettings;
+    }
+
     // Generation Step 3 - Generate satellites of planets.
-    public GameObject GenerateSatellite(GameObject planet, ref int satelliteIter, ref float satelliteOrbit, ref float satelliteOrbitIncrease, ref float previousSatelliteGravityRadius)
+    public GameObject GenerateSatellite(GameObject planet, int satelliteIter, float satelliteOrbit, BiomeSettings satelliteBiomeSettings)
     {
         GameObject satellite = Object.Instantiate(solarSystemSettings.satellitePrefab, planet.transform);
         satellite.name = planet.name + " - Satellite " + (satelliteIter + 1);
@@ -123,48 +139,20 @@ public class SolarSystemFactory
             return null;
         }
 
-        // Generates and assigns random factor.
-        float satelliteFactor = Mathf.Lerp(solarSystemSettings.satelliteData.satelliteFactorMin, solarSystemSettings.satelliteData.satelliteFactorMax, Utility.normalDistribution(solarSystemSettings.satelliteData.satelliteFactorDistribution.mean, solarSystemSettings.satelliteData.satelliteFactorDistribution.stdDev));
-        satelliteOrbit += previousSatelliteGravityRadius;
+        satelliteComponent.biomeSettings = satelliteBiomeSettings;
 
-        satellite.transform.localScale = Vector3.one * Mathf.Round(satelliteFactor * solarSystemSettings.satelliteData.satelliteScaleRatio * 10) / 10 / planet.transform.lossyScale.x;
-        satelliteComponent.scale = Mathf.Round(satellite.transform.lossyScale.x * 10) / 10;
-        rigidbodyComponent.mass = Mathf.RoundToInt(satelliteFactor * solarSystemSettings.satelliteData.satelliteMassRatio);
-        previousSatelliteGravityRadius = satelliteFactor * solarSystemSettings.satelliteData.satelliteGravityRadiusRatio;
-        gravityComponent.GravityRadius = Mathf.RoundToInt(previousSatelliteGravityRadius);
-        satelliteOrbit += previousSatelliteGravityRadius;
+        satellite.GetComponent<MeshRenderer>().material.color = satelliteBiomeSettings.color;
+        
+        satellite.transform.localScale = Vector3.one * satelliteBiomeSettings.scale / planet.transform.lossyScale.x;
+        satelliteComponent.scale = Mathf.RoundToInt(satellite.transform.lossyScale.x);
+        rigidbodyComponent.mass = Mathf.RoundToInt(satelliteBiomeSettings.mass);
+        gravityComponent.GravityRadius = Mathf.RoundToInt(satelliteBiomeSettings.gravityRadius);
 
         revolutionComponent.center = planet;
         revolutionComponent.semiMajorAxis = Mathf.RoundToInt(satelliteOrbit);
         revolutionComponent.semiMinorAxis = Mathf.RoundToInt(satelliteOrbit);
         revolutionComponent.currentAngle = Random.Range(0, 360);
-
-        // Assigns Magnetic field, Solar wind, ATM, Heat.
-        Planet planetComponent = planet.GetComponent<Planet>();
-
-        // Magnetic Field
-        satelliteComponent.magneticField = Mathf.RoundToInt(satellite.transform.lossyScale.x / 8 + satelliteComponent.ChildSatellites.Count * 100);
-        
-        // Solar Wind
-        satelliteComponent.solarWind = Mathf.RoundToInt(planetComponent.solarWind - satelliteComponent.magneticField);
-
-        // ATM
-        satelliteComponent.atm = Mathf.RoundToInt((rigidbodyComponent.mass - satelliteComponent.solarWind) * 0.01f + planetComponent.heat - 270);
-        if (satelliteComponent.solarWind > 10500 || satelliteComponent.atm <= 0) satelliteComponent.atm = Mathf.RoundToInt(rigidbodyComponent.mass * 0.0001f);
-
-        // Heat
-        if (satelliteComponent.atm >= 50) satelliteComponent.heat = Mathf.RoundToInt(planetComponent.heat + Mathf.Pow(satelliteComponent.atm, 5) * 0.0000000001f - (100 - planetComponent.position) * 15);
-        else if (Mathf.Abs(planetComponent.heat) <= 150) satelliteComponent.heat = Mathf.RoundToInt(150 * planetComponent.heat / Mathf.Abs(planetComponent.heat) + planetComponent.heat * 0.3f);
-
-        // Reassigning for next iteration.
-        if (satelliteIter > 0)
-        {
-            satelliteOrbitIncrease *= Mathf.Lerp(solarSystemSettings.satelliteOrbitIncreaseMultiplyMin, solarSystemSettings.satelliteOrbitIncreaseMulitplyMax, Utility.normalDistribution(solarSystemSettings.satelliteOrbitIncreaseMulitplyDistribuiton.mean, solarSystemSettings.satelliteOrbitIncreaseMulitplyDistribuiton.stdDev));
-        }
-        
-        satelliteOrbit += gravityComponent.GravityRadius + satelliteOrbitIncrease;
-
-        satelliteIter++;
+        revolutionComponent.revolutionPeriod = new float[] {0.5f, 1f, 1.5f, 2f}[satelliteIter];
 
         satelliteComponent.UpdateFocusInfo();
 
@@ -172,7 +160,7 @@ public class SolarSystemFactory
     }
 
     // Generation Step 4 - Generate asteroid belt.
-    public GameObject GenerateAsteroidBelt(GameObject star, ref int planetIter, ref float planetOrbit, ref float planetOrbitIncrease, ref float previousPlanetGravityRadius)
+    public GameObject GenerateAsteroidBelt(GameObject star, float planetOrbit)
     {
         GameObject asteroidBelt = Object.Instantiate(solarSystemSettings.asteroidBeltPrefab, star.transform);
         asteroidBelt.name = "Asteroid Belt";
@@ -186,20 +174,8 @@ public class SolarSystemFactory
             return null;
         }
 
-        float asteroidBeltFactor = Mathf.Lerp(solarSystemSettings.asteroidBeltData.asteroidBeltFactorMin, solarSystemSettings.asteroidBeltData.asteroidBeltFactorMax, Utility.normalDistribution(solarSystemSettings.asteroidBeltData.asteroidBeltFactorDistribution.mean, solarSystemSettings.asteroidBeltData.asteroidBeltFactorDistribution.stdDev));
-        planetOrbit += previousPlanetGravityRadius;
-
-        previousPlanetGravityRadius = asteroidBeltFactor * solarSystemSettings.asteroidBeltData.asteroidBeltWidthRatio;
-        planetOrbit += previousPlanetGravityRadius;
-
         asteroidBeltComponent.asteroidBeltOrbit = Mathf.RoundToInt(planetOrbit);
-        asteroidBeltComponent.asteroidBeltWidth = Mathf.RoundToInt(previousPlanetGravityRadius);
-
-        planetOrbitIncrease *= Mathf.Lerp(solarSystemSettings.planetOrbitIncreaseMultiplyMin, solarSystemSettings.planetOrbitIncreaseMultiplyMax, Utility.normalDistribution(solarSystemSettings.planetOrbitIncreaseMultiplyDistribution.mean, solarSystemSettings.planetOrbitIncreaseMultiplyDistribution.stdDev));
-
-        planetOrbit += planetOrbitIncrease;
-
-        planetIter++;
+        asteroidBeltComponent.asteroidBeltWidth = Mathf.RoundToInt(solarSystemSettings.asteroidBeltWidth);
 
         return asteroidBelt;
     }
@@ -233,38 +209,5 @@ public class SolarSystemFactory
         periods.Sort();
 
         return periods;
-    }
-
-    public void ReassignPlanet(GameObject planet)
-    {
-        Planet planetComponent = planet.GetComponent<Planet>();
-        Rigidbody rigidbodyComponent = planet.GetComponent<Rigidbody>();
-
-        // Magnetic Field
-        planetComponent.magneticField = Mathf.RoundToInt(planet.transform.lossyScale.x / 8 + planetComponent.ChildSatellites.Count * 100);
-        
-        // Solar Wind
-        planetComponent.solarWind = Mathf.RoundToInt(planetComponent.solarWind - planetComponent.magneticField);
-
-        if (planetComponent.planetType == PlanetType.terrestrial)
-        {
-            // Terrestrial ATM
-            planetComponent.atm = Mathf.RoundToInt((rigidbodyComponent.mass - planetComponent.solarWind) * 0.01f + planetComponent.heat - 270);
-            if (planetComponent.solarWind > 10500 || planetComponent.atm <= 0) planetComponent.atm = Mathf.RoundToInt(rigidbodyComponent.mass * 0.0001f);
-
-            // Terrestrial Heat
-            if (planetComponent.atm >= 50) planetComponent.heat = Mathf.RoundToInt(planetComponent.heat + Mathf.Pow(planetComponent.atm, 5) * 0.0000000001f - (100 - planetComponent.position) * 15);
-            else if (Mathf.Abs(planetComponent.heat) <= 150) planetComponent.heat = Mathf.RoundToInt(150 * planetComponent.heat / Mathf.Abs(planetComponent.heat) + planetComponent.heat * 0.3f);
-        }
-        else
-        {
-            // Jovian ATM
-            planetComponent.atm = Mathf.RoundToInt(rigidbodyComponent.mass * 0.5f);
-
-            // Jovian Heat
-            planetComponent.heat = Mathf.RoundToInt(rigidbodyComponent.mass * 0.2f);
-        }
-
-        planetComponent.UpdateFocusInfo();
     }
 }

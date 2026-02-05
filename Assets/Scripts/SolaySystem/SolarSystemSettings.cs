@@ -9,32 +9,38 @@ public class SolarSystemSettings : ScriptableObject
     public GameObject asteroidBeltPrefab;
     public GameObject satellitePrefab;
 
+    [Header("Star Settings")]
+    public int starScale = 500;
+    public int starMass = 500;
+
     [Header("Planet Orbit Settings")]
-    public float planetOrbitIncreaseMultiplyMin = 1.1f;
-    public float planetOrbitIncreaseMultiplyMax = 1.2f;
-    public Utility.NormalDistributionSettings planetOrbitIncreaseMultiplyDistribution = new Utility.NormalDistributionSettings(0.5f, 0.3f);
     public float planetInitialOrbit = 1500f;
     public float planetInitialOrbitIncrease = 3000f;
-
-    [Header("Planet Period Settings")]
-    public int planetMinPeriod = 600;
-    public int planetMaxPeriod = 3600;
+    public float planetOrbitIncreaseMultiply = 1.1f;
     
     [Header("Satellite Orbit Settings")]
-    public float satelliteOrbitIncreaseMultiplyMin = 1.2f;
-    public float satelliteOrbitIncreaseMulitplyMax = 1.7f;
-    public Utility.NormalDistributionSettings satelliteOrbitIncreaseMulitplyDistribuiton = new Utility.NormalDistributionSettings(0.2f, 0.05f);
     public float satelliteInitialOrbit = 250f;
     public float satelliteInitialOrbitIncrease = 500f;
+    public float satelliteOrbitIncreaseMultiply = 1.2f;
 
-    [Header("Satellite Period Settings")]
-    public int satelliteMinPeriod = 60;
-    public int satelliteMaxPeriod = 120;
+    [Header("Asteroid Belt Settings")]
+    public float asteroidBeltWidth = 350f;
 
-    [Header("Generation Data")]
-    public StarGenerationData starData;
-    public PlanetGenerationData terrestrialPlanetData;
-    public PlanetGenerationData jovianPlanetData;
-    public SatelliteGenerationData satelliteData;
-    public AsteroidBeltGenerationData asteroidBeltData;
+    [Header("Planet Biome Settings")]
+    public BiomeSettings alpine;
+    public BiomeSettings antartic;
+    public BiomeSettings desert;
+    public BiomeSettings gasGiant;
+    public BiomeSettings glacier;
+    public BiomeSettings greenHouse;
+    public BiomeSettings iceGiant;
+    public BiomeSettings iron;
+    public BiomeSettings lava;
+    public BiomeSettings ocean;
+    public BiomeSettings temperate;
+    public BiomeSettings tropics;
+
+    [Header("Satellite Biome Settings")]
+    public BiomeSettings glacierSatellite;
+    public BiomeSettings ironSatellite;
 }

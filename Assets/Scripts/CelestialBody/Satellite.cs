@@ -3,6 +3,9 @@ using System.Collections.Generic;
 
 public class Satellite : MonoBehaviour, UpdateFocusInfo, CelestialBody
 {
+    [Header("Satellite Settings")]
+    public BiomeSettings biomeSettings;
+
     public int magneticField;
     public int solarWind;
     public int atm;
@@ -40,38 +43,36 @@ public class Satellite : MonoBehaviour, UpdateFocusInfo, CelestialBody
     {
         Rigidbody rigidbodyComponent = GetComponent<Rigidbody>();
         OrbitRevolution revolutionComponent = GetComponent<OrbitRevolution>();
-        Resource resourceComponent = GetComponent<Resource>();
 
-        if (rigidbodyComponent == null || revolutionComponent == null || resourceComponent == null)
+        if (rigidbodyComponent == null || revolutionComponent == null)
         {
-            Debug.LogError("Planet is missing required components.");
+            Debug.LogError("Satellite is missing required components.");
             return null;
         }
 
         string satelliteName = name;
 
-        string satelliteCelestialBodyType = "위성";
+        string satelliteBiomeType = biomeSettings.biomeType.ToString();
 
         string satelliteHeat;
-        if (heat >= 300) satelliteHeat = "초고온";
-        else if (heat >= 30) satelliteHeat = "고온";
-        else if (heat >= -10) satelliteHeat = "평범함";
-        else if (heat >= -200) satelliteHeat = "저온";
+        if (biomeSettings.heat == 5) satelliteHeat = "초고온";
+        else if (biomeSettings.heat == 4) satelliteHeat = "고온";
+        else if (biomeSettings.heat == 3) satelliteHeat = "평범함";
+        else if (biomeSettings.heat == 2) satelliteHeat = "저온";
         else satelliteHeat = "초저온";
 
         string satelliteMass;
-        int mass = Mathf.RoundToInt(rigidbodyComponent.mass);
-        if (mass >= 1000000) satelliteMass = "매우 강함";
-        else if (mass >= 90000) satelliteMass = "강함";
-        else if (mass >= 15000) satelliteMass = "평범함";
-        else if (mass >= 3000) satelliteMass = "약함";
+        if (biomeSettings.mass == 5) satelliteMass = "매우 강함";
+        else if (biomeSettings.mass == 4) satelliteMass = "강함";
+        else if (biomeSettings.mass == 3) satelliteMass = "평범함";
+        else if (biomeSettings.mass == 2) satelliteMass = "약함";
         else satelliteMass = "매우 약함";
 
         string satelliteATM;
-        if (atm >= 600) satelliteATM = "매우 높음";
-        else if (atm >= 200) satelliteATM = "높음";
-        else if (atm >= 100) satelliteATM = "평범함";
-        else if (atm >= 50) satelliteATM = "낮음";
+        if (biomeSettings.atm == 5) satelliteATM = "매우 높음";
+        else if (biomeSettings.atm == 4) satelliteATM = "높음";
+        else if (biomeSettings.atm == 3) satelliteATM = "평범함";
+        else if (biomeSettings.atm == 2) satelliteATM = "낮음";
         else  satelliteATM = "매우 낮음";
 
         string satelliteSolarWind;
@@ -85,23 +86,21 @@ public class Satellite : MonoBehaviour, UpdateFocusInfo, CelestialBody
 
         string satelliteChildren = "N/A";
 
-        string satellitePeriod = Mathf.RoundToInt(360f / revolutionComponent.revolutionPeriod).ToString();
+        string satellitePeriod = revolutionComponent.revolutionPeriod.ToString();
         
         string satelliteResource = "";
-        resourceComponent.Initialize(false, atm, heat, solarWind - magneticField >= 5000);
-        foreach (KeyValuePair<ResourceType, Dictionary<ResourceState, int>> resource in resourceComponent.resource)
+        foreach (resource resource in new resource[] { biomeSettings.mineral, biomeSettings.water, biomeSettings.gas, biomeSettings.plasma })
         {
-            if (resource.Value == null) continue;
-
-            satelliteResource += resource.Key.ToString() + " - ";
-
-            foreach (KeyValuePair<ResourceState, int> value in resource.Value) satelliteResource += value.Key.ToString() + " * " + value.Value + ", ";
+            if (resource.crystal > 0) satelliteResource += "Crystal * " + resource.crystal.ToString() + ", ";
+            if (resource.liquid > 0) satelliteResource += "Liquid * " + resource.liquid.ToString() + ", ";
+            if (resource.vapor > 0) satelliteResource += "Vapor * " + resource.vapor.ToString() + ", ";
+            if (resource.plasma > 0) satelliteResource += "Plasma * " + resource.plasma.ToString() + ", ";
         }
 
         Dictionary<string, string> focusInfo = new Dictionary<string, string>
         {
             { "이름", satelliteName },
-            { "분류", satelliteCelestialBodyType },
+            { "분류", satelliteBiomeType },
             { "온도", satelliteHeat },
             { "중력", satelliteMass },
             { "기압", satelliteATM },

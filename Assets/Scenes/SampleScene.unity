@@ -496,7 +496,7 @@ Camera:
     width: 1
     height: 1
   near clip plane: 0.3
-  far clip plane: 3000000
+  far clip plane: 50000
   field of view: 30
   orthographic: 0
   orthographic size: 5
@@ -629,9 +629,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: aa29627f63d60dc42b6d8e092c4c38b7, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CameraManager
-  minZ: -3000000
+  minZ: -20000
   maxZ: 0
-  defaultZ: -3000000
+  defaultZ: -20000
   smoothTime: 0.1
   followZ: -300
   zoomSpeed: 3000
