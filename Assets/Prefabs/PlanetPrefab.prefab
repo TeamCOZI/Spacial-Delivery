@@ -19,7 +19,6 @@ GameObject:
   - component: {fileID: 1391950306136298641}
   - component: {fileID: 2074036681232529122}
   - component: {fileID: 54510206751492066}
-  - component: {fileID: 1627429433362678886}
   m_Layer: 0
   m_Name: PlanetPrefab
   m_TagString: Prefab
@@ -158,8 +157,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 00d7ff7dd4042794da707dae4eef0424, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Planet
-  planetType: 0
-  position: 0
+  biomeSettings: {fileID: 0}
   magneticField: 0
   solarWind: 0
   atm: 0
@@ -242,17 +240,3 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::OrbitVisualizer
   lineColor: {r: 255, g: 128, b: 0, a: 1}
   staticLlineWidth: 0.005
---- !u!114 &1627429433362678886
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1871638478444080574}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: c3f76e748fe67c941a070cbe0ab1c460, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Resource
-  aTMType: 0
-  heatType: 0

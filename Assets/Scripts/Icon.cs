@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Unity.VisualScripting;
 using UnityEngine;
 
 [RequireComponent(typeof(Renderer), typeof(Gravity), typeof(GravityField))]
@@ -76,7 +77,7 @@ public class Icon : MonoBehaviour
         if (Camera.main == null) return;
         
         float cameraZ = Mathf.Abs(Camera.main.transform.position.z);
-        float iconScale = 2.0f * cameraZ * tanFovHalf * iconHeight * GameSettings.IconSize;
+        float iconScale = cameraZ * tanFovHalf * Mathf.Log(transform.lossyScale.x) * GameSettings.IconSize / 50f;
 
         Gravity gravity = GetComponent<Gravity>();
         if (gravity == null)
@@ -85,53 +86,18 @@ public class Icon : MonoBehaviour
             return;
         }
 
-        Transform parent = transform.parent;
-
-        if (iconScale < gravity.GravityRadius * 2)
+        Icon parentIcon = transform.parent.GetComponent<Icon>();
+        if (parentIcon != null && parentIcon.icon.transform.localScale.x > 1f)
         {
             if (icon.activeSelf) icon.SetActive(false);
-
-            if (FocusManager.currentFocus == transform) isFocus = true;
-
-            return;
-        }
-        else if (iconScale > parent.lossyScale.x && parent.GetComponent<Star>() == null)
-        {
-            if (icon.activeSelf) icon.SetActive(false);
-
-            return;
         }
         else
         {
-            bool parentIsIcon = false;
-
-            while (!parentIsIcon && parent != null && parent.GetComponent<Icon>() != null)
-            {
-                parentIsIcon = parent.GetComponent<Icon>().icon.activeSelf;
-
-                if (parentIsIcon)
-                {
-                    icon.SetActive(false);
-
-                    return;
-                }
-
-                parent = parent.parent;
-            }
-            
             if (!icon.activeSelf) icon.SetActive(true);
-
+            
             float finalIconScale = isHover ? iconScale * hoverScaleMultiply : iconScale;
 
             icon.transform.localScale = Vector3.one * finalIconScale / transform.lossyScale.x;
-
-            // Unfocus by Z.
-            if (isFocus)
-            {
-                if (FocusManager.currentFocus == transform) FocusManager.Instance.SetFocus(null);
-                
-                isFocus = false;
-            }
         }
     }
     

@@ -13,7 +13,6 @@ GameObject:
   - component: {fileID: 2803965216046640355}
   - component: {fileID: 7822801922247746048}
   - component: {fileID: 5778082346436940885}
-  - component: {fileID: 2580182591789044222}
   - component: {fileID: 4125492668238838840}
   - component: {fileID: 284225305324683401}
   - component: {fileID: 8430647554160784531}
@@ -34,13 +33,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 6520169117287697879}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.35355338, y: -0.1464466, z: 0.35355338, w: 0.8535535}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 45, y: 0, z: 45}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!33 &8936037296901934513
 MeshFilter:
   m_ObjectHideFlags: 0
@@ -145,20 +144,6 @@ Rigidbody:
   m_Interpolate: 0
   m_Constraints: 0
   m_CollisionDetection: 0
---- !u!114 &2580182591789044222
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6520169117287697879}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 15fb54de2486fb845b17e6c18331f01b, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::ArtificialSatellite
-  scale: 0.01
-  altitude: 1
 --- !u!114 &4125492668238838840
 MonoBehaviour:
   m_ObjectHideFlags: 0

@@ -30,6 +30,7 @@ public class FocusManager : MonoBehaviour
 
     private void UpdateFocus(Transform transform)
     {
+        if (currentFocus == transform) return;
         currentFocus = transform;
 
         focusEvent?.Invoke(currentFocus);

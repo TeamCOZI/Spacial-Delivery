@@ -2,11 +2,11 @@
     <ui:VisualElement style="flex-grow: 1; align-items: center; justify-content: flex-end;">
         <ui:VisualElement style="flex-grow: initial; width: 60%; height: 20%; flex-direction: column;">
             <ui:VisualElement style="flex-grow: 1; flex-direction: row;">
-                <ui:VisualElement style="flex-grow: initial; width: 10%; justify-content: center;">
-                    <ui:Label text="Label" />
+                <ui:VisualElement style="flex-grow: initial; width: 20%; justify-content: center;">
+                    <ui:Label text="Label" name="Focus" style="background-color: rgb(255, 255, 255); align-self: center;" />
                 </ui:VisualElement>
                 <ui:VisualElement style="flex-grow: 1; justify-content: center;">
-                    <ui:ProgressBar value="22" title="my-progress" />
+                    <ui:ProgressBar value="22" title="my-progress" name="Period" />
                 </ui:VisualElement>
             </ui:VisualElement>
         </ui:VisualElement>

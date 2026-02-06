@@ -44,6 +44,11 @@ public class SolarSystemGenerator : MonoBehaviour
 
             planet.GetComponent<Planet>().ChildSatellites.Add(satellite);
 
+            if (i == 2)
+            {
+                
+            }
+
             star.GetComponent<Star>().ChildPlanets.Add(planet);
         }
 

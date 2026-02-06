@@ -39,7 +39,7 @@ public class OrbitRevolution : MonoBehaviour
     {
         
         float clockwise = isClockwise ? -1f : 1f;
-        currentAngle += Time.fixedDeltaTime * timeMultiplier * clockwise * 20.0f / revolutionPeriod;
+        currentAngle += Time.fixedDeltaTime * timeMultiplier * clockwise * 20f / revolutionPeriod;
         currentAngle %= 360f;
 
         rigidbodyComponent.MovePosition(UpdatePosition(currentAngle));
