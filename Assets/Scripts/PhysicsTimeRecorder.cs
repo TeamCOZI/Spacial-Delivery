@@ -11,6 +11,16 @@ public class PhysicsTimeRecorder : BaseTimeRecorder
     private List<Vector3> velocities;
     private List<Vector3> angularVelocities;
 
+    private void OnEnable()
+    {
+        WorldOriginManager.worldShifted += HandleWorldShift;
+    }
+
+    private void OnDisable()
+    {
+        WorldOriginManager.worldShifted -= HandleWorldShift;
+    }
+
     protected override void Start()
     {
         base.Start();
@@ -110,6 +120,16 @@ public class PhysicsTimeRecorder : BaseTimeRecorder
             int lastFrame = frame - 1;
             rb.linearVelocity = velocities[lastFrame];
             rb.angularVelocity = angularVelocities[lastFrame];
+        }
+    }
+
+    private void HandleWorldShift(Vector3 shiftDelta)
+    {
+        if (positions == null || positions.Count == 0) return;
+
+        for (int i = 0; i < positions.Count; i++)
+        {
+            positions[i] += shiftDelta;
         }
     }
 }

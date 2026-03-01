@@ -37,9 +37,22 @@ public class FocusManager : MonoBehaviour
 
         focusInfoText.text = "";
 
+        if (AssemblyManager.Instance != null && AssemblyManager.Instance.isAssembling)
+        {
+            return;
+        }
+
         if (currentFocus != null)
         {
-            Dictionary<string, string> focusInfo = transform.GetComponent<UpdateFocusInfo>().UpdateFocusInfo();
+            UpdateFocusInfo provider = transform.GetComponent<UpdateFocusInfo>();
+            if (provider == null)
+            {
+                provider = transform.GetComponentInParent<UpdateFocusInfo>();
+            }
+            if (provider == null) return;
+
+            Dictionary<string, string> focusInfo = provider.UpdateFocusInfo();
+            if (focusInfo == null) return;
 
             foreach(KeyValuePair<string, string> info in focusInfo) focusInfoText.text += info.Key + " : " + info.Value + "\n\n";
         }

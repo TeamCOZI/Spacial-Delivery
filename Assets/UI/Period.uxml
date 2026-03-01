@@ -1,13 +1,9 @@
 <ui:UXML xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" noNamespaceSchemaLocation="../../UIElementsSchema/UIElements.xsd" editor-extension-mode="False">
-    <ui:VisualElement style="flex-grow: 1; align-items: center; justify-content: flex-end;">
-        <ui:VisualElement style="flex-grow: initial; width: 60%; height: 20%; flex-direction: column;">
-            <ui:VisualElement style="flex-grow: 1; flex-direction: row;">
-                <ui:VisualElement style="flex-grow: initial; width: 20%; justify-content: center;">
-                    <ui:Label text="Label" name="Focus" style="background-color: rgb(255, 255, 255); align-self: center;" />
-                </ui:VisualElement>
-                <ui:VisualElement style="flex-grow: 1; justify-content: center;">
-                    <ui:ProgressBar value="22" title="my-progress" name="Period" />
-                </ui:VisualElement>
+    <Style src="project://database/Assets/UI/Period.uss?fileID=7433441132597879392&amp;guid=d73924f609782bf4cb760399a5d2dff5&amp;type=3#Period" />
+    <ui:VisualElement picking-mode="Ignore" name="Root" style="flex-grow: 1; align-items: center; justify-content: flex-start;">
+        <ui:VisualElement name="RootUI" style="flex-grow: initial; width: 60%; height: 20%; flex-direction: column;">
+            <ui:VisualElement name="UI" style="flex-grow: 1; flex-direction: column; align-items: center; justify-content: center;">
+                <ui:ProgressBar name="Period" style="width: 80%;" />
             </ui:VisualElement>
         </ui:VisualElement>
     </ui:VisualElement>

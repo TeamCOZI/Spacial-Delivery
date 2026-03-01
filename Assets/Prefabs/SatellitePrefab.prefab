@@ -19,6 +19,8 @@ GameObject:
   - component: {fileID: 1380410713599604016}
   - component: {fileID: 3266453513160952292}
   - component: {fileID: 4436742533045489060}
+  - component: {fileID: 703001001001001001}
+  - component: {fileID: 703001001001001002}
   m_Layer: 0
   m_Name: SatellitePrefab
   m_TagString: Prefab
@@ -240,3 +242,37 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::OrbitVisualizer
   lineColor: {r: 255, g: 255, b: 0, a: 1}
   staticLlineWidth: 0.005
+--- !u!114 &703001001001001001
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3375803047301886354}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a756b009733e9ec409e1971b09242f7b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::WorldPosition
+  worldPosition:
+    x: 0
+    y: 0
+    z: 0
+  initializeFromTransform: 1
+--- !u!114 &703001001001001002
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3375803047301886354}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cb7226ee4c31f6a4e8f58bd55c4608ed, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SimulationTierTarget
+  nearStepInterval: 1
+  midStepInterval: 1
+  farStepInterval: 1
+  disableVisualHelpersInFarTier: 0
+  disableCollidersInFarTier: 0

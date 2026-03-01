@@ -8,6 +8,7 @@ public class SolarSystemSettings : ScriptableObject
     public GameObject planetPrefab;
     public GameObject asteroidBeltPrefab;
     public GameObject satellitePrefab;
+    public GameObject artificialSatellitePrefab;
 
     [Header("Star Settings")]
     public int starScale = 500;

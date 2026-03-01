@@ -8,14 +8,15 @@ TagManager:
   - PlayerSpaceship
   - Package
   - Icon
+  - Part
   layers:
   - Default
   - TransparentFX
   - Ignore Raycast
-  - 
+  - Assembly
   - Water
   - UI
-  - 
+  - SmallScale
   - 
   - 
   - 

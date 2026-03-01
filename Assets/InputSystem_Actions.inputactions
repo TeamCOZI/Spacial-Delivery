@@ -97,18 +97,9 @@
                     "initialStateCheck": false
                 },
                 {
-                    "name": "GenerateArtificialSatellite",
+                    "name": "AssemblyMode",
                     "type": "Button",
                     "id": "9ac6ec83-ed62-44c7-8189-a08a15ebb8e5",
-                    "expectedControlType": "",
-                    "processors": "",
-                    "interactions": "",
-                    "initialStateCheck": false
-                },
-                {
-                    "name": "DestroyArtificialSatellite",
-                    "type": "Button",
-                    "id": "f3fe23dd-c6dc-4ab5-88c2-ce6dc45632ea",
                     "expectedControlType": "",
                     "processors": "",
                     "interactions": "",
@@ -519,18 +510,7 @@
                     "interactions": "",
                     "processors": "",
                     "groups": "",
-                    "action": "GenerateArtificialSatellite",
-                    "isComposite": false,
-                    "isPartOfComposite": false
-                },
-                {
-                    "name": "",
-                    "id": "1702eec9-bbd2-4e19-b641-fa850c76e9f0",
-                    "path": "<Keyboard>/b",
-                    "interactions": "",
-                    "processors": "",
-                    "groups": "",
-                    "action": "DestroyArtificialSatellite",
+                    "action": "AssemblyMode",
                     "isComposite": false,
                     "isPartOfComposite": false
                 }

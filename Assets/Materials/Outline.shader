@@ -3,7 +3,7 @@ Shader "Unlit/Outline"
     Properties
     {
         _OutlineColor ("Outline Color", Color) = (1,1,1,1)
-        _Thickness ("Thickness", Range(0, 0.1)) = 0.01
+        _Thickness ("Thickness", Range(0, 2)) = 1
     }
     SubShader
     {
@@ -12,6 +12,8 @@ Shader "Unlit/Outline"
         Pass
         {
             Cull Front
+            ZWrite Off
+            ZTest LEqual
 
             HLSLPROGRAM
             #pragma vertex vert
@@ -39,8 +41,9 @@ Shader "Unlit/Outline"
             {
                 Varyings OUT;
 
-                float3 positionOS = IN.positionOS.xyz + IN.normalOS * _Thickness;
-                OUT.positionHCS = TransformObjectToHClip(positionOS);
+                // Uniform object-space expansion avoids hard-edge artifacts on cube meshes.
+                float3 expandedOS = IN.positionOS.xyz * (1.0 + _Thickness);
+                OUT.positionHCS = TransformObjectToHClip(expandedOS);
                 return OUT;
             }
 

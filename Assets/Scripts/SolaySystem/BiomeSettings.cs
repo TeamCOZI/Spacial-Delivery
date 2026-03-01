@@ -29,8 +29,8 @@ public class BiomeSettings : ScriptableObject
     public int atm;
 
     [Header("Resource Settings")]
-    public resource mineral = new resource();
-    public resource water = new resource();
-    public resource gas = new resource();
+    public resource Terite = new resource();
+    public resource Nectar = new resource();
+    public resource Nitain = new resource();
     public resource plasma = new resource();
 }

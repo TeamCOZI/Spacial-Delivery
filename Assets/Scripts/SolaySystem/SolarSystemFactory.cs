@@ -3,6 +3,9 @@ using UnityEngine;
 
 public class SolarSystemFactory
 {
+    private static readonly int[] planetRevolutionPeriods = new int[] { 2, 4, 6, 8, 12, 16, 18, 36, 72, 144 };
+    private static readonly float[] satelliteRevolutionPeriods = new float[] { 1f, 2f, 3f, 4f };
+
     private readonly SolarSystemSettings solarSystemSettings;
     private readonly Transform transform;
 
@@ -17,6 +20,8 @@ public class SolarSystemFactory
     {
         GameObject star = Object.Instantiate(solarSystemSettings.starPrefab, Vector3.zero, Quaternion.identity, transform);
         star.name = "Central Star";
+        EnsureWorldPosition(star);
+        EnsureSimulationTierTarget(star);
 
         Star starComponent = star.GetComponent<Star>();
         Rigidbody rigidbodyComponent = star.GetComponent<Rigidbody>();
@@ -29,7 +34,7 @@ public class SolarSystemFactory
         }
 
         // Generates and assigns random factor.
-        star.transform.localScale = Vector3.one * solarSystemSettings.starScale;
+        star.transform.localScale = Vector3.one * WorldScale.ScaleLength(solarSystemSettings.starScale);
         rigidbodyComponent.mass = solarSystemSettings.starMass;
 
         starComponent.starType = starType.MainSequenceStar;
@@ -76,8 +81,10 @@ public class SolarSystemFactory
     // Generation Step 2 - Generate planets of star.
     public GameObject GeneratePlanet(GameObject star, int planetIter, float planetOrbit, BiomeSettings planetBiomeSettings)
     {
-        GameObject planet = Object.Instantiate(solarSystemSettings.planetPrefab, star.transform);
+        GameObject planet = Object.Instantiate(solarSystemSettings.planetPrefab, star.transform.position, Quaternion.identity, transform);
         planet.name = "Planet " + (planetIter + 1);
+        EnsureWorldPosition(planet);
+        EnsureSimulationTierTarget(planet);
 
         Planet planetComponent = planet.GetComponent<Planet>();
         Rigidbody rigidbodyComponent = planet.GetComponent<Rigidbody>();
@@ -95,16 +102,16 @@ public class SolarSystemFactory
 
         planet.GetComponent<MeshRenderer>().material.color = planetBiomeSettings.color;
 
-        planet.transform.localScale = Vector3.one * planetBiomeSettings.scale / star.transform.localScale.x;
+        planet.transform.localScale = Vector3.one * WorldScale.ScaleLength(planetBiomeSettings.scale);
         planetComponent.scale = Mathf.RoundToInt(planet.transform.lossyScale.x);
         rigidbodyComponent.mass = planetBiomeSettings.mass;
-        gravityComponent.GravityRadius = planetBiomeSettings.gravityRadius;
+        gravityComponent.GravityRadius = WorldScale.ScaleLength(planetBiomeSettings.gravityRadius);
 
         revolutionComponent.center = star;
         revolutionComponent.semiMajorAxis = Mathf.RoundToInt(planetOrbit);
         revolutionComponent.semiMinorAxis = Mathf.RoundToInt(planetOrbit);
         revolutionComponent.currentAngle = Random.Range(0, 360);
-        revolutionComponent.revolutionPeriod = new int[] { 1, 2, 3, 4, 6, 8, 9, 18, 36, 72}[planetIter];
+        revolutionComponent.revolutionPeriod = planetRevolutionPeriods[planetIter];
 
         planetComponent.UpdateFocusInfo();
 
@@ -124,8 +131,10 @@ public class SolarSystemFactory
     // Generation Step 3 - Generate satellites of planets.
     public GameObject GenerateSatellite(GameObject planet, int satelliteIter, float satelliteOrbit, BiomeSettings satelliteBiomeSettings)
     {
-        GameObject satellite = Object.Instantiate(solarSystemSettings.satellitePrefab, planet.transform);
+        GameObject satellite = Object.Instantiate(solarSystemSettings.satellitePrefab, planet.transform.position, Quaternion.identity, transform);
         satellite.name = planet.name + " - Satellite " + (satelliteIter + 1);
+        EnsureWorldPosition(satellite);
+        EnsureSimulationTierTarget(satellite);
 
         Satellite satelliteComponent = satellite.GetComponent<Satellite>();
         Rigidbody rigidbodyComponent = satellite.GetComponent<Rigidbody>();
@@ -143,16 +152,16 @@ public class SolarSystemFactory
 
         satellite.GetComponent<MeshRenderer>().material.color = satelliteBiomeSettings.color;
         
-        satellite.transform.localScale = Vector3.one * satelliteBiomeSettings.scale / planet.transform.lossyScale.x;
+        satellite.transform.localScale = Vector3.one * WorldScale.ScaleLength(satelliteBiomeSettings.scale);
         satelliteComponent.scale = Mathf.RoundToInt(satellite.transform.lossyScale.x);
         rigidbodyComponent.mass = Mathf.RoundToInt(satelliteBiomeSettings.mass);
-        gravityComponent.GravityRadius = Mathf.RoundToInt(satelliteBiomeSettings.gravityRadius);
+        gravityComponent.GravityRadius = Mathf.RoundToInt(WorldScale.ScaleLength(satelliteBiomeSettings.gravityRadius));
 
         revolutionComponent.center = planet;
         revolutionComponent.semiMajorAxis = Mathf.RoundToInt(satelliteOrbit);
         revolutionComponent.semiMinorAxis = Mathf.RoundToInt(satelliteOrbit);
         revolutionComponent.currentAngle = Random.Range(0, 360);
-        revolutionComponent.revolutionPeriod = new float[] {0.5f, 1f, 1.5f, 2f}[satelliteIter];
+        revolutionComponent.revolutionPeriod = satelliteRevolutionPeriods[satelliteIter];
 
         satelliteComponent.UpdateFocusInfo();
 
@@ -162,8 +171,10 @@ public class SolarSystemFactory
     // Generation Step 4 - Generate asteroid belt.
     public GameObject GenerateAsteroidBelt(GameObject star, float planetOrbit)
     {
-        GameObject asteroidBelt = Object.Instantiate(solarSystemSettings.asteroidBeltPrefab, star.transform);
+        GameObject asteroidBelt = Object.Instantiate(solarSystemSettings.asteroidBeltPrefab, star.transform.position, Quaternion.identity, transform);
         asteroidBelt.name = "Asteroid Belt";
+        EnsureWorldPosition(asteroidBelt);
+        EnsureSimulationTierTarget(asteroidBelt);
 
         AsteroidBelt asteroidBeltComponent = asteroidBelt.GetComponent<AsteroidBelt>();
 
@@ -175,7 +186,7 @@ public class SolarSystemFactory
         }
 
         asteroidBeltComponent.asteroidBeltOrbit = Mathf.RoundToInt(planetOrbit);
-        asteroidBeltComponent.asteroidBeltWidth = Mathf.RoundToInt(solarSystemSettings.asteroidBeltWidth);
+        asteroidBeltComponent.asteroidBeltWidth = Mathf.RoundToInt(WorldScale.ScaleLength(solarSystemSettings.asteroidBeltWidth));
 
         return asteroidBelt;
     }
@@ -209,5 +220,26 @@ public class SolarSystemFactory
         periods.Sort();
 
         return periods;
+    }
+
+    private static void EnsureWorldPosition(GameObject target)
+    {
+        if (target == null) return;
+
+        WorldPosition wp = target.GetComponent<WorldPosition>();
+        if (wp == null)
+        {
+            wp = target.AddComponent<WorldPosition>();
+        }
+        wp.SetWorldPosition(target.transform.position);
+    }
+
+    private static void EnsureSimulationTierTarget(GameObject target)
+    {
+        if (target == null) return;
+        if (target.GetComponent<SimulationTierTarget>() == null)
+        {
+            target.AddComponent<SimulationTierTarget>();
+        }
     }
 }

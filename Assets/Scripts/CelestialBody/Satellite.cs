@@ -89,12 +89,24 @@ public class Satellite : MonoBehaviour, UpdateFocusInfo, CelestialBody
         string satellitePeriod = revolutionComponent.revolutionPeriod.ToString();
         
         string satelliteResource = "";
-        foreach (resource resource in new resource[] { biomeSettings.mineral, biomeSettings.water, biomeSettings.gas, biomeSettings.plasma })
+        var resources = new (string name, resource value)[]
         {
-            if (resource.crystal > 0) satelliteResource += "Crystal * " + resource.crystal.ToString() + ", ";
-            if (resource.liquid > 0) satelliteResource += "Liquid * " + resource.liquid.ToString() + ", ";
-            if (resource.vapor > 0) satelliteResource += "Vapor * " + resource.vapor.ToString() + ", ";
-            if (resource.plasma > 0) satelliteResource += "Plasma * " + resource.plasma.ToString() + ", ";
+            ("Terite", biomeSettings.Terite),
+            ("Nectar", biomeSettings.Nectar),
+            ("Nitain", biomeSettings.Nitain),
+            ("Plasma", biomeSettings.plasma)
+        };
+        
+        foreach (var resource in resources)
+        {
+            var value = resource.value;
+            if (value.crystal == 0 && value.liquid == 0 && value.vapor == 0 && value.plasma == 0) continue;
+
+            satelliteResource += resource.name + " - ";
+            if (value.crystal > 0) satelliteResource += "Crystal * " + value.crystal.ToString() + ", ";
+            if (value.liquid > 0) satelliteResource += "Liquid * " + value.liquid.ToString() + ", ";
+            if (value.vapor > 0) satelliteResource += "Vapor * " + value.vapor.ToString() + ", ";
+            if (value.plasma > 0) satelliteResource += "Plasma * " + value.plasma.ToString() + ", ";
         }
 
         Dictionary<string, string> focusInfo = new Dictionary<string, string>

@@ -65,10 +65,10 @@ public static class Utility
         return primeFactors;
     }
 
-    public static Vector3 screenMousePos(Vector3 mousePos)
+    public static Vector3 screenMousePos(Vector3 mousePos, float planeZ = 0f)
     {
         Ray ray = Camera.main.ScreenPointToRay(mousePos);
-        Plane plane = new Plane(Vector3.forward, Vector3.zero);
+        Plane plane = new Plane(Vector3.forward, new Vector3(0f, 0f, planeZ));
 
         if (plane.Raycast(ray, out float screenMousePos)) return ray.GetPoint(screenMousePos);
         return Vector3.zero;

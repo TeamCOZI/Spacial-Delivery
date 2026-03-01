@@ -16,6 +16,7 @@ MonoBehaviour:
   planetPrefab: {fileID: 1871638478444080574, guid: 4731d692f23e3cc43b1458f9ed3f52e7, type: 3}
   asteroidBeltPrefab: {fileID: 2605883079689149314, guid: d133910efb53c254b9eb9516f0c51d31, type: 3}
   satellitePrefab: {fileID: 3375803047301886354, guid: 04460bc4f55801745b72c68d4cdf36ba, type: 3}
+  artificialSatellitePrefab: {fileID: 6520169117287697879, guid: 9e72eda610000394eb5d392403252c61, type: 3}
   starScale: 500
   starMass: 500
   planetInitialOrbit: 500

@@ -22,12 +22,23 @@ public class Package : MonoBehaviour
     {
         rb = GetComponent<Rigidbody>();
         rb.useGravity = false;
+        SmallScaleLayerUtility.ApplyRecursively(transform);
 
         if (pathPoints.Count == 0)
         {
             pathPoints.Add(transform.position);
             lastPathPoint = transform.position;
         }
+    }
+
+    protected virtual void OnEnable()
+    {
+        WorldOriginManager.worldShifted += HandleWorldShift;
+    }
+
+    protected virtual void OnDisable()
+    {
+        WorldOriginManager.worldShifted -= HandleWorldShift;
     }
 
     public void SetLaunchFrame(int frame)
@@ -37,7 +48,10 @@ public class Package : MonoBehaviour
 
     protected virtual void Update()
     {
-        if (transform.position.magnitude > destroyDistance)
+        Camera cameraComponent = Camera.main;
+        if (cameraComponent == null) return;
+
+        if (Vector3.Distance(transform.position, cameraComponent.transform.position) > destroyDistance)
         {
             Destroy(gameObject);
         }
@@ -71,6 +85,18 @@ public class Package : MonoBehaviour
             rb.AddForce(thrustDirection * thrustForce);
             thrustIndex++;
         }
+    }
+
+    private void HandleWorldShift(Vector3 shiftDelta)
+    {
+        if (pathPoints == null || pathPoints.Count == 0) return;
+
+        for (int i = 0; i < pathPoints.Count; i++)
+        {
+            pathPoints[i] += shiftDelta;
+        }
+
+        lastPathPoint += shiftDelta;
     }
 
     /*protected void ApplyGravity()

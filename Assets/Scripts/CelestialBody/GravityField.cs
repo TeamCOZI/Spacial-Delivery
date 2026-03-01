@@ -1,5 +1,6 @@
 using UnityEngine;
 
+[DefaultExecutionOrder(31000)]
 [RequireComponent(typeof(Gravity))]
 public class GravityField : MonoBehaviour
 {
@@ -12,6 +13,9 @@ public class GravityField : MonoBehaviour
 
     private GameObject gravityField;
     private LineRenderer lineRendererComponent;
+    private Vector3[] cachedPoints;
+    private Vector3[] cachedWorldPoints;
+    private float cachedRadius = -1f;
 
     private float tanFovHalf;
 
@@ -39,7 +43,7 @@ public class GravityField : MonoBehaviour
     private void Initialize()
     {
         gravityField = new GameObject("Gravity Field");
-        gravityField.transform.SetParent(transform);
+        gravityField.transform.SetParent(null, true);
 
         lineRendererComponent = gravityField.AddComponent<LineRenderer>();
 
@@ -52,7 +56,10 @@ public class GravityField : MonoBehaviour
         lineRendererComponent.startColor = lineColor;
         lineRendererComponent.endColor = lineColor;
 
-        lineRendererComponent.useWorldSpace = false;
+        lineRendererComponent.useWorldSpace = true;
+        cachedPoints = new Vector3[lineRendererComponent.positionCount];
+        cachedWorldPoints = new Vector3[lineRendererComponent.positionCount];
+        RegenerateFieldPoints();
     }
 
     private void UpdateGravityField()
@@ -62,16 +69,39 @@ public class GravityField : MonoBehaviour
         lineRendererComponent.startWidth = width;
         lineRendererComponent.endWidth = width;
 
-        gravityField.transform.position = transform.position;
-
-        Vector3[] vector3 = new Vector3[lineRendererComponent.positionCount];
-        for (int i = 0; i < lineRendererComponent.positionCount; i++)
+        if (!Mathf.Approximately(cachedRadius, gravityComponent.GravityRadius))
         {
-            float angle = (float)i / (lineRendererComponent.positionCount - 1) * 2f * Mathf.PI;
-            float x = Mathf.Cos(angle) * gravityComponent.GravityRadius;
-            float y = Mathf.Sin(angle) * gravityComponent.GravityRadius;
-            vector3[i] = new Vector3(x, y, 0);
+            RegenerateFieldPoints();
         }
-        lineRendererComponent.SetPositions(vector3);
+
+        Vector3 centerPosition = transform.position;
+        for (int i = 0; i < cachedPoints.Length; i++)
+        {
+            cachedWorldPoints[i] = centerPosition + cachedPoints[i];
+        }
+
+        lineRendererComponent.SetPositions(cachedWorldPoints);
+    }
+
+    private void RegenerateFieldPoints()
+    {
+        if (cachedPoints == null || lineRendererComponent == null) return;
+
+        int count = lineRendererComponent.positionCount;
+        if (cachedPoints.Length != count)
+        {
+            cachedPoints = new Vector3[count];
+            cachedWorldPoints = new Vector3[count];
+        }
+
+        cachedRadius = gravityComponent.GravityRadius;
+
+        for (int i = 0; i < count; i++)
+        {
+            float angle = (float)i / (count - 1) * 2f * Mathf.PI;
+            float x = Mathf.Cos(angle) * cachedRadius;
+            float y = Mathf.Sin(angle) * cachedRadius;
+            cachedPoints[i] = new Vector3(x, y, 0);
+        }
     }
 }

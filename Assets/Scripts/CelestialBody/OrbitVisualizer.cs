@@ -1,5 +1,6 @@
 using UnityEngine;
 
+[DefaultExecutionOrder(31000)]
 [RequireComponent(typeof(OrbitRevolution))]
 public class OrbitVisualizer : MonoBehaviour
 {
@@ -12,6 +13,10 @@ public class OrbitVisualizer : MonoBehaviour
 
     private GameObject revolutionOrbit;
     private LineRenderer lineRendererComponent;
+    private Vector3[] cachedPoints;
+    private Vector3[] cachedWorldPoints;
+    private float cachedSemiMajor = -1f;
+    private float cachedSemiMinor = -1f;
     
     private float tanFovHalf;
 
@@ -32,7 +37,7 @@ public class OrbitVisualizer : MonoBehaviour
         Initialize();
     }
 
-    void FixedUpdate()
+    private void LateUpdate()
     {
         UpdateRevolutionOrbit();
     }
@@ -40,7 +45,7 @@ public class OrbitVisualizer : MonoBehaviour
     private void Initialize()
     {
         revolutionOrbit = new GameObject("Revolution Orbit");
-        revolutionOrbit.transform.SetParent(transform);
+        revolutionOrbit.transform.SetParent(null, true);
 
         lineRendererComponent = revolutionOrbit.AddComponent<LineRenderer>();
 
@@ -53,7 +58,10 @@ public class OrbitVisualizer : MonoBehaviour
         lineRendererComponent.startColor = lineColor;
         lineRendererComponent.endColor = lineColor;
 
-        lineRendererComponent.useWorldSpace = false;
+        lineRendererComponent.useWorldSpace = true;
+        cachedPoints = new Vector3[lineRendererComponent.positionCount];
+        cachedWorldPoints = new Vector3[lineRendererComponent.positionCount];
+        RegenerateOrbitPoints();
     }
 
     private void UpdateRevolutionOrbit()
@@ -63,21 +71,47 @@ public class OrbitVisualizer : MonoBehaviour
         lineRendererComponent.startWidth = width;
         lineRendererComponent.endWidth = width;
         
-        if (transform.parent.position == null)
+        if (orbitRevolutionComponent.center == null)
         {
-            Debug.LogError("Parent is missing.");
+            Debug.LogError("Orbit center is missing.");
             return;
         }
-        revolutionOrbit.transform.position = transform.parent.position;
 
-        Vector3[] vector3 = new Vector3[lineRendererComponent.positionCount];
-        for (int i = 0; i < lineRendererComponent.positionCount; i++)
+        if (!Mathf.Approximately(cachedSemiMajor, orbitRevolutionComponent.semiMajorAxis) ||
+            !Mathf.Approximately(cachedSemiMinor, orbitRevolutionComponent.semiMinorAxis))
         {
-            float angle = (float)i / (lineRendererComponent.positionCount - 1) * 2f * Mathf.PI;
-            float x = Mathf.Cos(angle) * orbitRevolutionComponent.semiMajorAxis;
-            float y = Mathf.Sin(angle) * orbitRevolutionComponent.semiMinorAxis;
-            vector3[i] = new Vector3(x, y, 0);
+            RegenerateOrbitPoints();
         }
-        lineRendererComponent.SetPositions(vector3);
+
+        Vector3 centerPosition = orbitRevolutionComponent.center.transform.position;
+        for (int i = 0; i < cachedPoints.Length; i++)
+        {
+            cachedWorldPoints[i] = centerPosition + cachedPoints[i];
+        }
+
+        lineRendererComponent.SetPositions(cachedWorldPoints);
+    }
+
+    private void RegenerateOrbitPoints()
+    {
+        if (cachedPoints == null || lineRendererComponent == null) return;
+
+        int count = lineRendererComponent.positionCount;
+        if (cachedPoints.Length != count)
+        {
+            cachedPoints = new Vector3[count];
+            cachedWorldPoints = new Vector3[count];
+        }
+
+        cachedSemiMajor = orbitRevolutionComponent.semiMajorAxis;
+        cachedSemiMinor = orbitRevolutionComponent.semiMinorAxis;
+
+        for (int i = 0; i < count; i++)
+        {
+            float angle = (float)i / (count - 1) * 2f * Mathf.PI;
+            float x = Mathf.Cos(angle) * cachedSemiMajor;
+            float y = Mathf.Sin(angle) * cachedSemiMinor;
+            cachedPoints[i] = new Vector3(x, y, 0);
+        }
     }
 }
