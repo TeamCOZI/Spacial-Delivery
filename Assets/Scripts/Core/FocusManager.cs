@@ -75,11 +75,6 @@ public class FocusManager : MonoBehaviour, IFocusService
 
         SetFocusInfoText(string.Empty);
 
-        if (IsAssemblyModeActive())
-        {
-            return;
-        }
-
         if (currentFocus != null)
         {
             UpdateFocusInfo provider = ResolveFocusInfoProvider(currentFocus);

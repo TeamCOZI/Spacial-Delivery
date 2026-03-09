@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -87,6 +88,18 @@ public partial class Assembly : MonoBehaviour
     private bool hasLastOutputCycleCell = false;
     private Vector2Int lastOutputCycleCell;
     private readonly List<CellSideMask> availableOutputSides = new List<CellSideMask>(4);
+    private bool isSelectionMode = false;
+    private GameObject selectionStartOwner;
+    private readonly HashSet<GameObject> selectedOwners = new HashSet<GameObject>();
+    private readonly List<GameObject> selectionPreviewOwners = new List<GameObject>();
+    private readonly List<GameObject> selectionPathOwners = new List<GameObject>();
+    private bool isRemoveSelectionPreviewActive = false;
+    private readonly List<GameObject> removeCascadePreviewOwners = new List<GameObject>();
+    private SelectionHighlightMode currentSelectionHighlightMode = SelectionHighlightMode.Valid;
+    private readonly HashSet<GameObject> removeHoverOwners = new HashSet<GameObject>();
+    private readonly List<Renderer> removeHoverRenderers = new List<Renderer>();
+    private readonly List<RemoveHoverRendererState> removeHoverRendererStates =
+        new List<RemoveHoverRendererState>();
 
     private static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
     private static readonly int ColorId = Shader.PropertyToID("_Color");
@@ -95,6 +108,7 @@ public partial class Assembly : MonoBehaviour
     private static readonly Color InputPortColor = new Color(0.15f, 0.9f, 0.95f, 1f);
     private const float DirectionEpsilonSqr = 0.000001f;
     private const float MinCameraSpaceDepth = 0.01f;
+    private const float MirrorPartMatchPositionEpsilon = 0.0005f;
     private static readonly Vector3 DefaultPortDirection = Vector3.right;
     private static readonly Vector2 ZeroSnapOffset = Vector2.zero;
     private const string RuntimePortsRootName = "__RuntimePorts";
@@ -114,6 +128,19 @@ public partial class Assembly : MonoBehaviour
         CellSideMask.Right,
         CellSideMask.Bottom
     };
+
+    private sealed class RemoveHoverRendererState
+    {
+        public Renderer renderer;
+        public bool wasEnabled;
+        public MaterialPropertyBlock originalPropertyBlock;
+    }
+
+    private enum SelectionHighlightMode
+    {
+        Valid,
+        Invalid
+    }
 
     private void Awake()
     {
@@ -139,6 +166,12 @@ public partial class Assembly : MonoBehaviour
         if (artificialSatellite != null && assemblyPlaneCreated)
         {
             DebugLogHoveredCellPortMapping();
+        }
+
+        if (isSelectionMode)
+        {
+            UpdateSelectionMode();
+            return;
         }
 
         if (!IsAssembling) return;
@@ -194,6 +227,7 @@ public partial class Assembly : MonoBehaviour
     {
         ExitAssemblyCameraMode();
 
+        StopSelectionMode();
         Cancel();
         artificialSatellite = null;
         IsAssembling = false;
@@ -206,6 +240,7 @@ public partial class Assembly : MonoBehaviour
 
     public void SelectPart(Part part)
     {
+        StopSelectionMode();
         DestroyPartGhost(false);
 
         if (part == null || part.ghostPrefab == null)
@@ -590,6 +625,899 @@ public partial class Assembly : MonoBehaviour
         hasLastOutputCycleCell = false;
         lastOutputCycleCell = default;
         availableOutputSides.Clear();
+    }
+
+    public bool IsSelectionModeActive => isSelectionMode;
+    public bool HasSelection => selectedOwners.Count > 0;
+
+    public bool ToggleSelectionMode()
+    {
+        if (isSelectionMode)
+        {
+            StopSelectionMode();
+            return false;
+        }
+
+        StartSelectionMode();
+        return true;
+    }
+
+    public void StartSelectionMode()
+    {
+        Cancel();
+        RefreshOutputPortsNow();
+        isSelectionMode = true;
+        selectionStartOwner = null;
+        isRemoveSelectionPreviewActive = false;
+        selectedOwners.Clear();
+        selectionPreviewOwners.Clear();
+        selectionPathOwners.Clear();
+        removeCascadePreviewOwners.Clear();
+        ClearRemoveHoverVisual();
+    }
+
+    public void StopSelectionMode()
+    {
+        if (!isSelectionMode && removeHoverOwners.Count == 0) return;
+
+        isSelectionMode = false;
+        selectionStartOwner = null;
+        isRemoveSelectionPreviewActive = false;
+        selectedOwners.Clear();
+        selectionPreviewOwners.Clear();
+        selectionPathOwners.Clear();
+        removeCascadePreviewOwners.Clear();
+        ClearRemoveHoverVisual();
+    }
+
+    public void RemoveSelectedParts()
+    {
+        if (!isSelectionMode || selectedOwners.Count == 0) return;
+        List<GameObject> removableRoots = new List<GameObject>(selectedOwners.Count);
+        BuildRemovalSetForSelectedParts(selectedOwners, removableRoots);
+        if (!TryRemoveParts(removableRoots)) return;
+
+        selectionStartOwner = null;
+        isRemoveSelectionPreviewActive = false;
+        selectedOwners.Clear();
+        selectionPreviewOwners.Clear();
+        selectionPathOwners.Clear();
+        removeCascadePreviewOwners.Clear();
+        SetRemoveHoverTargets(null);
+    }
+
+    public void SetRemoveSelectionPreviewActive(bool active)
+    {
+        isRemoveSelectionPreviewActive = active;
+    }
+
+    private void UpdateSelectionMode()
+    {
+        if (artificialSatellite == null || !assemblyPlaneCreated)
+        {
+            ClearRemoveHoverVisual();
+            return;
+        }
+
+        bool cancelByMouse = Mouse.current != null && Mouse.current.rightButton.wasPressedThisFrame;
+        bool cancelByEsc = Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame;
+        if (cancelByMouse || cancelByEsc)
+        {
+            StopSelectionMode();
+            return;
+        }
+
+        GameObject hoveredPart = null;
+        _ = TryGetSelectablePartUnderMouse(out hoveredPart);
+
+        if (isRemoveSelectionPreviewActive && selectedOwners.Count > 0)
+        {
+            removeCascadePreviewOwners.Clear();
+            BuildRemovalSetForSelectedParts(selectedOwners, removeCascadePreviewOwners);
+            currentSelectionHighlightMode = SelectionHighlightMode.Invalid;
+            SetRemoveHoverTargets(removeCascadePreviewOwners);
+            RefreshRemoveHoverVisual();
+            return;
+        }
+
+        selectionPreviewOwners.Clear();
+        if (selectedOwners.Count > 0)
+        {
+            foreach (GameObject selected in selectedOwners)
+            {
+                if (selected != null) selectionPreviewOwners.Add(selected);
+            }
+        }
+
+        if (selectionStartOwner == null)
+        {
+            if (hoveredPart != null && !selectionPreviewOwners.Contains(hoveredPart))
+            {
+                selectionPreviewOwners.Add(hoveredPart);
+            }
+        }
+        else
+        {
+            selectionPathOwners.Clear();
+            if (hoveredPart != null && TryFindPartPath(selectionStartOwner, hoveredPart, selectionPathOwners))
+            {
+                for (int i = 0; i < selectionPathOwners.Count; i++)
+                {
+                    GameObject owner = selectionPathOwners[i];
+                    if (owner != null && !selectionPreviewOwners.Contains(owner))
+                    {
+                        selectionPreviewOwners.Add(owner);
+                    }
+                }
+            }
+            else if (!selectionPreviewOwners.Contains(selectionStartOwner))
+            {
+                selectionPreviewOwners.Add(selectionStartOwner);
+            }
+        }
+
+        currentSelectionHighlightMode = SelectionHighlightMode.Valid;
+        SetRemoveHoverTargets(selectionPreviewOwners);
+        RefreshRemoveHoverVisual();
+
+        if (Mouse.current == null || !Mouse.current.leftButton.wasPressedThisFrame) return;
+        if (hoveredPart == null) return;
+
+        if (selectionStartOwner == null)
+        {
+            selectionStartOwner = hoveredPart;
+            selectedOwners.Clear();
+            return;
+        }
+
+        selectionPathOwners.Clear();
+        if (TryFindPartPath(selectionStartOwner, hoveredPart, selectionPathOwners) && selectionPathOwners.Count > 0)
+        {
+            selectedOwners.Clear();
+            for (int i = 0; i < selectionPathOwners.Count; i++)
+            {
+                GameObject owner = selectionPathOwners[i];
+                if (owner != null) selectedOwners.Add(owner);
+            }
+        }
+        else
+        {
+            selectedOwners.Clear();
+            selectedOwners.Add(selectionStartOwner);
+        }
+
+        selectionStartOwner = null;
+    }
+
+    private bool TryGetHoveredGridCell(out Vector2Int cell)
+    {
+        cell = default;
+        if (!TryGetMouseLocalOnSatellitePlane(out Vector3 localPoint)) return false;
+
+        cell = LocalPositionToGrid(localPoint, ZeroSnapOffset);
+        return IsInsideGrid(cell);
+    }
+
+    private bool TryRemoveParts(List<GameObject> removableRoots)
+    {
+        if (removableRoots == null || removableRoots.Count == 0) return false;
+
+        List<(Vector3 localPosition, string partName)> removedPartInfos = new List<(Vector3 localPosition, string partName)>();
+        bool removedAny = false;
+
+        for (int i = 0; i < removableRoots.Count; i++)
+        {
+            GameObject removableRoot = removableRoots[i];
+            if (!CanSelectPart(removableRoot)) continue;
+
+            removedPartInfos.Add((removableRoot.transform.localPosition, GetPartName(removableRoot)));
+            RemovePartObjectFromSatellite(artificialSatellite, removableRoot);
+            removedAny = true;
+        }
+
+        if (!removedAny) return false;
+
+        ArtificialSatellite sourceSatellite = ResolveSourceSatelliteForAssemblyTarget(artificialSatellite);
+        if (ShouldMirrorToSourceSatellite(artificialSatellite, sourceSatellite))
+        {
+            HashSet<GameObject> removedMirroredParts = new HashSet<GameObject>();
+            for (int i = 0; i < removedPartInfos.Count; i++)
+            {
+                (Vector3 localPosition, string partName) partInfo = removedPartInfos[i];
+                GameObject mirrored = FindMatchingPartOnSatellite(sourceSatellite, partInfo.localPosition, partInfo.partName);
+                if (mirrored == null) continue;
+                if (!removedMirroredParts.Add(mirrored)) continue;
+                RemovePartObjectFromSatellite(sourceSatellite, mirrored);
+            }
+        }
+
+        StartCoroutine(RefreshAfterPartRemovalEndOfFrame(artificialSatellite, sourceSatellite));
+        return true;
+    }
+
+    private IEnumerator RefreshAfterPartRemovalEndOfFrame(
+        ArtificialSatellite assemblyTarget,
+        ArtificialSatellite sourceSatellite)
+    {
+        yield return new WaitForEndOfFrame();
+
+        if (assemblyTarget == null) yield break;
+
+        RebuildMeshesForAssemblyTargets(assemblyTarget, sourceSatellite);
+        RequestRefreshOutputPorts();
+    }
+
+    private bool TryGetSelectablePartUnderMouse(out GameObject removableRoot)
+    {
+        removableRoot = null;
+        if (!TryEnsureMainCamera()) return false;
+        if (Mouse.current == null) return false;
+
+        Ray ray = mainCamera.ScreenPointToRay(Mouse.current.position.ReadValue());
+        if (Physics.Raycast(ray, out RaycastHit hit, 5000f))
+        {
+            AssemblyPartFocus hitFocus = hit.collider != null
+                ? hit.collider.GetComponentInParent<AssemblyPartFocus>(true)
+                : null;
+            if (hitFocus != null && CanSelectPart(hitFocus.gameObject))
+            {
+                removableRoot = hitFocus.gameObject;
+                return true;
+            }
+        }
+
+        if (!TryGetHoveredGridCell(out Vector2Int hoveredCell)) return false;
+        if (!occupiedCells.TryGetValue(hoveredCell, out GameObject owner) || owner == null) return false;
+
+        GameObject byCell = ResolveRemovablePartRoot(owner);
+        if (!CanSelectPart(byCell)) return false;
+
+        removableRoot = byCell;
+        return true;
+    }
+
+    private void RemovePartObjectFromSatellite(ArtificialSatellite satellite, GameObject partRoot)
+    {
+        if (satellite == null || partRoot == null) return;
+
+        AssemblyAttachmentHub hub = satellite.GetComponent<AssemblyAttachmentHub>();
+        if (hub != null)
+        {
+            hub.Unregister(partRoot.transform);
+        }
+
+        RemoveOccupiedCellsOwnedBy(partRoot);
+        Destroy(partRoot);
+    }
+
+    private void RemoveOccupiedCellsOwnedBy(GameObject owner)
+    {
+        if (owner == null) return;
+
+        List<Vector2Int> cellsToRemove = new List<Vector2Int>();
+        foreach (KeyValuePair<Vector2Int, GameObject> pair in occupiedCells)
+        {
+            if (pair.Value == owner)
+            {
+                cellsToRemove.Add(pair.Key);
+            }
+        }
+
+        for (int i = 0; i < cellsToRemove.Count; i++)
+        {
+            occupiedCells.Remove(cellsToRemove[i]);
+        }
+    }
+
+    private GameObject ResolveRemovablePartRoot(GameObject owner)
+    {
+        if (owner == null) return null;
+        if (owner == artificialSatellite.gameObject) return null;
+
+        AssemblyPartFocus focus = owner.GetComponentInParent<AssemblyPartFocus>(true);
+        if (focus != null) return focus.gameObject;
+        return owner;
+    }
+
+    private bool CanSelectPart(GameObject owner)
+    {
+        if (owner == null) return false;
+        if (owner == artificialSatellite.gameObject) return false;
+        if (IsCoreLikeProtectedPart(owner)) return false;
+
+        AssemblyPartFocus focus = owner.GetComponent<AssemblyPartFocus>();
+        if (focus == null) return false;
+
+        if (focus.SourcePart == null)
+        {
+            string ownerName = owner.name;
+            if (string.IsNullOrWhiteSpace(ownerName)) return true;
+            return ownerName.IndexOf("Core", System.StringComparison.OrdinalIgnoreCase) < 0;
+        }
+
+        return focus.SourcePart.partType != PartType.Core;
+    }
+
+    private bool IsCoreLikeProtectedPart(GameObject owner)
+    {
+        if (owner == null) return false;
+
+        AssemblyPartFocus focus = owner.GetComponent<AssemblyPartFocus>();
+        if (focus != null && focus.SourcePart != null)
+        {
+            string partName = focus.SourcePart.partName;
+            if (string.IsNullOrWhiteSpace(partName)) return false;
+
+            if (string.Equals(partName, "Core", System.StringComparison.OrdinalIgnoreCase)) return true;
+            if (string.Equals(partName, "Launcher", System.StringComparison.OrdinalIgnoreCase)) return true;
+            if (partName.IndexOf("Drop", System.StringComparison.OrdinalIgnoreCase) >= 0) return true;
+            return false;
+        }
+
+        string ownerName = owner.name;
+        if (string.IsNullOrWhiteSpace(ownerName)) return false;
+        if (ownerName.IndexOf("Core", System.StringComparison.OrdinalIgnoreCase) >= 0) return true;
+        if (ownerName.IndexOf("Launcher", System.StringComparison.OrdinalIgnoreCase) >= 0) return true;
+        if (ownerName.IndexOf("Drop", System.StringComparison.OrdinalIgnoreCase) >= 0) return true;
+        return false;
+    }
+
+    private GameObject FindMatchingPartOnSatellite(ArtificialSatellite satellite, Vector3 localPosition, string partName)
+    {
+        if (satellite == null) return null;
+
+        AssemblyPartFocus[] parts = satellite.GetComponentsInChildren<AssemblyPartFocus>(true);
+        GameObject best = null;
+        float bestDistanceSq = float.MaxValue;
+        float matchDistanceSq = MirrorPartMatchPositionEpsilon * MirrorPartMatchPositionEpsilon;
+
+        for (int i = 0; i < parts.Length; i++)
+        {
+            AssemblyPartFocus partFocus = parts[i];
+            if (partFocus == null || partFocus.SourcePart == null) continue;
+
+            if (!string.IsNullOrWhiteSpace(partName) &&
+                !string.Equals(partFocus.SourcePart.partName, partName, System.StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            float distanceSq = (partFocus.transform.localPosition - localPosition).sqrMagnitude;
+            if (distanceSq > matchDistanceSq) continue;
+            if (distanceSq >= bestDistanceSq) continue;
+
+            best = partFocus.gameObject;
+            bestDistanceSq = distanceSq;
+        }
+
+        return best;
+    }
+
+    private static string GetPartName(GameObject root)
+    {
+        if (root == null) return string.Empty;
+        AssemblyPartFocus focus = root.GetComponent<AssemblyPartFocus>();
+        if (focus == null || focus.SourcePart == null) return string.Empty;
+        return focus.SourcePart.partName;
+    }
+
+    private void SetRemoveHoverTargets(List<GameObject> owners)
+    {
+        if (owners == null || owners.Count == 0)
+        {
+            ClearRemoveHoverVisual();
+            return;
+        }
+
+        if (owners.Count == removeHoverOwners.Count)
+        {
+            bool same = true;
+            for (int i = 0; i < owners.Count; i++)
+            {
+                if (!removeHoverOwners.Contains(owners[i]))
+                {
+                    same = false;
+                    break;
+                }
+            }
+
+            if (same) return;
+        }
+
+        ClearRemoveHoverVisual();
+        for (int i = 0; i < owners.Count; i++)
+        {
+            GameObject owner = owners[i];
+            if (owner == null) continue;
+            if (!removeHoverOwners.Add(owner)) continue;
+            ApplyRemoveHoverVisual(owner);
+        }
+    }
+
+    private void ApplyRemoveHoverVisual(GameObject owner)
+    {
+        if (owner == null) return;
+        Color highlightColor = ResolveSelectionHighlightColor(currentSelectionHighlightMode);
+
+        Renderer[] renderers = owner.GetComponentsInChildren<Renderer>(true);
+        for (int i = 0; i < renderers.Length; i++)
+        {
+            Renderer renderer = renderers[i];
+            if (renderer == null || renderer.sharedMaterial == null) continue;
+            if (!renderer.sharedMaterial.HasProperty(BaseColorId) && !renderer.sharedMaterial.HasProperty(ColorId)) continue;
+
+            MaterialPropertyBlock originalBlock = new MaterialPropertyBlock();
+            renderer.GetPropertyBlock(originalBlock);
+            removeHoverRendererStates.Add(new RemoveHoverRendererState
+            {
+                renderer = renderer,
+                wasEnabled = renderer.enabled,
+                originalPropertyBlock = originalBlock
+            });
+            renderer.enabled = true;
+
+            MaterialPropertyBlock block = new MaterialPropertyBlock();
+            renderer.GetPropertyBlock(block);
+            if (renderer.sharedMaterial.HasProperty(BaseColorId)) block.SetColor(BaseColorId, highlightColor);
+            if (renderer.sharedMaterial.HasProperty(ColorId)) block.SetColor(ColorId, highlightColor);
+            renderer.SetPropertyBlock(block);
+            removeHoverRenderers.Add(renderer);
+        }
+    }
+
+    private void RefreshRemoveHoverVisual()
+    {
+        if (removeHoverOwners.Count == 0) return;
+        Color highlightColor = ResolveSelectionHighlightColor(currentSelectionHighlightMode);
+
+        for (int i = 0; i < removeHoverRenderers.Count; i++)
+        {
+            Renderer renderer = removeHoverRenderers[i];
+            if (renderer == null || renderer.sharedMaterial == null) continue;
+            if (!renderer.sharedMaterial.HasProperty(BaseColorId) && !renderer.sharedMaterial.HasProperty(ColorId)) continue;
+
+            renderer.enabled = true;
+
+            MaterialPropertyBlock block = new MaterialPropertyBlock();
+            renderer.GetPropertyBlock(block);
+            if (renderer.sharedMaterial.HasProperty(BaseColorId)) block.SetColor(BaseColorId, highlightColor);
+            if (renderer.sharedMaterial.HasProperty(ColorId)) block.SetColor(ColorId, highlightColor);
+            renderer.SetPropertyBlock(block);
+        }
+    }
+
+    private Color ResolveSelectionHighlightColor(SelectionHighlightMode mode)
+    {
+        return mode == SelectionHighlightMode.Invalid ? GhostInvalidColor : GhostValidColor;
+    }
+
+    private void ClearRemoveHoverVisual()
+    {
+        for (int i = 0; i < removeHoverRenderers.Count; i++)
+        {
+            Renderer renderer = removeHoverRenderers[i];
+            if (renderer == null) continue;
+        }
+
+        for (int i = 0; i < removeHoverRendererStates.Count; i++)
+        {
+            RemoveHoverRendererState state = removeHoverRendererStates[i];
+            if (state == null || state.renderer == null) continue;
+            state.renderer.SetPropertyBlock(state.originalPropertyBlock);
+            state.renderer.enabled = state.wasEnabled;
+        }
+
+        removeHoverRendererStates.Clear();
+        removeHoverRenderers.Clear();
+        removeHoverOwners.Clear();
+    }
+
+    private bool TryFindPartPath(GameObject startOwner, GameObject endOwner, List<GameObject> pathOwners)
+    {
+        if (pathOwners == null) return false;
+        pathOwners.Clear();
+        if (!CanSelectPart(startOwner) || !CanSelectPart(endOwner)) return false;
+
+        if (startOwner == endOwner)
+        {
+            pathOwners.Add(startOwner);
+            return true;
+        }
+
+        Dictionary<GameObject, HashSet<GameObject>> adjacency = new Dictionary<GameObject, HashSet<GameObject>>();
+        BuildPartAdjacencyGraph(adjacency);
+        if (!adjacency.ContainsKey(startOwner) || !adjacency.ContainsKey(endOwner)) return false;
+
+        Queue<GameObject> open = new Queue<GameObject>();
+        HashSet<GameObject> visited = new HashSet<GameObject>();
+        Dictionary<GameObject, GameObject> cameFrom = new Dictionary<GameObject, GameObject>();
+
+        visited.Add(startOwner);
+        open.Enqueue(startOwner);
+
+        while (open.Count > 0)
+        {
+            GameObject current = open.Dequeue();
+            if (current == endOwner) break;
+
+            if (!adjacency.TryGetValue(current, out HashSet<GameObject> neighbors)) continue;
+            foreach (GameObject next in neighbors)
+            {
+                if (next == null) continue;
+                if (!visited.Add(next)) continue;
+                cameFrom[next] = current;
+                open.Enqueue(next);
+            }
+        }
+
+        if (!visited.Contains(endOwner)) return false;
+
+        GameObject trace = endOwner;
+        pathOwners.Add(trace);
+        while (trace != startOwner)
+        {
+            if (!cameFrom.TryGetValue(trace, out GameObject prev)) return false;
+            trace = prev;
+            pathOwners.Add(trace);
+        }
+
+        pathOwners.Reverse();
+        return pathOwners.Count > 0;
+    }
+
+    private void BuildPartAdjacencyGraph(
+        Dictionary<GameObject, HashSet<GameObject>> adjacency,
+        HashSet<GameObject> coreConnectedSeeds = null)
+    {
+        if (adjacency == null) return;
+        adjacency.Clear();
+        coreConnectedSeeds?.Clear();
+        RefreshOutputPortsNow();
+
+        AssemblyPartFocus[] partFocuses = artificialSatellite.GetComponentsInChildren<AssemblyPartFocus>(true);
+        for (int i = 0; i < partFocuses.Length; i++)
+        {
+            AssemblyPartFocus focus = partFocuses[i];
+            if (focus == null) continue;
+            GameObject partRoot = focus.gameObject;
+            if (!CanSelectPart(partRoot)) continue;
+            if (!adjacency.ContainsKey(partRoot))
+            {
+                adjacency[partRoot] = new HashSet<GameObject>();
+            }
+        }
+
+        BuildSourcePortOwnerMaps(
+            out Dictionary<(Vector2Int cell, CellSideMask side), HashSet<GameObject>> inputOwnersByKey,
+            out Dictionary<(Vector2Int cell, CellSideMask side), HashSet<GameObject>> outputOwnersByKey,
+            out HashSet<(Vector2Int cell, CellSideMask side)> coreOutputKeys);
+
+        Vector2Int[] dirs = { Vector2Int.right, Vector2Int.up, Vector2Int.left, Vector2Int.down };
+        foreach (KeyValuePair<Vector2Int, GameObject> pair in occupiedCells)
+        {
+            Vector2Int cell = pair.Key;
+            if (!IsInsideGrid(cell)) continue;
+
+            for (int i = 0; i < dirs.Length; i++)
+            {
+                Vector2Int neighbor = cell + dirs[i];
+                if (!IsInsideGrid(neighbor)) continue;
+                if (!occupiedCells.ContainsKey(neighbor)) continue;
+
+                if (!TryGetSideBetweenCells(cell, neighbor, out CellSideMask sideFromCell)) continue;
+                CellSideMask sideFromNeighbor = OppositeSide(sideFromCell);
+                if (sideFromNeighbor == CellSideMask.None) continue;
+
+                AddConnectionsForFacingCells(
+                    inputCell: cell,
+                    inputSide: sideFromCell,
+                    outputCell: neighbor,
+                    outputSide: sideFromNeighbor,
+                    inputOwnersByKey,
+                    outputOwnersByKey,
+                    coreOutputKeys,
+                    adjacency,
+                    coreConnectedSeeds);
+            }
+        }
+    }
+
+    private void BuildSourcePortOwnerMaps(
+        out Dictionary<(Vector2Int cell, CellSideMask side), HashSet<GameObject>> inputOwnersByKey,
+        out Dictionary<(Vector2Int cell, CellSideMask side), HashSet<GameObject>> outputOwnersByKey,
+        out HashSet<(Vector2Int cell, CellSideMask side)> coreOutputKeys)
+    {
+        inputOwnersByKey = new Dictionary<(Vector2Int cell, CellSideMask side), HashSet<GameObject>>();
+        outputOwnersByKey = new Dictionary<(Vector2Int cell, CellSideMask side), HashSet<GameObject>>();
+        coreOutputKeys = new HashSet<(Vector2Int cell, CellSideMask side)>();
+
+        if (artificialSatellite == null) return;
+
+        AssemblyPartPortLayout[] layouts = artificialSatellite.GetComponentsInChildren<AssemblyPartPortLayout>(true);
+        for (int i = 0; i < layouts.Length; i++)
+        {
+            AssemblyPartPortLayout layout = layouts[i];
+            if (layout == null) continue;
+            if (layout.GetComponentInParent<AssemblyGhostMarker>() != null) continue;
+
+            AssemblyPartFocus focus = layout.GetComponent<AssemblyPartFocus>();
+            GameObject owner = focus != null ? focus.gameObject : null;
+            bool ownerSelectable = CanSelectPart(owner);
+            bool ownerAsCoreLikeRoot = IsCoreLikeProtectedPart(owner);
+
+            List<AssemblyPartPortLayout.PortEntry> entries = layout.Ports;
+            if (entries == null || entries.Count == 0) continue;
+
+            for (int j = 0; j < entries.Count; j++)
+            {
+                AssemblyPartPortLayout.PortEntry entry = entries[j];
+                if (entry == null) continue;
+                if (entry.portType != AssemblyPortType.Input && entry.portType != AssemblyPortType.Output) continue;
+                if (!TryGetPartLayoutEntryMapping(layout, entry, out Vector2Int sourceCell, out CellSideMask portSide)) continue;
+                if (!IsInsideGrid(sourceCell) || portSide == CellSideMask.None) continue;
+
+                (Vector2Int cell, CellSideMask side) key = (sourceCell, portSide);
+                if (entry.portType == AssemblyPortType.Input)
+                {
+                    if (!ownerSelectable) continue;
+                    AddOwnerToPortMap(inputOwnersByKey, key, owner);
+                }
+                else
+                {
+                    if (ownerSelectable)
+                    {
+                        AddOwnerToPortMap(outputOwnersByKey, key, owner);
+                    }
+                    else if (ownerAsCoreLikeRoot)
+                    {
+                        coreOutputKeys.Add(key);
+                    }
+                }
+            }
+        }
+
+        foreach (KeyValuePair<AssemblyPort, (Vector2Int sourceCell, CellSideMask outputSide)> pair in coreLayoutByPort)
+        {
+            Vector2Int sourceCell = pair.Value.sourceCell;
+            CellSideMask side = pair.Value.outputSide;
+            if (!IsInsideGrid(sourceCell) || side == CellSideMask.None) continue;
+            coreOutputKeys.Add((sourceCell, side));
+        }
+    }
+
+    private static void AddOwnerToPortMap(
+        Dictionary<(Vector2Int cell, CellSideMask side), HashSet<GameObject>> map,
+        (Vector2Int cell, CellSideMask side) key,
+        GameObject owner)
+    {
+        if (map == null || owner == null) return;
+
+        if (!map.TryGetValue(key, out HashSet<GameObject> owners))
+        {
+            owners = new HashSet<GameObject>();
+            map[key] = owners;
+        }
+
+        owners.Add(owner);
+    }
+
+    private void AddConnectionsForFacingCells(
+        Vector2Int inputCell,
+        CellSideMask inputSide,
+        Vector2Int outputCell,
+        CellSideMask outputSide,
+        Dictionary<(Vector2Int cell, CellSideMask side), HashSet<GameObject>> inputOwnersByKey,
+        Dictionary<(Vector2Int cell, CellSideMask side), HashSet<GameObject>> outputOwnersByKey,
+        HashSet<(Vector2Int cell, CellSideMask side)> coreOutputKeys,
+        Dictionary<GameObject, HashSet<GameObject>> adjacency,
+        HashSet<GameObject> coreConnectedSeeds)
+    {
+        if (!TryGetOwnersByPortKey(inputOwnersByKey, (inputCell, inputSide), out HashSet<GameObject> inputOwners)) return;
+
+        bool hasCoreOutput = coreOutputKeys != null && coreOutputKeys.Contains((outputCell, outputSide));
+        bool hasPartOutput = TryGetOwnersByPortKey(outputOwnersByKey, (outputCell, outputSide), out HashSet<GameObject> outputOwners);
+        if (!hasCoreOutput && !hasPartOutput) return;
+
+        foreach (GameObject inputOwner in inputOwners)
+        {
+            if (!CanSelectPart(inputOwner)) continue;
+
+            if (hasCoreOutput)
+            {
+                coreConnectedSeeds?.Add(inputOwner);
+            }
+
+            if (!hasPartOutput) continue;
+            foreach (GameObject outputOwner in outputOwners)
+            {
+                if (!CanSelectPart(outputOwner)) continue;
+                if (inputOwner == outputOwner) continue;
+                if (!adjacency.TryGetValue(inputOwner, out HashSet<GameObject> inputNeighbors)) continue;
+                if (!adjacency.TryGetValue(outputOwner, out HashSet<GameObject> outputNeighbors)) continue;
+
+                inputNeighbors.Add(outputOwner);
+                outputNeighbors.Add(inputOwner);
+            }
+        }
+    }
+
+    private static bool TryGetOwnersByPortKey(
+        Dictionary<(Vector2Int cell, CellSideMask side), HashSet<GameObject>> map,
+        (Vector2Int cell, CellSideMask side) key,
+        out HashSet<GameObject> owners)
+    {
+        owners = null;
+        if (map == null) return false;
+        if (!map.TryGetValue(key, out HashSet<GameObject> value) || value == null || value.Count == 0) return false;
+        owners = value;
+        return true;
+    }
+
+    private static bool TryGetSideBetweenCells(Vector2Int fromCell, Vector2Int toCell, out CellSideMask side)
+    {
+        side = CellSideMask.None;
+        Vector2Int delta = toCell - fromCell;
+        if (delta == Vector2Int.right) { side = CellSideMask.Right; return true; }
+        if (delta == Vector2Int.left) { side = CellSideMask.Left; return true; }
+        if (delta == Vector2Int.up) { side = CellSideMask.Top; return true; }
+        if (delta == Vector2Int.down) { side = CellSideMask.Bottom; return true; }
+        return false;
+    }
+
+    private bool AreAdjacentCellsConnectedByOppositePorts(
+        Vector2Int cellA,
+        Vector2Int cellB,
+        Dictionary<(Vector2Int cell, CellSideMask side), HashSet<GameObject>> inputOwnersByKey,
+        Dictionary<(Vector2Int cell, CellSideMask side), HashSet<GameObject>> outputOwnersByKey,
+        HashSet<(Vector2Int cell, CellSideMask side)> coreOutputKeys)
+    {
+        if (!TryGetSideBetweenCells(cellA, cellB, out CellSideMask sideFromA)) return false;
+        CellSideMask sideFromB = OppositeSide(sideFromA);
+        if (sideFromB == CellSideMask.None) return false;
+
+        bool aInputFromBOutput =
+            TryGetOwnersByPortKey(inputOwnersByKey, (cellA, sideFromA), out HashSet<GameObject> aInputs) &&
+            (
+                (coreOutputKeys != null && coreOutputKeys.Contains((cellB, sideFromB))) ||
+                TryGetOwnersByPortKey(outputOwnersByKey, (cellB, sideFromB), out HashSet<GameObject> bOutputs)
+            ) &&
+            (aInputs.Count > 0);
+
+        bool bInputFromAOutput =
+            TryGetOwnersByPortKey(inputOwnersByKey, (cellB, sideFromB), out HashSet<GameObject> bInputs) &&
+            (
+                (coreOutputKeys != null && coreOutputKeys.Contains((cellA, sideFromA))) ||
+                TryGetOwnersByPortKey(outputOwnersByKey, (cellA, sideFromA), out HashSet<GameObject> aOutputs)
+            ) &&
+            (bInputs.Count > 0);
+
+        return aInputFromBOutput || bInputFromAOutput;
+    }
+
+    private bool TryCollectPartInputMappedKeys(
+        GameObject partRoot,
+        List<(Vector2Int cell, CellSideMask side)> mappedInputs)
+    {
+        if (partRoot == null || mappedInputs == null) return false;
+        mappedInputs.Clear();
+
+        AssemblyPartPortLayout layout = partRoot.GetComponent<AssemblyPartPortLayout>();
+        if (layout != null && layout.Ports != null && layout.Ports.Count > 0)
+        {
+            for (int i = 0; i < layout.Ports.Count; i++)
+            {
+                AssemblyPartPortLayout.PortEntry entry = layout.Ports[i];
+                if (entry == null || entry.portType != AssemblyPortType.Input) continue;
+                if (!TryGetPartLayoutEntryMapping(layout, entry, out Vector2Int sourceCell, out CellSideMask portSide)) continue;
+
+                Vector2Int outputDir = SideToCellOffset(portSide);
+                if (outputDir == Vector2Int.zero) continue;
+
+                Vector2Int mappedCell = sourceCell + outputDir;
+                if (!IsInsideGrid(mappedCell)) continue;
+
+                CellSideMask mappedSide = OppositeSide(portSide);
+                if (mappedSide == CellSideMask.None) continue;
+                mappedInputs.Add((mappedCell, mappedSide));
+            }
+
+            if (mappedInputs.Count > 0) return true;
+        }
+
+        AssemblyPartFocus focus = partRoot.GetComponent<AssemblyPartFocus>();
+        AssemblyPartPortProfile profile = partRoot.GetComponent<AssemblyPartPortProfile>();
+        if (focus == null || profile == null) return false;
+
+        Vector2 snapOffset = GetSnapOffsetFromPartFocus(focus);
+        Vector2Int centerCell = LocalPositionToGrid(partRoot.transform.localPosition, snapOffset);
+        if (!IsInsideGrid(centerCell)) return false;
+
+        HashSet<CellSideMask> uniqueSides = new HashSet<CellSideMask>();
+        int inputCount = profile.InputPortCount;
+        for (int i = 0; i < inputCount; i++)
+        {
+            Vector3 inputLocal = profile.GetInputPortLocalPosition(i);
+            Vector3 inputDirOnSatellite = partRoot.transform.localRotation * inputLocal;
+            CellSideMask inputSide = DirectionToSideMask(inputDirOnSatellite);
+            if (inputSide == CellSideMask.None) continue;
+            if (!uniqueSides.Add(inputSide)) continue;
+
+            mappedInputs.Add((centerCell, inputSide));
+        }
+
+        return mappedInputs.Count > 0;
+    }
+
+    private void BuildRemovalSetForSelectedParts(
+        IEnumerable<GameObject> initiallyRemovedOwners,
+        List<GameObject> result)
+    {
+        if (result == null) return;
+        result.Clear();
+        if (initiallyRemovedOwners == null || artificialSatellite == null) return;
+
+        Dictionary<GameObject, HashSet<GameObject>> adjacency = new Dictionary<GameObject, HashSet<GameObject>>();
+        HashSet<GameObject> coreConnectedSeeds = new HashSet<GameObject>();
+        BuildPartAdjacencyGraph(adjacency, coreConnectedSeeds);
+
+        HashSet<GameObject> allParts = new HashSet<GameObject>(adjacency.Keys);
+        HashSet<GameObject> removed = new HashSet<GameObject>();
+        foreach (GameObject owner in initiallyRemovedOwners)
+        {
+            if (!CanSelectPart(owner)) continue;
+            removed.Add(owner);
+        }
+
+        if (removed.Count == 0) return;
+
+        HashSet<GameObject> reachableBefore = ComputeReachableFromCore(adjacency, coreConnectedSeeds, null);
+        HashSet<GameObject> reachableAfter = ComputeReachableFromCore(adjacency, coreConnectedSeeds, removed);
+
+        foreach (GameObject part in allParts)
+        {
+            if (part == null) continue;
+            if (!reachableBefore.Contains(part)) continue;
+            if (!reachableAfter.Contains(part)) removed.Add(part);
+        }
+
+        foreach (GameObject owner in removed)
+        {
+            if (owner != null) result.Add(owner);
+        }
+    }
+
+    private static HashSet<GameObject> ComputeReachableFromCore(
+        Dictionary<GameObject, HashSet<GameObject>> adjacency,
+        HashSet<GameObject> coreConnectedSeeds,
+        HashSet<GameObject> removed)
+    {
+        HashSet<GameObject> reachable = new HashSet<GameObject>();
+        if (adjacency == null || coreConnectedSeeds == null) return reachable;
+
+        Queue<GameObject> open = new Queue<GameObject>();
+        foreach (GameObject seed in coreConnectedSeeds)
+        {
+            if (seed == null) continue;
+            if (removed != null && removed.Contains(seed)) continue;
+            if (!reachable.Add(seed)) continue;
+            open.Enqueue(seed);
+        }
+
+        while (open.Count > 0)
+        {
+            GameObject current = open.Dequeue();
+            if (!adjacency.TryGetValue(current, out HashSet<GameObject> neighbors)) continue;
+
+            foreach (GameObject next in neighbors)
+            {
+                if (next == null) continue;
+                if (removed != null && removed.Contains(next)) continue;
+                if (!reachable.Add(next)) continue;
+                open.Enqueue(next);
+            }
+        }
+
+        return reachable;
     }
 
     private void CreateGridPlane()

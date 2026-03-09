@@ -9,6 +9,8 @@ public class AssemblyUI : MonoBehaviour
     private const string RootElementName = "Root";
     private const string CloseButtonName = "Close";
     private const string OpenPartsButtonName = "OpenParts";
+    private const string ToggleSelectionButtonName = "ToggleSelection";
+    private const string RemoveSelectedButtonName = "RemoveSelected";
     private const string PopupElementName = "PopUp";
     private const string ClosePartsButtonName = "CloseParts";
     private const string PartsListName = "PartsList";
@@ -24,9 +26,13 @@ public class AssemblyUI : MonoBehaviour
     private Button close;
 
     private Button openParts;
+    private Button toggleSelection;
+    private Button removeSelected;
     private Button closeParts;
     private VisualElement parts;
     private ScrollView partsList;
+    private bool lastKnownSelectionMode = false;
+    private bool lastHasSelection = false;
 
     private void Awake()
     {
@@ -62,6 +68,17 @@ public class AssemblyUI : MonoBehaviour
         UnregisterCallbacks();
     }
 
+    private void Update()
+    {
+        if (!TryGetAssembly(out Assembly assembly)) return;
+
+        bool isSelectionMode = assembly.IsSelectionModeActive;
+        bool hasSelection = assembly.HasSelection;
+        if (isSelectionMode == lastKnownSelectionMode && hasSelection == lastHasSelection) return;
+
+        UpdateSelectionButtonsState(isSelectionMode, hasSelection);
+    }
+
     private void OnDestroy()
     {
         if (Instance == this)
@@ -73,6 +90,7 @@ public class AssemblyUI : MonoBehaviour
     public void Show()
     {
         SetRootDisplay(DisplayStyle.Flex);
+        SyncSelectionButtonsStateFromAssembly();
     }
 
     public void Hide()
@@ -193,6 +211,7 @@ public class AssemblyUI : MonoBehaviour
 
     private void OnOpenPartsClicked(ClickEvent _)
     {
+        StopSelectionModeIfActive();
         OpenPartsPopup();
     }
 
@@ -211,6 +230,36 @@ public class AssemblyUI : MonoBehaviour
 
         if (!TryGetAssembly(out Assembly assembly)) return;
         assembly.SelectPart(part);
+        UpdateSelectionButtonsState(false, false);
+    }
+
+    private void OnToggleSelectionClicked(ClickEvent _)
+    {
+        if (!TryGetAssembly(out Assembly assembly)) return;
+
+        ClosePartsPopup();
+        bool isSelectionMode = assembly.ToggleSelectionMode();
+        bool hasSelection = assembly.HasSelection;
+        UpdateSelectionButtonsState(isSelectionMode, hasSelection);
+    }
+
+    private void OnRemoveSelectedClicked(ClickEvent _)
+    {
+        if (!TryGetAssembly(out Assembly assembly)) return;
+        assembly.RemoveSelectedParts();
+        UpdateSelectionButtonsState(assembly.IsSelectionModeActive, assembly.HasSelection);
+    }
+
+    private void OnRemoveSelectedMouseEnter(MouseEnterEvent _)
+    {
+        if (!TryGetAssembly(out Assembly assembly)) return;
+        assembly.SetRemoveSelectionPreviewActive(true);
+    }
+
+    private void OnRemoveSelectedMouseLeave(MouseLeaveEvent _)
+    {
+        if (!TryGetAssembly(out Assembly assembly)) return;
+        assembly.SetRemoveSelectionPreviewActive(false);
     }
 
     private void SetRootDisplay(DisplayStyle display)
@@ -253,6 +302,10 @@ public class AssemblyUI : MonoBehaviour
     {
         RegisterClickCallback(close, OnCloseClicked);
         RegisterClickCallback(openParts, OnOpenPartsClicked);
+        RegisterClickCallback(toggleSelection, OnToggleSelectionClicked);
+        RegisterClickCallback(removeSelected, OnRemoveSelectedClicked);
+        RegisterMouseEnterCallback(removeSelected, OnRemoveSelectedMouseEnter);
+        RegisterMouseLeaveCallback(removeSelected, OnRemoveSelectedMouseLeave);
         RegisterClickCallback(closeParts, OnClosePartsClicked);
         RegisterClickCallback(partsList, OnPartItemSelected);
     }
@@ -261,6 +314,10 @@ public class AssemblyUI : MonoBehaviour
     {
         UnregisterClickCallback(close, OnCloseClicked);
         UnregisterClickCallback(openParts, OnOpenPartsClicked);
+        UnregisterClickCallback(toggleSelection, OnToggleSelectionClicked);
+        UnregisterClickCallback(removeSelected, OnRemoveSelectedClicked);
+        UnregisterMouseEnterCallback(removeSelected, OnRemoveSelectedMouseEnter);
+        UnregisterMouseLeaveCallback(removeSelected, OnRemoveSelectedMouseLeave);
         UnregisterClickCallback(closeParts, OnClosePartsClicked);
         UnregisterClickCallback(partsList, OnPartItemSelected);
     }
@@ -273,6 +330,32 @@ public class AssemblyUI : MonoBehaviour
     }
 
     private static void UnregisterClickCallback(VisualElement element, EventCallback<ClickEvent> callback)
+    {
+        if (element == null || callback == null) return;
+        element.UnregisterCallback(callback);
+    }
+
+    private static void RegisterMouseEnterCallback(VisualElement element, EventCallback<MouseEnterEvent> callback)
+    {
+        if (element == null || callback == null) return;
+        element.UnregisterCallback(callback);
+        element.RegisterCallback(callback);
+    }
+
+    private static void UnregisterMouseEnterCallback(VisualElement element, EventCallback<MouseEnterEvent> callback)
+    {
+        if (element == null || callback == null) return;
+        element.UnregisterCallback(callback);
+    }
+
+    private static void RegisterMouseLeaveCallback(VisualElement element, EventCallback<MouseLeaveEvent> callback)
+    {
+        if (element == null || callback == null) return;
+        element.UnregisterCallback(callback);
+        element.RegisterCallback(callback);
+    }
+
+    private static void UnregisterMouseLeaveCallback(VisualElement element, EventCallback<MouseLeaveEvent> callback)
     {
         if (element == null || callback == null) return;
         element.UnregisterCallback(callback);
@@ -316,6 +399,8 @@ public class AssemblyUI : MonoBehaviour
 
         close = root.Q<Button>(CloseButtonName);
         openParts = root.Q<Button>(OpenPartsButtonName);
+        toggleSelection = root.Q<Button>(ToggleSelectionButtonName);
+        removeSelected = root.Q<Button>(RemoveSelectedButtonName);
         parts = root.Q<VisualElement>(PopupElementName);
         if (parts == null)
         {
@@ -326,5 +411,42 @@ public class AssemblyUI : MonoBehaviour
         closeParts = parts.Q<Button>(ClosePartsButtonName);
         partsList = parts.Q<ScrollView>(PartsListName);
         return true;
+    }
+
+    private void StopSelectionModeIfActive()
+    {
+        if (!TryGetAssembly(out Assembly assembly)) return;
+        if (!assembly.IsSelectionModeActive) return;
+
+        assembly.StopSelectionMode();
+        UpdateSelectionButtonsState(false, false);
+    }
+
+    private void SyncSelectionButtonsStateFromAssembly()
+    {
+        if (!TryGetAssembly(out Assembly assembly))
+        {
+            UpdateSelectionButtonsState(false, false);
+            return;
+        }
+
+        UpdateSelectionButtonsState(assembly.IsSelectionModeActive, assembly.HasSelection);
+    }
+
+    private void UpdateSelectionButtonsState(bool selectionActive, bool hasSelection)
+    {
+        if (toggleSelection != null)
+        {
+            toggleSelection.text = selectionActive ? "Selection On" : "Selection";
+        }
+
+        if (removeSelected != null)
+        {
+            removeSelected.style.display = selectionActive ? DisplayStyle.Flex : DisplayStyle.None;
+            removeSelected.SetEnabled(selectionActive && hasSelection);
+        }
+
+        lastKnownSelectionMode = selectionActive;
+        lastHasSelection = hasSelection;
     }
 }

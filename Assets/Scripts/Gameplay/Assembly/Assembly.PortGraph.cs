@@ -70,6 +70,7 @@ public partial class Assembly
         }
 
         RegisterPartLayoutPortMappings();
+        RecalculateOutputPortOccupancyFromGrid();
     }
 
     private void BuildCoreLayoutMapping()
@@ -571,6 +572,34 @@ public partial class Assembly
             case CellSideMask.Left: return Vector3.left;
             case CellSideMask.Right: return Vector3.right;
             default: return Vector3.zero;
+        }
+    }
+
+    private void RecalculateOutputPortOccupancyFromGrid()
+    {
+        for (int i = 0; i < outputPorts.Count; i++)
+        {
+            if (outputPorts[i] != null)
+            {
+                outputPorts[i].SetOccupied(false);
+            }
+        }
+
+        foreach (KeyValuePair<Vector2Int, Dictionary<CellSideMask, AssemblyPort>> pair in outputPortsByCellAndSide)
+        {
+            Vector2Int cell = pair.Key;
+            if (!occupiedCells.ContainsKey(cell)) continue;
+
+            Dictionary<CellSideMask, AssemblyPort> perSide = pair.Value;
+            if (perSide == null) continue;
+
+            foreach (KeyValuePair<CellSideMask, AssemblyPort> sidePair in perSide)
+            {
+                if (sidePair.Value != null)
+                {
+                    sidePair.Value.SetOccupied(true);
+                }
+            }
         }
     }
 }

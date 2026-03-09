@@ -9,6 +9,8 @@ public class AssemblyManager : MonoBehaviour
     [SerializeField] private bool isAssembling = false;
 
     private ArtificialSatellite sourceSatellite;
+    private bool isFocusSubscribed;
+    private IFocusService subscribedFocusService;
 
     public bool IsAssembling => isAssembling;
     public ArtificialSatellite SourceSatellite => sourceSatellite;
@@ -25,10 +27,24 @@ public class AssemblyManager : MonoBehaviour
 
     private void OnDestroy()
     {
+        TryUnsubscribeFocusEvents();
+
         if (Instance == this)
         {
             Instance = null;
         }
+    }
+
+    private void OnEnable()
+    {
+        FocusManager.InstanceChanged += HandleFocusManagerInstanceChanged;
+        TrySubscribeFocusEvents();
+    }
+
+    private void OnDisable()
+    {
+        FocusManager.InstanceChanged -= HandleFocusManagerInstanceChanged;
+        TryUnsubscribeFocusEvents();
     }
 
     public void StartAssemblyMode(ArtificialSatellite artificialSatellite)
@@ -158,5 +174,53 @@ public class AssemblyManager : MonoBehaviour
     {
         isAssembling = assembling;
         sourceSatellite = satellite;
+    }
+
+    private void HandleFocusChanged(Transform focused)
+    {
+        if (isAssembling) return;
+        if (focused == null) return;
+
+        ArtificialSatellite focusedSatellite = focused.GetComponent<ArtificialSatellite>();
+        if (focusedSatellite == null) return;
+
+        StartAssemblyMode(focusedSatellite);
+    }
+
+    private void HandleFocusManagerInstanceChanged(FocusManager _)
+    {
+        RebindFocusEvents();
+    }
+
+    private void TrySubscribeFocusEvents()
+    {
+        if (isFocusSubscribed) return;
+        if (!CoreRuntimeAccess.TryGetFocusService(out IFocusService focusService)) return;
+
+        focusService.RegisterFocusListener(HandleFocusChanged, true);
+        subscribedFocusService = focusService;
+        isFocusSubscribed = true;
+    }
+
+    private void TryUnsubscribeFocusEvents()
+    {
+        if (!isFocusSubscribed) return;
+        if (subscribedFocusService != null)
+        {
+            subscribedFocusService.DeregisterFocusListener(HandleFocusChanged);
+        }
+
+        subscribedFocusService = null;
+        isFocusSubscribed = false;
+    }
+
+    private void RebindFocusEvents()
+    {
+        if (isFocusSubscribed)
+        {
+            TryUnsubscribeFocusEvents();
+        }
+
+        TrySubscribeFocusEvents();
     }
 }

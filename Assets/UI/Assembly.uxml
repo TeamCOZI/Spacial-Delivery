@@ -8,5 +8,7 @@
         </ui:VisualElement>
         <ui:Button text="X&#10;" name="Close" style="align-self: flex-end;" />
         <ui:Button text="Parts&#10;" name="OpenParts" style="align-self: flex-start;" />
+        <ui:Button text="Selection&#10;" name="ToggleSelection" style="align-self: flex-start;" />
+        <ui:Button text="Remove&#10;" name="RemoveSelected" style="align-self: flex-start; display: none;" />
     </ui:VisualElement>
 </ui:UXML>

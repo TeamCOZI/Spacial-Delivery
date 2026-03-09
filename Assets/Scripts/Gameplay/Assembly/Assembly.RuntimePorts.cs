@@ -91,8 +91,7 @@ public partial class Assembly
             : DefaultPortDirection;
         SetDockingDirection(marker.transform, localPosition);
 
-        Renderer renderer = marker.GetComponent<Renderer>();
-        if (portType == AssemblyPortType.Input && renderer != null)
+        if (portType == AssemblyPortType.Input)
         {
             Color inputColor = InputPortColor;
             if (isGhost) inputColor.a = GhostValidColor.a;
