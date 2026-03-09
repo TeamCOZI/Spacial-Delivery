@@ -15,7 +15,11 @@ MonoBehaviour:
   partName: Launcher
   partIcon: {fileID: 10913, guid: 0000000000000000f000000000000000, type: 0}
   partType: 0
-  partPrefab: {fileID: 4178674282768661370, guid: 8d4562cbb3e5daf4b8f58228c80210a3, type: 3}
-  ghostPrefab: {fileID: 4178674282768661370, guid: 679bcc6ec8cd3bb4185feef680a4fe6d, type: 3}
+  partPrefab: {fileID: 7628990110535762401, guid: 6afa245e81c1b5844a89e89f061c95fb, type: 3}
+  ghostPrefab: {fileID: 7628990110535762401, guid: 6afa245e81c1b5844a89e89f061c95fb, type: 3}
   durability: 0
   inventory: 0
+  mass: 100
+
+
+

@@ -102,6 +102,9 @@ GameObject:
   - component: {fileID: 6273361496479393080}
   - component: {fileID: 4237349991850026572}
   - component: {fileID: 5850795823270850934}
+  - component: {fileID: 830001001001001001}
+  - component: {fileID: 830001001001001002}
+  - component: {fileID: 830001001001001003}
   m_Layer: 0
   m_Name: OutputPortPrefab
   m_TagString: Part
@@ -205,6 +208,50 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 1, y: 1, z: 1}
   m_Center: {x: 0, y: 0, z: 0}
+--- !u!114 &830001001001001001
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2743857475907184477}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b319cfb8aebcb0d4e9bc3d9cbcf9283d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AssemblyPortVisualMarker
+--- !u!114 &830001001001001002
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2743857475907184477}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 247a5fde55005334089a0c428e0873a8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AssemblyPort
+  portType: 1
+  localDirection: {x: 0, y: 1, z: 0}
+  isOccupied: 0
+--- !u!114 &830001001001001003
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2743857475907184477}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 88b8d0e9e6e517240956d860b70775cc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AssemblyPortPulse
+  minBrightness: 0.35
+  maxBrightness: 3
+  pulseSpeed: 5
+  minEmission: 0.2
+  maxEmission: 6
 --- !u!1 &2976493819204752762
 GameObject:
   m_ObjectHideFlags: 0

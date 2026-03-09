@@ -21,3 +21,7 @@ MonoBehaviour:
   gridHeight: 1
   durability: 0
   inventory: 0
+  mass: 50
+
+
+

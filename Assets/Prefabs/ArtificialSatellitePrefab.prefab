@@ -20,6 +20,8 @@ GameObject:
   - component: {fileID: -3700907166393784933}
   - component: {fileID: 704001001001001001}
   - component: {fileID: 704001001001001002}
+  - component: {fileID: 704001001001001003}
+  - component: {fileID: 704001001001001004}
   m_Layer: 0
   m_Name: ArtificialSatellitePrefab
   m_TagString: Prefab
@@ -180,6 +182,7 @@ MonoBehaviour:
   revolutionPeriod: 0
   currentAngle: 0
   isClockwise: 0
+  rotateAroundZWithOrbit: 1
   timeMultiplier: 1
 --- !u!114 &284225305324683401
 MonoBehaviour:
@@ -226,6 +229,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Gravity
   gravityRadius: 0
+  affectsPhysics: 0
 --- !u!114 &704001001001001001
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -260,6 +264,38 @@ MonoBehaviour:
   farStepInterval: 1
   disableVisualHelpersInFarTier: 0
   disableCollidersInFarTier: 0
+--- !u!114 &704001001001001003
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6520169117287697879}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8981012c4312f2549b4aab169d3c54cc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AssemblyAttachmentHub
+  destroyAttachmentsOnOwnerDestroy: 1
+  autoRegisterExistingChildren: 1
+  stabilizeAttachmentRigidbodies: 1
+--- !u!114 &704001001001001004
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6520169117287697879}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f1adc18e0742e2947b5b84d78b2168b4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AssemblyMeshCombiner
+  hideSourceRenderers: 1
+  combinedOnlyMode: 1
+  enforceCombinedOnlyEachFrame: 1
+  includeInactive: 1
+  combinedObjectName: CombinedPartsMesh
 --- !u!1001 &5791243090004234059
 PrefabInstance:
   m_ObjectHideFlags: 0
