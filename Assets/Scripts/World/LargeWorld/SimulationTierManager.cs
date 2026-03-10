@@ -50,13 +50,24 @@ public class SimulationTierManager : MonoBehaviour
         if (mainCamera == null) return;
 
         Vector3 cameraPos = mainCamera.transform.position;
+        bool forceNearTier = FocusManager.currentFocus != null &&
+            SpaceshipFocusUtility.TryResolveSpaceship(FocusManager.currentFocus, out _);
 
         foreach (SimulationTierTarget target in tracked)
         {
             if (target == null) continue;
 
-            float distance = Vector3.Distance(cameraPos, target.transform.position);
-            SimulationTier tier = ResolveTier(distance, target.CurrentTier);
+            SimulationTier tier;
+            if (forceNearTier)
+            {
+                tier = SimulationTier.Near;
+            }
+            else
+            {
+                float distance = Vector3.Distance(cameraPos, target.transform.position);
+                tier = ResolveTier(distance, target.CurrentTier);
+            }
+
             target.ApplyTier(tier);
         }
     }

@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.Rendering.Universal;
 
+[DefaultExecutionOrder(29600)]
 [RequireComponent(typeof(Camera))]
 public class SmallScaleOverlayCamera : MonoBehaviour
 {
@@ -41,8 +42,7 @@ public class SmallScaleOverlayCamera : MonoBehaviour
 
     private void LateUpdate()
     {
-        if (overlayCamera == null) return;
-        SyncOverlayCamera();
+        SyncNow();
     }
 
     private void OnDisable()
@@ -113,6 +113,12 @@ public class SmallScaleOverlayCamera : MonoBehaviour
                 mainData.cameraStack.Add(overlayCamera);
             }
         }
+    }
+
+    public void SyncNow()
+    {
+        if (overlayCamera == null || mainCamera == null || overlayTransform == null) return;
+        SyncOverlayCamera();
     }
 
     private void SyncOverlayCamera()

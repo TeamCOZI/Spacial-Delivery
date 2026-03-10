@@ -52,8 +52,7 @@ public sealed class DefaultCameraFocusPolicy : ICameraFocusPolicy
 
     public bool IsSpaceshipFocus(Transform focus)
     {
-        if (focus == null) return false;
-        return focus.GetComponent<Spaceship>() != null;
+        return SpaceshipFocusUtility.TryResolveSpaceship(focus, out _);
     }
 
     private static float GetFocusLossyScale(Transform focus)
@@ -72,6 +71,11 @@ public sealed class DefaultCameraFocusPolicy : ICameraFocusPolicy
         if (partFocus != null && partFocus.OwnerSatellite != null)
         {
             return partFocus.OwnerSatellite.transform;
+        }
+
+        if (SpaceshipFocusUtility.TryResolveSpaceship(focus, out Spaceship spaceship))
+        {
+            return spaceship.transform;
         }
 
         return focus;

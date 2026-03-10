@@ -20,17 +20,22 @@ public partial class CameraManager
         if (newFocus != null)
         {
             LargeWorldCoordinator coordinator = LargeWorldCoordinator.Instance;
-            if (coordinator != null && !IsPhysicsDrivenFocus(newFocus))
+            if (coordinator != null)
             {
                 Double3 previousOrigin = coordinator.worldOrigin;
-                Double3 focusWorldPosition = ResolveFocusWorldOrigin(newFocus);
-                coordinator.SetWorldOrigin(focusWorldPosition);
-                coordinator.SyncAllTransforms();
-
-                // Preserve camera continuity when origin changes to avoid one-frame "fly away" jumps.
-                Vector3 originShift = (previousOrigin - focusWorldPosition).ToVector3();
-                transform.position += originShift;
-                target += originShift;
+                if (IsPhysicsDrivenFocus(newFocus))
+                {
+                    Double3 focusWorldPosition = ResolveStableFocusWorldOrigin(newFocus, coordinator);
+                    if (ShouldRecenterPhysicsFocus(coordinator, focusWorldPosition))
+                    {
+                        RecenterWorldOriginForPhysicsStep(coordinator, previousOrigin, focusWorldPosition);
+                    }
+                }
+                else
+                {
+                    Double3 focusWorldPosition = ResolveFocusWorldOrigin(newFocus);
+                    RecenterWorldOrigin(coordinator, previousOrigin, focusWorldPosition);
+                }
             }
 
             if (FocusPolicy.IsLauncherPartFocus(newFocus))
@@ -49,7 +54,7 @@ public partial class CameraManager
                     zoomOffset = FocusPolicy.GetZoomScaleForFocus(newFocus) * followZ;
                 }
             }
-            target = newFocus.position;
+            target = ResolveFocusFollowPosition(newFocus);
         }
         else if (oldFocus != null)
         {
@@ -63,6 +68,18 @@ public partial class CameraManager
         dragOffset = Vector2.zero;
 
         oldFocus = newFocus;
+    }
+
+    private Vector3 ResolveFocusFollowPosition(Transform focus)
+    {
+        if (focus == null) return target;
+
+        if (SpaceshipFocusUtility.TryResolveSpaceship(focus, out Spaceship spaceship))
+        {
+            return spaceship.transform.position;
+        }
+
+        return focus.position;
     }
 
     private void UpdateDragOffset(Vector2 dragOffset)

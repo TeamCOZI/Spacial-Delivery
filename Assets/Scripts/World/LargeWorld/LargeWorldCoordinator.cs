@@ -92,4 +92,39 @@ public class LargeWorldCoordinator : MonoBehaviour
             }
         }
     }
+
+    public void SyncAllTransformsForPhysicsStep(bool includeOrbitDriven = true)
+    {
+        foreach (WorldPosition wp in tracked)
+        {
+            if (wp == null) continue;
+
+            if (!includeOrbitDriven &&
+                (wp.GetComponent<OrbitRevolution>() != null || wp.GetComponent<Spaceship>() != null))
+            {
+                continue;
+            }
+
+            Vector3 localPosition = ToLocal(wp.worldPosition);
+            Rigidbody rb = wp.GetComponent<Rigidbody>();
+            if (rb != null)
+            {
+                if (rb.isKinematic)
+                {
+                    // Origin rebasing is a frame-of-reference change, not physical motion.
+                    // Teleport kinematic bodies to the rebased pose so interpolation does not
+                    // blend old-origin and new-origin positions into visible jitter.
+                    rb.position = localPosition;
+                }
+                else
+                {
+                    rb.position = localPosition;
+                }
+            }
+            else
+            {
+                wp.transform.position = localPosition;
+            }
+        }
+    }
 }

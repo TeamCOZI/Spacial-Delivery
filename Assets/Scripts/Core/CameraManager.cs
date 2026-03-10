@@ -33,6 +33,9 @@ public partial class CameraManager : FocusEventSubscriber
     [Header("Drag Settings")]
     [Min(0.01f)] public float maxDragDeltaPerFrame = 500f;
 
+    [Header("Physics Focus Origin")]
+    [Min(1f)] public float physicsFocusRecenterThreshold = 2000f;
+
     private float starScale;
 
     private Transform oldFocus;
@@ -42,6 +45,7 @@ public partial class CameraManager : FocusEventSubscriber
     private float zoomOffset;
 
     private Camera cameraComponent;
+    private SmallScaleOverlayCamera smallScaleOverlayCamera;
 
     private Vector3 currentVelocity;
     private float AV;
@@ -89,12 +93,14 @@ public partial class CameraManager : FocusEventSubscriber
             assemblyDefaultDistance = WorldScale.ScaleLength(assemblyDefaultDistance);
             assemblyFocusDistance = WorldScale.ScaleLength(assemblyFocusDistance);
             maxDragDeltaPerFrame = WorldScale.ScaleLength(maxDragDeltaPerFrame);
+            physicsFocusRecenterThreshold = Mathf.Max(1f, WorldScale.ScaleLength(physicsFocusRecenterThreshold));
             transform.position = WorldScale.ScaleVector(transform.position);
             worldScaleApplied = true;
         }
 
         cameraComponent = GetComponent<Camera>();
         if (cameraComponent == null) cameraComponent = Camera.main;
+        smallScaleOverlayCamera = GetComponent<SmallScaleOverlayCamera>();
         _ = FocusPolicy;
         target = Vector3.zero;
         targetRotationZ = transform.eulerAngles.z;
@@ -152,7 +158,7 @@ public partial class CameraManager : FocusEventSubscriber
 
     private void UpdateCameraPos()
     {
-        if (oldFocus != null) target = oldFocus.transform.position;
+        if (oldFocus != null) target = ResolveFocusFollowPosition(oldFocus);
 
         if (forceInstantCameraUpdate)
         {
@@ -199,6 +205,7 @@ public partial class CameraManager : FocusEventSubscriber
         else transform.position = target + offset + new Vector3(dragOffset.x, dragOffset.y, 0);
 
         UpdateFocusRotation();
+        smallScaleOverlayCamera?.SyncNow();
         forceInstantCameraUpdate = false;
     }
 
@@ -239,7 +246,7 @@ public partial class CameraManager : FocusEventSubscriber
 
     public float GetDragPlaneZ()
     {
-        if (oldFocus != null) return oldFocus.position.z;
+        if (oldFocus != null) return ResolveFocusFollowPosition(oldFocus).z;
         return target.z;
     }
 

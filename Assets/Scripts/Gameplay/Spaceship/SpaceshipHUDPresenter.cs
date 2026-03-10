@@ -57,7 +57,15 @@ public class SpaceshipHUDPresenter : FocusEventSubscriber
 
     protected override void HandleFocusChanged(Transform focused)
     {
-        focusedFuel = focused != null ? focused.GetComponentInParent<SpaceshipFuel>() : null;
+        if (SpaceshipFocusUtility.TryResolveSpaceship(focused, out Spaceship focusedSpaceship))
+        {
+            focusedFuel = focusedSpaceship.GetComponent<SpaceshipFuel>();
+        }
+        else
+        {
+            focusedFuel = null;
+        }
+
         hasFuelSample = false;
         if (focusedFuel == null)
         {

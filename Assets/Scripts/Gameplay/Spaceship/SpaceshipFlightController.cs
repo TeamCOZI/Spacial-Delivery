@@ -51,7 +51,8 @@ public class SpaceshipFlightController : MonoBehaviour
     private bool IsFocused()
     {
         Transform focused = GetCurrentFocus();
-        return focused == transform || (focused != null && focused.IsChildOf(transform));
+        return SpaceshipFocusUtility.TryResolveSpaceship(focused, out Spaceship focusedSpaceship)
+            && focusedSpaceship == GetComponent<Spaceship>();
     }
 
     private Vector2 ReadMoveInput()

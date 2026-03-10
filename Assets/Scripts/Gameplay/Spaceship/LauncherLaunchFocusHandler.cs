@@ -32,7 +32,9 @@ public class LauncherLaunchFocusHandler : MonoBehaviour
     {
         if (launchResult.spaceship == null) return;
         if (!CoreRuntimeAccess.TryGetFocusManager(out FocusManager focusManager)) return;
-        focusManager.SetFocus(launchResult.spaceship.transform);
+
+        Spaceship spaceship = launchResult.spaceship.GetComponent<Spaceship>();
+        focusManager.SetFocus(SpaceshipFocusUtility.ResolveFocusTarget(spaceship));
     }
 
     private void EnsureLaunchController()

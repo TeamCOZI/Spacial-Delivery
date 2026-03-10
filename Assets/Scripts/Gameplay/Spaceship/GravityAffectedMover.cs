@@ -62,12 +62,16 @@ public class GravityAffectedMover : MonoBehaviour
 
         Vector3 launchVelocity = new Vector3(initialVelocity.x, initialVelocity.y, 0f);
 
-        rb.isKinematic = false;
+        rb.isKinematic = true;
         rb.useGravity = false;
+        rb.linearVelocity = Vector3.zero;
         rb.angularVelocity = Vector3.zero;
         rb.constraints = RigidbodyConstraints.FreezePositionZ | RigidbodyConstraints.FreezeRotation;
-        rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
-        rb.interpolation = RigidbodyInterpolation.Interpolate;
+        rb.collisionDetectionMode = CollisionDetectionMode.ContinuousSpeculative;
+        // This ship is moved explicitly in FixedUpdate and queried by screen-space raycasts in LateUpdate.
+        // Interpolation makes the rendered pose diverge from the physics query pose by a frame, which
+        // shows up as forward-stretched hit areas and hover flicker on fast-moving ships.
+        rb.interpolation = RigidbodyInterpolation.None;
         rb.detectCollisions = enableCollision && !DisableAllSpaceshipCollisions;
 
         Vector3 startLocal = transform.position;
@@ -79,7 +83,7 @@ public class GravityAffectedMover : MonoBehaviour
 
         velocity = launchVelocity;
         queuedVelocityDelta = Vector3.zero;
-        rb.linearVelocity = launchVelocity;
+        rb.position = startLocal;
         launchedAtUnscaledTime = Time.unscaledTime;
         lastRawLoggedCollider = null;
         lastRawCollisionLogTime = float.NegativeInfinity;
@@ -90,10 +94,7 @@ public class GravityAffectedMover : MonoBehaviour
             // Launch is accepted while paused, but motion starts when unpaused.
             pausedLinearVelocity = launchVelocity;
             pausedAngularVelocity = Vector3.zero;
-            wasKinematicBeforePause = false;
-            rb.linearVelocity = Vector3.zero;
-            rb.angularVelocity = Vector3.zero;
-            rb.isKinematic = true;
+            velocity = Vector3.zero;
             pauseKinematicApplied = true;
         }
 
@@ -124,10 +125,10 @@ public class GravityAffectedMover : MonoBehaviour
         if (dt <= 0f) return;
 
         rb.detectCollisions = enableCollision && !DisableAllSpaceshipCollisions;
-
-        Vector3 velocityBeforeStep = rb.linearVelocity;
+        rb.isKinematic = true;
+        Vector3 velocityBeforeStep = velocity;
+        velocityBeforeStep.z = 0f;
         velocity = velocityBeforeStep;
-        velocity.z = 0f;
 
         Vector3 queuedDeltaApplied = Vector3.zero;
         if (queuedVelocityDelta.sqrMagnitude > 0f)
@@ -140,7 +141,13 @@ public class GravityAffectedMover : MonoBehaviour
         Vector3 acceleration = ComputeGravityAcceleration();
         velocity += acceleration * dt;
         velocity.z = 0f;
-        rb.linearVelocity = velocity;
+
+        Double3 nextWorld = worldPosition.worldPosition + (Double3)(velocity * dt);
+        worldPosition.SetWorldPosition(nextWorld);
+        Vector3 localPosition = ToLocal(nextWorld);
+        localPosition.z = 0f;
+        rb.MovePosition(localPosition);
+
         LogLaunchDynamicsIfNeeded(
             velocityBeforeStep,
             velocity,
@@ -148,7 +155,6 @@ public class GravityAffectedMover : MonoBehaviour
             acceleration,
             dt);
         UpdateFacingFromVelocity();
-        SyncWorldFromLocal();
     }
 
     private Vector3 ComputeGravityAcceleration()
@@ -221,14 +227,21 @@ public class GravityAffectedMover : MonoBehaviour
         );
     }
 
-    private void SyncWorldFromLocal()
+    private void SyncLocalFromWorld()
     {
         EnsureDependencies();
         if (worldPosition == null) return;
 
-        Vector3 local = rb != null ? rb.position : transform.position;
+        Vector3 local = ToLocal(worldPosition.worldPosition);
         local.z = 0f;
-        worldPosition.SetWorldPosition(ToWorld(local));
+        if (rb != null)
+        {
+            rb.MovePosition(local);
+        }
+        else
+        {
+            transform.position = local;
+        }
     }
 
     private void UpdateFacingFromVelocity()
@@ -239,7 +252,7 @@ public class GravityAffectedMover : MonoBehaviour
         // Spaceship forward axis is +Y, so subtract 90 degrees from atan2 heading.
         float z = Mathf.Atan2(planarVelocity.y, planarVelocity.x) * Mathf.Rad2Deg - 90f;
         Quaternion rotation = Quaternion.Euler(0f, 0f, z);
-        if (rb != null && !rb.isKinematic)
+        if (rb != null)
         {
             rb.MoveRotation(rotation);
         }
@@ -335,25 +348,21 @@ public class GravityAffectedMover : MonoBehaviour
     private void ApplyPauseKinematicState()
     {
         EnsureDependencies();
-        if (rb == null) return;
+        if (rb == null || worldPosition == null) return;
 
         if (!pauseKinematicApplied)
         {
-            wasKinematicBeforePause = rb.isKinematic;
-            if (!rb.isKinematic)
-            {
-                pausedLinearVelocity = rb.linearVelocity;
-                pausedAngularVelocity = rb.angularVelocity;
-                rb.linearVelocity = Vector3.zero;
-                rb.angularVelocity = Vector3.zero;
-            }
+            pausedLinearVelocity = velocity;
+            pausedAngularVelocity = Vector3.zero;
             rb.isKinematic = true;
+            rb.linearVelocity = Vector3.zero;
+            rb.angularVelocity = Vector3.zero;
             pauseKinematicApplied = true;
         }
 
         velocity = Vector3.zero;
         queuedVelocityDelta = Vector3.zero;
-        SyncWorldFromLocal();
+        SyncLocalFromWorld();
     }
 
     private void RestoreKinematicAfterPause()
@@ -361,12 +370,10 @@ public class GravityAffectedMover : MonoBehaviour
         if (!pauseKinematicApplied) return;
         if (rb == null) return;
 
-        rb.isKinematic = wasKinematicBeforePause;
-        if (!rb.isKinematic)
-        {
-            rb.linearVelocity = pausedLinearVelocity;
-            rb.angularVelocity = pausedAngularVelocity;
-        }
+        rb.isKinematic = true;
+        rb.linearVelocity = Vector3.zero;
+        rb.angularVelocity = Vector3.zero;
+        velocity = new Vector3(pausedLinearVelocity.x, pausedLinearVelocity.y, 0f);
         pauseKinematicApplied = false;
     }
 
