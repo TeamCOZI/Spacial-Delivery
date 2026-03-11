@@ -97,13 +97,6 @@ public class OrbitRevolution : MonoBehaviour
             worldPositionComponent.SetWorldPosition(worldPosition);
         }
 
-        CoreRuntimeAccess.TryGetLargeWorldCoordinator(out LargeWorldCoordinator coordinator);
-        Vector3 localPosition = coordinator != null
-            ? coordinator.ToLocal(worldPosition)
-            : worldPosition.ToVector3();
-
-        rigidbodyComponent.MovePosition(localPosition);
-
         if (rotateAroundZWithOrbit)
         {
             selfRotationAnglePrecise += deltaDegrees;

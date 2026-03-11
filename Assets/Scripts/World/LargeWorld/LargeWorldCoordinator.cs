@@ -35,9 +35,26 @@ public class LargeWorldCoordinator : MonoBehaviour
 
     private void LateUpdate()
     {
+        bool originChanged = TryRecenterVisualWorldOrigin();
+        if (originChanged)
+        {
+            SyncAllTransforms(includeOrbitDriven: true);
+            Physics.SyncTransforms();
+            return;
+        }
+
         if (!syncEveryLateUpdate) return;
-        // Keep Rigidbody-interpolated orbit bodies smooth during normal frames.
+
+        // Physics-driven objects are finalized in FixedUpdate. LateUpdate only catches
+        // non-physics tracked roots and visual-only consumers after normal motion settles.
         SyncAllTransforms(includeOrbitDriven: false);
+        Physics.SyncTransforms();
+    }
+
+    private void FixedUpdate()
+    {
+        bool originChanged = TryRecenterPhysicsWorldOrigin();
+        SyncAllTransformsForSimulationStep(originChanged);
     }
 
     public void Register(WorldPosition wp)
@@ -82,7 +99,7 @@ public class LargeWorldCoordinator : MonoBehaviour
 
             Vector3 localPosition = ToLocal(wp.worldPosition);
             Rigidbody rb = wp.GetComponent<Rigidbody>();
-            if (rb != null && !rb.isKinematic)
+            if (rb != null)
             {
                 rb.position = localPosition;
             }
@@ -91,6 +108,203 @@ public class LargeWorldCoordinator : MonoBehaviour
                 wp.transform.position = localPosition;
             }
         }
+    }
+
+    private bool TryRecenterVisualWorldOrigin()
+    {
+        if (!TryResolveDesiredWorldOrigin(out Double3 nextOrigin))
+        {
+            return false;
+        }
+
+        Double3 delta = worldOrigin - nextOrigin;
+        if (Mathf.Approximately((float)delta.x, 0f) &&
+            Mathf.Approximately((float)delta.y, 0f) &&
+            Mathf.Approximately((float)delta.z, 0f))
+        {
+            return false;
+        }
+
+        SetWorldOrigin(nextOrigin);
+        CameraManager.Instance?.ApplyWorldOriginShift(delta.ToVector3());
+        return true;
+    }
+
+    private bool TryRecenterPhysicsWorldOrigin()
+    {
+        Transform focus = FocusManager.currentFocus;
+        if (!TryResolveSpaceshipFocus(focus, out _))
+        {
+            return false;
+        }
+
+        if (!TryResolveFocusDesiredWorldOrigin(focus, out Double3 nextOrigin))
+        {
+            return false;
+        }
+
+        Double3 delta = worldOrigin - nextOrigin;
+        if (Mathf.Approximately((float)delta.x, 0f) &&
+            Mathf.Approximately((float)delta.y, 0f) &&
+            Mathf.Approximately((float)delta.z, 0f))
+        {
+            return false;
+        }
+
+        SetWorldOrigin(nextOrigin);
+        CameraManager.Instance?.ApplyWorldOriginShift(delta.ToVector3());
+        return true;
+    }
+
+    private bool TryResolveDesiredWorldOrigin(out Double3 nextOrigin)
+    {
+        Transform focus = FocusManager.currentFocus;
+        if (focus != null && TryResolveFocusDesiredWorldOrigin(focus, out nextOrigin))
+        {
+            return true;
+        }
+
+        return TryResolveCameraDesiredWorldOrigin(out nextOrigin);
+    }
+
+    private bool TryResolveFocusDesiredWorldOrigin(Transform focus, out Double3 nextOrigin)
+    {
+        nextOrigin = worldOrigin;
+        if (focus == null) return false;
+
+        Double3 focusWorldPosition = ResolveFocusWorldPosition(focus);
+        if (TryResolveSpaceshipFocus(focus, out _))
+        {
+            if (!ShouldRecenterPhysicsFocus(focusWorldPosition))
+            {
+                return false;
+            }
+        }
+
+        nextOrigin = focusWorldPosition;
+        return true;
+    }
+
+    private bool TryResolveCameraDesiredWorldOrigin(out Double3 nextOrigin)
+    {
+        nextOrigin = worldOrigin;
+        if (ShouldDeferCameraFallbackRecenter())
+        {
+            return false;
+        }
+
+        CameraManager cameraManager = CameraManager.Instance;
+        Vector3 cameraLocalPosition;
+        if (cameraManager != null)
+        {
+            cameraLocalPosition = cameraManager.GetPlannedCameraLocalPosition();
+        }
+        else
+        {
+            Camera camera = Camera.main;
+            if (camera == null) return false;
+            cameraLocalPosition = camera.transform.position;
+        }
+
+        Vector2 planarCameraPosition = new Vector2(cameraLocalPosition.x, cameraLocalPosition.y);
+        float threshold = GetCameraFallbackThreshold();
+        if (planarCameraPosition.sqrMagnitude < threshold * threshold)
+        {
+            return false;
+        }
+
+        Double3 cameraWorldPosition = ToWorld(cameraLocalPosition);
+        nextOrigin = new Double3(cameraWorldPosition.x, cameraWorldPosition.y, worldOrigin.z);
+        return true;
+    }
+
+    private static bool ShouldDeferCameraFallbackRecenter()
+    {
+        UserInput input = UserInput.Instance;
+        if (input == null)
+        {
+            return false;
+        }
+
+        // Free-camera dragging is a direct user-controlled pan. Rebasing in the same drag
+        // loop introduces a visible pop because the pan delta and frame-of-reference change
+        // are both applied inside the same interaction. Defer fallback rebasing until drag ends.
+        return input.IsCameraDragging;
+    }
+
+    private Double3 ResolveFocusWorldPosition(Transform focus)
+    {
+        if (focus == null) return Double3.Zero;
+
+        if (TryResolveSpaceshipFocus(focus, out Spaceship spaceship))
+        {
+            WorldPosition spaceshipWorldPosition = spaceship.GetComponent<WorldPosition>();
+            if (spaceshipWorldPosition != null)
+            {
+                return spaceshipWorldPosition.worldPosition;
+            }
+
+            return ToWorld(spaceship.transform.position);
+        }
+
+        if (TryResolveOwnerSatelliteFocus(focus, out ArtificialSatellite ownerSatellite))
+        {
+            WorldPosition ownerWorldPosition = ownerSatellite.GetComponent<WorldPosition>();
+            if (ownerWorldPosition != null)
+            {
+                return ownerWorldPosition.worldPosition;
+            }
+
+            return ToWorld(ownerSatellite.transform.position);
+        }
+
+        WorldPosition focusWorldPosition = focus.GetComponent<WorldPosition>();
+        if (focusWorldPosition != null)
+        {
+            return focusWorldPosition.worldPosition;
+        }
+
+        return ToWorld(focus.position);
+    }
+
+    private bool ShouldRecenterPhysicsFocus(Double3 focusWorldPosition)
+    {
+        Vector3 focusLocalPosition = ToLocal(focusWorldPosition);
+        focusLocalPosition.z = 0f;
+
+        float threshold = GetCameraFallbackThreshold();
+        return focusLocalPosition.sqrMagnitude >= threshold * threshold;
+    }
+
+    private static bool TryResolveSpaceshipFocus(Transform focus, out Spaceship spaceship)
+    {
+        return SpaceshipFocusUtility.TryResolveSpaceship(focus, out spaceship);
+    }
+
+    private static bool TryResolveOwnerSatelliteFocus(Transform focus, out ArtificialSatellite ownerSatellite)
+    {
+        ownerSatellite = null;
+        if (focus == null) return false;
+
+        AssemblyPartFocus partFocus = focus.GetComponent<AssemblyPartFocus>();
+        if (partFocus != null && partFocus.TryGetOwnerSatellite(out ownerSatellite) && ownerSatellite != null)
+        {
+            return true;
+        }
+
+        ownerSatellite = focus.GetComponentInParent<ArtificialSatellite>();
+        return ownerSatellite != null;
+    }
+
+    private static float GetCameraFallbackThreshold()
+    {
+        CameraManager cameraManager = CameraManager.Instance;
+        if (cameraManager == null)
+        {
+            return 2000f;
+        }
+
+        return Mathf.Max(1f, cameraManager.physicsFocusRecenterThreshold);
     }
 
     public void SyncAllTransformsForPhysicsStep(bool includeOrbitDriven = true)
@@ -119,6 +333,32 @@ public class LargeWorldCoordinator : MonoBehaviour
                 else
                 {
                     rb.position = localPosition;
+                }
+            }
+            else
+            {
+                wp.transform.position = localPosition;
+            }
+        }
+    }
+
+    private void SyncAllTransformsForSimulationStep(bool forceTeleport)
+    {
+        foreach (WorldPosition wp in tracked)
+        {
+            if (wp == null) continue;
+
+            Vector3 localPosition = ToLocal(wp.worldPosition);
+            Rigidbody rb = wp.GetComponent<Rigidbody>();
+            if (rb != null)
+            {
+                if (forceTeleport)
+                {
+                    rb.position = localPosition;
+                }
+                else
+                {
+                    rb.MovePosition(localPosition);
                 }
             }
             else

@@ -17,6 +17,7 @@ public class LauncherSelectionPresenter : FocusEventSubscriber
     private TextMeshProUGUI launchButtonLabel;
     private Transform focusedLauncher;
     private Camera worldCamera;
+    private int lastCanvasUpdateFrame = -1;
 
     private Vector2 buttonSize = new Vector2(150f, 44f);
     private Vector2 screenOffset = new Vector2(120f, -20f);
@@ -39,9 +40,24 @@ public class LauncherSelectionPresenter : FocusEventSubscriber
         HideButton();
     }
 
+    protected override void OnEnable()
+    {
+        base.OnEnable();
+        Canvas.willRenderCanvases += HandleWillRenderCanvases;
+    }
+
+    protected override void OnDisable()
+    {
+        Canvas.willRenderCanvases -= HandleWillRenderCanvases;
+        base.OnDisable();
+    }
+
     protected override void LateUpdate()
     {
-        UpdateButtonVisibilityAndPosition();
+        if (buttonRect == null || launchButton == null || canvasRect == null)
+        {
+            EnsureButton();
+        }
     }
 
     private void EnsureButton()
@@ -140,20 +156,23 @@ public class LauncherSelectionPresenter : FocusEventSubscriber
             return;
         }
 
-        Vector3 stableAnchor = LauncherLaunchUtility.GetLauncherStableWorldAnchor(focusedLauncher);
-        Vector3 screenPos = worldCamera.WorldToScreenPoint(stableAnchor);
-        if (screenPos.z <= 0f)
+        if (!LauncherLaunchUtility.TryGetLauncherVisualPose(
+                focusedLauncher,
+                worldCamera,
+                out LauncherLaunchUtility.LauncherVisualPose pose) ||
+            !pose.isInFrontOfCamera)
         {
             HideButton();
             return;
         }
 
+        Vector3 screenPos = pose.screenPosition;
         if (hostCanvas != null && hostCanvas.renderMode == RenderMode.ScreenSpaceOverlay)
         {
-            Vector2 pixelPos = new Vector2(
-                Mathf.Round(screenPos.x + screenOffset.x),
-                Mathf.Round(screenPos.y + screenOffset.y));
-            buttonRect.position = pixelPos;
+            buttonRect.position = new Vector3(
+                screenPos.x + screenOffset.x,
+                screenPos.y + screenOffset.y,
+                0f);
         }
         else
         {
@@ -169,8 +188,6 @@ public class LauncherSelectionPresenter : FocusEventSubscriber
             }
 
             buttonRect.anchoredPosition = localPoint + screenOffset;
-            Vector2 anchored = buttonRect.anchoredPosition;
-            buttonRect.anchoredPosition = new Vector2(Mathf.Round(anchored.x), Mathf.Round(anchored.y));
         }
         if (!buttonRect.gameObject.activeSelf) buttonRect.gameObject.SetActive(true);
     }
@@ -245,6 +262,17 @@ public class LauncherSelectionPresenter : FocusEventSubscriber
         {
             HideButton();
         }
+    }
+
+    private void HandleWillRenderCanvases()
+    {
+        if (lastCanvasUpdateFrame == Time.frameCount)
+        {
+            return;
+        }
+
+        lastCanvasUpdateFrame = Time.frameCount;
+        UpdateButtonVisibilityAndPosition();
     }
 
     private static FocusManager GetFocusManager()

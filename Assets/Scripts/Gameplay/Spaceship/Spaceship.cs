@@ -15,6 +15,7 @@ public class Spaceship : MonoBehaviour
     [SerializeField] private bool autoFitHullCollider = true;
     [SerializeField, Min(0.1f)] private float hullColliderPadding = 1f;
 
+    private Rigidbody rigidbodyComponent;
     private WorldPosition worldPosition;
     private GravityAffectedMover gravityMover;
     private SpaceshipFuel fuel;
@@ -61,6 +62,7 @@ public class Spaceship : MonoBehaviour
         }
 
         gravityMover.Launch(new Vector3(velocity.x, velocity.y, 0f));
+        ApplyFocusedRenderInterpolation();
         SetState(SpaceshipState.Launched);
     }
 
@@ -77,12 +79,13 @@ public class Spaceship : MonoBehaviour
 
     private void CacheRequiredComponents()
     {
+        if (rigidbodyComponent == null) rigidbodyComponent = GetComponent<Rigidbody>();
         if (worldPosition == null) worldPosition = GetComponent<WorldPosition>();
         if (gravityMover == null) gravityMover = GetComponent<GravityAffectedMover>();
         if (fuel == null) fuel = GetComponent<SpaceshipFuel>();
         if (flightController == null) flightController = GetComponent<SpaceshipFlightController>();
 
-        if (worldPosition == null || gravityMover == null || fuel == null || flightController == null)
+        if (rigidbodyComponent == null || worldPosition == null || gravityMover == null || fuel == null || flightController == null)
         {
             Debug.LogError("Spaceship: Required components are missing on prefab.");
         }
@@ -148,9 +151,29 @@ public class Spaceship : MonoBehaviour
 
         bool isFocused = SpaceshipFocusUtility.TryResolveSpaceship(focused, out Spaceship focusedSpaceship)
             && focusedSpaceship == this;
+        ApplyFocusedRenderInterpolation(isFocused);
         int targetLayer = isFocused ? 0 : smallScaleLayer;
         ApplyRenderLayer(targetLayer);
         focusProxy?.SetInteractionEnabled(!isFocused);
+    }
+
+    private void ApplyFocusedRenderInterpolation()
+    {
+        bool isFocused = SpaceshipFocusUtility.TryResolveSpaceship(FocusManager.currentFocus, out Spaceship focusedSpaceship)
+            && focusedSpaceship == this;
+        ApplyFocusedRenderInterpolation(isFocused);
+    }
+
+    private void ApplyFocusedRenderInterpolation(bool isFocused)
+    {
+        CacheRequiredComponents();
+        if (rigidbodyComponent == null || gravityMover == null) return;
+
+        // When a launched ship is the camera anchor, match its rendered pose to the
+        // interpolated celestial bodies so the background does not appear to jitter.
+        rigidbodyComponent.interpolation = (isFocused && gravityMover.IsLaunched)
+            ? RigidbodyInterpolation.Interpolate
+            : RigidbodyInterpolation.None;
     }
 
     private void ApplyRenderLayer(int targetLayer)

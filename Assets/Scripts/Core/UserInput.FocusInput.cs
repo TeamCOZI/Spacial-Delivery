@@ -248,8 +248,39 @@ public partial class UserInput
 
     private bool TryRaycastFocusHit(Ray ray, out FocusHitResult selectedHit)
     {
+        bool hasVisualHit = TryRaycastFocusedSatelliteVisualHit(ray, out FocusHitResult visualHit);
         RaycastHit[] hits = Physics.RaycastAll(ray, Mathf.Infinity, focusRaycastMask, QueryTriggerInteraction.Collide);
-        return TrySelectPhysicsFocusHit(hits, out selectedHit);
+        bool hasPhysicsHit = TrySelectPhysicsFocusHit(hits, out FocusHitResult physicsHit);
+
+        if (hasVisualHit && hasPhysicsHit)
+        {
+            if (TryResolveFocusedSatellite(out ArtificialSatellite focusedSatellite) &&
+                IsHitWithinSatellite(physicsHit.transform, focusedSatellite))
+            {
+                selectedHit = visualHit;
+                return true;
+            }
+
+            selectedHit = physicsHit.distance + 0.001f < visualHit.distance
+                ? physicsHit
+                : visualHit;
+            return true;
+        }
+
+        if (hasVisualHit)
+        {
+            selectedHit = visualHit;
+            return true;
+        }
+
+        if (hasPhysicsHit)
+        {
+            selectedHit = physicsHit;
+            return true;
+        }
+
+        selectedHit = default;
+        return false;
     }
 
     private static bool TrySelectPhysicsFocusHit(RaycastHit[] hits, out FocusHitResult selectedHit)
@@ -294,5 +325,239 @@ public partial class UserInput
         }
 
         return false;
+    }
+
+    private static bool TryRaycastFocusedSatelliteVisualHit(Ray ray, out FocusHitResult selectedHit)
+    {
+        selectedHit = default;
+        if (!TryResolveFocusedSatellite(out ArtificialSatellite focusedSatellite))
+        {
+            return false;
+        }
+
+        AssemblyPartFocus[] partFocuses = focusedSatellite.GetComponentsInChildren<AssemblyPartFocus>(true);
+        bool found = false;
+        float bestDistance = float.PositiveInfinity;
+        FocusHitResult bestHit = default;
+
+        for (int i = 0; i < partFocuses.Length; i++)
+        {
+            AssemblyPartFocus partFocus = partFocuses[i];
+            if (partFocus == null || !partFocus.gameObject.activeInHierarchy) continue;
+
+            if (!TryRaycastVisualPart(ray, partFocus, out FocusHitResult hit))
+            {
+                continue;
+            }
+
+            if (!found || hit.distance < bestDistance)
+            {
+                found = true;
+                bestDistance = hit.distance;
+                bestHit = hit;
+            }
+        }
+
+        if (!found)
+        {
+            return false;
+        }
+
+        selectedHit = bestHit;
+        return true;
+    }
+
+    private static bool TryRaycastVisualPart(Ray ray, AssemblyPartFocus partFocus, out FocusHitResult selectedHit)
+    {
+        selectedHit = default;
+        if (partFocus == null) return false;
+
+        bool found = false;
+        float bestDistance = float.PositiveInfinity;
+        FocusHitResult bestHit = default;
+
+        Collider[] colliders = partFocus.GetComponentsInChildren<Collider>(true);
+        for (int i = 0; i < colliders.Length; i++)
+        {
+            Collider collider = colliders[i];
+            if (collider == null || !collider.enabled) continue;
+
+            if (!TryRaycastVisualCollider(ray, collider, out Vector3 hitPoint, out Vector3 hitNormal, out float hitDistance))
+            {
+                continue;
+            }
+
+            FocusHitResult hit = new FocusHitResult(partFocus.transform, collider, hitPoint, hitNormal, hitDistance);
+            if (!found || hit.distance < bestDistance)
+            {
+                found = true;
+                bestDistance = hit.distance;
+                bestHit = hit;
+            }
+        }
+
+        if (!found)
+        {
+            Renderer[] renderers = partFocus.GetComponentsInChildren<Renderer>(true);
+            for (int i = 0; i < renderers.Length; i++)
+            {
+                Renderer renderer = renderers[i];
+                if (renderer == null || !renderer.enabled) continue;
+
+                Bounds bounds = renderer.bounds;
+                if (!bounds.IntersectRay(ray, out float hitDistance)) continue;
+
+                Vector3 hitPoint = ray.GetPoint(hitDistance);
+                Vector3 hitNormal = -ray.direction;
+                FocusHitResult hit = new FocusHitResult(partFocus.transform, null, hitPoint, hitNormal, hitDistance);
+                if (!found || hit.distance < bestDistance)
+                {
+                    found = true;
+                    bestDistance = hit.distance;
+                    bestHit = hit;
+                }
+            }
+        }
+
+        if (!found)
+        {
+            return false;
+        }
+
+        selectedHit = bestHit;
+        return true;
+    }
+
+    private static bool TryRaycastVisualCollider(
+        Ray ray,
+        Collider collider,
+        out Vector3 hitPoint,
+        out Vector3 hitNormal,
+        out float hitDistance)
+    {
+        hitPoint = default;
+        hitNormal = default;
+        hitDistance = 0f;
+        if (collider == null) return false;
+
+        if (collider is BoxCollider boxCollider)
+        {
+            return TryRaycastVisualBoxCollider(ray, boxCollider, out hitPoint, out hitNormal, out hitDistance);
+        }
+
+        Bounds bounds = collider.bounds;
+        if (!bounds.IntersectRay(ray, out hitDistance))
+        {
+            return false;
+        }
+
+        hitPoint = ray.GetPoint(hitDistance);
+        hitNormal = -ray.direction;
+        return true;
+    }
+
+    private static bool TryRaycastVisualBoxCollider(
+        Ray ray,
+        BoxCollider boxCollider,
+        out Vector3 hitPoint,
+        out Vector3 hitNormal,
+        out float hitDistance)
+    {
+        hitPoint = default;
+        hitNormal = default;
+        hitDistance = 0f;
+        if (boxCollider == null) return false;
+
+        Matrix4x4 worldToLocal = boxCollider.transform.worldToLocalMatrix;
+        Vector3 localOrigin = worldToLocal.MultiplyPoint3x4(ray.origin) - boxCollider.center;
+        Vector3 localDirection = worldToLocal.MultiplyVector(ray.direction);
+        Vector3 extents = boxCollider.size * 0.5f;
+
+        float tMin = 0f;
+        float tMax = float.PositiveInfinity;
+        Vector3 localNormal = Vector3.zero;
+
+        if (!ClipAxis(localOrigin.x, localDirection.x, extents.x, Vector3.right, ref tMin, ref tMax, ref localNormal)) return false;
+        if (!ClipAxis(localOrigin.y, localDirection.y, extents.y, Vector3.up, ref tMin, ref tMax, ref localNormal)) return false;
+        if (!ClipAxis(localOrigin.z, localDirection.z, extents.z, Vector3.forward, ref tMin, ref tMax, ref localNormal)) return false;
+
+        if (tMax < 0f) return false;
+
+        float localHitT = tMin >= 0f ? tMin : tMax;
+        Vector3 localHitPoint = localOrigin + (localDirection * localHitT) + boxCollider.center;
+        hitPoint = boxCollider.transform.localToWorldMatrix.MultiplyPoint3x4(localHitPoint);
+        hitNormal = boxCollider.transform.TransformDirection(localNormal).normalized;
+        hitDistance = Vector3.Distance(ray.origin, hitPoint);
+        return true;
+    }
+
+    private static bool ClipAxis(
+        float origin,
+        float direction,
+        float extent,
+        Vector3 axisNormal,
+        ref float tMin,
+        ref float tMax,
+        ref Vector3 hitNormal)
+    {
+        const float Epsilon = 1e-6f;
+        if (Mathf.Abs(direction) < Epsilon)
+        {
+            return origin >= -extent && origin <= extent;
+        }
+
+        float invDirection = 1f / direction;
+        float t1 = (-extent - origin) * invDirection;
+        float t2 = (extent - origin) * invDirection;
+        Vector3 normalForT1 = direction > 0f ? -axisNormal : axisNormal;
+        Vector3 normalForT2 = direction > 0f ? axisNormal : -axisNormal;
+
+        if (t1 > t2)
+        {
+            float swapT = t1;
+            t1 = t2;
+            t2 = swapT;
+
+            Vector3 swapNormal = normalForT1;
+            normalForT1 = normalForT2;
+            normalForT2 = swapNormal;
+        }
+
+        if (t1 > tMin)
+        {
+            tMin = t1;
+            hitNormal = normalForT1;
+        }
+
+        if (t2 < tMax)
+        {
+            tMax = t2;
+        }
+
+        return tMin <= tMax;
+    }
+
+    private static bool TryResolveFocusedSatellite(out ArtificialSatellite focusedSatellite)
+    {
+        focusedSatellite = null;
+        Transform currentFocus = GetCurrentFocus();
+        if (currentFocus == null) return false;
+
+        focusedSatellite = currentFocus.GetComponent<ArtificialSatellite>();
+        if (focusedSatellite != null) return true;
+
+        AssemblyPartFocus partFocus = currentFocus.GetComponent<AssemblyPartFocus>();
+        if (partFocus != null)
+        {
+            focusedSatellite = partFocus.OwnerSatellite;
+        }
+
+        return focusedSatellite != null;
+    }
+
+    private static bool IsHitWithinSatellite(Transform hitTransform, ArtificialSatellite satellite)
+    {
+        if (hitTransform == null || satellite == null) return false;
+        return hitTransform == satellite.transform || hitTransform.IsChildOf(satellite.transform);
     }
 }

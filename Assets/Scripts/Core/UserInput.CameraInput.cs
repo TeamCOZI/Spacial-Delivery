@@ -8,6 +8,8 @@ public partial class UserInput
     private const float DragMoveThreshold = 0.1f;
     private const float DragMoveThresholdSqr = DragMoveThreshold * DragMoveThreshold;
 
+    public bool IsCameraDragging => isDrag;
+
     private void Drag()
     {
         if (Mouse.current.rightButton.wasPressedThisFrame)

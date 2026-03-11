@@ -1,7 +1,7 @@
 using UnityEngine;
 using UnityEngine.Rendering.Universal;
 
-[DefaultExecutionOrder(29600)]
+[DefaultExecutionOrder(30110)]
 [RequireComponent(typeof(Camera))]
 public class SmallScaleOverlayCamera : MonoBehaviour
 {

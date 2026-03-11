@@ -66,8 +66,17 @@ public class LauncherDirectionGuide : FocusEventSubscriber
         if (directionLine == null) return;
         UpdateDirectionLineWidth();
 
-        Vector3 start = LauncherLaunchUtility.GetLauncherStableWorldAnchor(focusedLauncher);
-        Vector3 dir = LauncherLaunchUtility.GetPlanarDirection(LauncherLaunchUtility.GetLauncherWorldDirection(focusedLauncher));
+        if (!LauncherLaunchUtility.TryGetLauncherVisualPose(
+                focusedLauncher,
+                cameraComponent,
+                out LauncherLaunchUtility.LauncherVisualPose pose))
+        {
+            HideDirectionLine();
+            return;
+        }
+
+        Vector3 start = pose.worldAnchor;
+        Vector3 dir = pose.worldDirection;
         float lineLength = MinDirectionLineLength;
         if (TryEnsureCamera())
         {

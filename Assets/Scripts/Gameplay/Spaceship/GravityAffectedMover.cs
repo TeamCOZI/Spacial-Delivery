@@ -144,9 +144,6 @@ public class GravityAffectedMover : MonoBehaviour
 
         Double3 nextWorld = worldPosition.worldPosition + (Double3)(velocity * dt);
         worldPosition.SetWorldPosition(nextWorld);
-        Vector3 localPosition = ToLocal(nextWorld);
-        localPosition.z = 0f;
-        rb.MovePosition(localPosition);
 
         LogLaunchDynamicsIfNeeded(
             velocityBeforeStep,

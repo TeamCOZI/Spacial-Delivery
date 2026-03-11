@@ -5,12 +5,18 @@ public partial class CameraManager
 {
     private void HandleWorldShift(Vector3 shiftDelta)
     {
+        ApplyWorldOriginShift(shiftDelta);
+    }
+
+    internal void ApplyWorldOriginShift(Vector3 shiftDelta)
+    {
+        transform.position += shiftDelta;
         target += shiftDelta;
+        smallScaleOverlayCamera?.SyncNow();
     }
 
     private void FixedUpdate()
     {
-        UpdatePhysicsDrivenWorldOrigin();
     }
 
     private static Double3 ResolveFocusWorldOrigin(Transform focus)

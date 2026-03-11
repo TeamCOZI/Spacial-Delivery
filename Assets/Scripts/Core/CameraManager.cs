@@ -1,7 +1,7 @@
 using UnityEngine;
 using System;
 
-[DefaultExecutionOrder(29500)]
+[DefaultExecutionOrder(30100)]
 [RequireComponent(typeof(Camera), typeof(Rigidbody), typeof(SmallScaleOverlayCamera))]
 public partial class CameraManager : FocusEventSubscriber
 {
@@ -147,7 +147,6 @@ public partial class CameraManager : FocusEventSubscriber
 
     protected override void LateUpdate()
     {
-        UpdateDynamicWorldOrigin();
         UpdateCameraPos();
     }
 
@@ -248,6 +247,23 @@ public partial class CameraManager : FocusEventSubscriber
     {
         if (oldFocus != null) return ResolveFocusFollowPosition(oldFocus).z;
         return target.z;
+    }
+
+    internal Vector3 GetPlannedCameraLocalPosition()
+    {
+        Vector3 plannedTarget = target;
+        if (oldFocus != null)
+        {
+            plannedTarget = ResolveFocusFollowPosition(oldFocus);
+        }
+
+        Vector3 plannedDragOffset = new Vector3(dragOffset.x, dragOffset.y, 0f);
+        if (isAssemblyMode)
+        {
+            return plannedTarget + new Vector3(offset.x, offset.y, zoomOffset) + plannedDragOffset;
+        }
+
+        return plannedTarget + offset + plannedDragOffset;
     }
 
     private void TrySubscribeUserInputEvents()

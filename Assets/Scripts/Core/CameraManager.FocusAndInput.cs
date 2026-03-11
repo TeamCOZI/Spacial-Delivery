@@ -19,25 +19,6 @@ public partial class CameraManager
 
         if (newFocus != null)
         {
-            LargeWorldCoordinator coordinator = LargeWorldCoordinator.Instance;
-            if (coordinator != null)
-            {
-                Double3 previousOrigin = coordinator.worldOrigin;
-                if (IsPhysicsDrivenFocus(newFocus))
-                {
-                    Double3 focusWorldPosition = ResolveStableFocusWorldOrigin(newFocus, coordinator);
-                    if (ShouldRecenterPhysicsFocus(coordinator, focusWorldPosition))
-                    {
-                        RecenterWorldOriginForPhysicsStep(coordinator, previousOrigin, focusWorldPosition);
-                    }
-                }
-                else
-                {
-                    Double3 focusWorldPosition = ResolveFocusWorldOrigin(newFocus);
-                    RecenterWorldOrigin(coordinator, previousOrigin, focusWorldPosition);
-                }
-            }
-
             if (FocusPolicy.IsLauncherPartFocus(newFocus))
             {
                 zoomOffset = -10000f;
@@ -79,12 +60,20 @@ public partial class CameraManager
             return spaceship.transform.position;
         }
 
+        AssemblyPartFocus partFocus = focus.GetComponent<AssemblyPartFocus>();
+        if (partFocus != null && partFocus.OwnerSatellite != null)
+        {
+            return partFocus.OwnerSatellite.transform.position;
+        }
+
         return focus.position;
     }
 
     private void UpdateDragOffset(Vector2 dragOffset)
     {
-        if (dragOffset.sqrMagnitude > maxDragDeltaPerFrame * maxDragDeltaPerFrame)
+        bool shouldClampDragDelta = oldFocus != null;
+        if (shouldClampDragDelta &&
+            dragOffset.sqrMagnitude > maxDragDeltaPerFrame * maxDragDeltaPerFrame)
         {
             dragOffset = dragOffset.normalized * maxDragDeltaPerFrame;
         }
