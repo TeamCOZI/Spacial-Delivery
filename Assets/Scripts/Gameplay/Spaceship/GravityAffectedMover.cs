@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using UnityEngine;
 
 [DefaultExecutionOrder(28950)]
@@ -16,6 +16,10 @@ public class GravityAffectedMover : MonoBehaviour
 
     [Header("Collision")]
     [SerializeField] private bool enableCollision = true;
+    [SerializeField] private LayerMask collisionMask = ~0;
+    [SerializeField, Min(0f)] private float collisionSkinWidth = 0.02f;
+    [SerializeField, Min(0f)] private float collisionRadiusPadding = 0.01f;
+    [SerializeField, Min(0f)] private float collisionSlideDamping = 0f;
     [SerializeField] private bool logCollisionTarget = true;
     [SerializeField, Min(0f)] private float collisionLogDelayAfterLaunchSeconds = 0.2f;
     [SerializeField, Min(0f)] private float collisionLogIntervalSeconds = 0.2f;
@@ -30,6 +34,7 @@ public class GravityAffectedMover : MonoBehaviour
 
     private Rigidbody rb;
     private WorldPosition worldPosition;
+    private BoxCollider hullCollider;
 
     private bool launched;
     private Vector3 velocity;
@@ -53,6 +58,7 @@ public class GravityAffectedMover : MonoBehaviour
     {
         rb = GetComponent<Rigidbody>();
         worldPosition = GetComponent<WorldPosition>();
+        hullCollider = GetComponent<BoxCollider>();
         spaceship = GetComponent<Spaceship>();
     }
 
@@ -142,7 +148,15 @@ public class GravityAffectedMover : MonoBehaviour
         velocity += acceleration * dt;
         velocity.z = 0f;
 
-        Double3 nextWorld = worldPosition.worldPosition + (Double3)(velocity * dt);
+        Double3 currentWorld = worldPosition.worldPosition;
+        Double3 nextWorld = currentWorld + (Double3)(velocity * dt);
+        Quaternion currentRotation = rb != null ? rb.rotation : transform.rotation;
+        Quaternion nextRotation = ResolveFacingRotation(velocity, currentRotation);
+        if (TryHandleCelestialCollisionAlongPath(currentWorld, nextWorld, currentRotation, nextRotation))
+        {
+            return;
+        }
+
         worldPosition.SetWorldPosition(nextWorld);
 
         LogLaunchDynamicsIfNeeded(
@@ -200,6 +214,245 @@ public class GravityAffectedMover : MonoBehaviour
         return acceleration;
     }
 
+    private bool TryHandleCelestialCollisionAlongPath(
+        Double3 currentWorld,
+        Double3 nextWorld,
+        Quaternion currentRotation,
+        Quaternion nextRotation)
+    {
+        if (!launched || !enableCollision || DisableAllSpaceshipCollisions)
+        {
+            return false;
+        }
+
+        if (!TryGetShipCollisionSphere(currentWorld, nextWorld, currentRotation, nextRotation, out Double3 startCenterWorld, out Double3 endCenterWorld, out double shipRadius))
+        {
+            return false;
+        }
+
+        IReadOnlyList<Gravity> gravities = Gravity.ActiveGravities;
+        if (gravities == null || gravities.Count == 0)
+        {
+            return false;
+        }
+
+        Collider hitCollider = null;
+        Double3 hitPointWorld = Double3.Zero;
+        Vector3 hitNormal = Vector3.zero;
+        double bestHitT = double.PositiveInfinity;
+
+        for (int i = 0; i < gravities.Count; i++)
+        {
+            Gravity source = gravities[i];
+            if (!TryGetCelestialCollisionSphere(source, out Collider candidateCollider, out Double3 centerWorld, out double bodyRadius))
+            {
+                continue;
+            }
+
+            double combinedRadius = shipRadius + bodyRadius + collisionSkinWidth;
+            if (!TryIntersectSegmentSphere(startCenterWorld, endCenterWorld, centerWorld, combinedRadius, out double hitT, out Double3 candidateHitPoint, out Vector3 candidateHitNormal))
+            {
+                continue;
+            }
+
+            if (hitT >= bestHitT)
+            {
+                continue;
+            }
+
+            bestHitT = hitT;
+            hitCollider = candidateCollider;
+            hitPointWorld = candidateHitPoint;
+            hitNormal = candidateHitNormal;
+        }
+
+        if (hitCollider == null)
+        {
+            return false;
+        }
+
+        LogCollisionTargetIfNeeded(hitCollider, hitPointWorld.ToVector3(), hitNormal);
+        if (spaceship != null)
+        {
+            spaceship.DestroyByCelestialCollision(hitCollider);
+        }
+        else
+        {
+            Destroy(gameObject);
+        }
+        return true;
+    }
+
+    private bool TryGetShipCollisionSphere(
+        Double3 currentWorld,
+        Double3 nextWorld,
+        Quaternion currentRotation,
+        Quaternion nextRotation,
+        out Double3 startCenterWorld,
+        out Double3 endCenterWorld,
+        out double radius)
+    {
+        startCenterWorld = currentWorld;
+        endCenterWorld = nextWorld;
+
+        EnsureDependencies();
+        Vector3 absScale = GetAbsoluteScale(transform.lossyScale);
+        Vector3 localCenterOffset = Vector3.zero;
+        Vector2 planarHalfExtents = Vector2.zero;
+
+        if (hullCollider != null && hullCollider.enabled)
+        {
+            localCenterOffset = Vector3.Scale(hullCollider.center, absScale);
+            Vector3 scaledHalfExtents3D = Vector3.Scale(hullCollider.size * 0.5f, absScale);
+            planarHalfExtents = new Vector2(scaledHalfExtents3D.x, scaledHalfExtents3D.y);
+        }
+        else
+        {
+            Renderer renderer = GetComponentInChildren<Renderer>(true);
+            if (renderer == null)
+            {
+                radius = Mathf.Max(collisionSkinWidth, 0.1f);
+                return true;
+            }
+
+            Bounds bounds = renderer.bounds;
+            Vector3 offsetFromRoot = bounds.center - transform.position;
+            localCenterOffset = offsetFromRoot;
+            planarHalfExtents = new Vector2(bounds.extents.x, bounds.extents.y);
+        }
+
+        radius = System.Math.Max(planarHalfExtents.magnitude + collisionRadiusPadding, collisionSkinWidth);
+        startCenterWorld = currentWorld + (Double3)(currentRotation * localCenterOffset);
+        endCenterWorld = nextWorld + (Double3)(nextRotation * localCenterOffset);
+        return true;
+    }
+
+    private bool TryGetCelestialCollisionSphere(Gravity source, out Collider collider, out Double3 centerWorld, out double radius)
+    {
+        collider = null;
+        centerWorld = Double3.Zero;
+        radius = 0d;
+
+        if (source == null || source.gameObject == gameObject)
+        {
+            return false;
+        }
+
+        collider = source.GetComponent<Collider>();
+        if (collider == null || !collider.enabled)
+        {
+            return false;
+        }
+
+        if (!IsCelestialCollider(collider) || !IsLayerInMask(collider.gameObject.layer, collisionMask))
+        {
+            return false;
+        }
+
+        SphereCollider sphereCollider = collider as SphereCollider;
+        if (sphereCollider == null || !sphereCollider.enabled)
+        {
+            return false;
+        }
+
+        Vector3 absScale = GetAbsoluteScale(source.transform.lossyScale);
+        Vector3 localCenterOffset = Vector3.Scale(sphereCollider.center, absScale);
+        centerWorld = ResolveWorldPosition(source.transform) + (Double3)(source.transform.rotation * localCenterOffset);
+        radius = sphereCollider.radius * System.Math.Max(absScale.x, absScale.y);
+        return radius > 0d;
+    }
+
+    private static bool TryIntersectSegmentSphere(
+        Double3 start,
+        Double3 end,
+        Double3 center,
+        double radius,
+        out double hitT,
+        out Double3 hitPoint,
+        out Vector3 hitNormal)
+    {
+        hitT = double.PositiveInfinity;
+        hitPoint = start;
+        hitNormal = Vector3.zero;
+
+        double dx = end.x - start.x;
+        double dy = end.y - start.y;
+        double dz = end.z - start.z;
+        double mx = start.x - center.x;
+        double my = start.y - center.y;
+        double mz = start.z - center.z;
+        double a = (dx * dx) + (dy * dy) + (dz * dz);
+        double c = (mx * mx) + (my * my) + (mz * mz) - (radius * radius);
+
+        if (c <= 0d)
+        {
+            hitT = 0d;
+            hitPoint = start;
+            hitNormal = BuildCollisionNormal(start, center);
+            return true;
+        }
+
+        if (a <= 1e-12d)
+        {
+            return false;
+        }
+
+        double b = (mx * dx) + (my * dy) + (mz * dz);
+        if (b > 0d)
+        {
+            return false;
+        }
+
+        double discriminant = (b * b) - (a * c);
+        if (discriminant < 0d)
+        {
+            return false;
+        }
+
+        double t = (-b - System.Math.Sqrt(discriminant)) / a;
+        if (t < 0d || t > 1d)
+        {
+            return false;
+        }
+
+        hitT = t;
+        hitPoint = new Double3(
+            start.x + (dx * t),
+            start.y + (dy * t),
+            start.z + (dz * t));
+        hitNormal = BuildCollisionNormal(hitPoint, center);
+        return true;
+    }
+
+    private static Vector3 BuildCollisionNormal(Double3 hitPoint, Double3 center)
+    {
+        Vector3 normal = new Vector3(
+            (float)(hitPoint.x - center.x),
+            (float)(hitPoint.y - center.y),
+            (float)(hitPoint.z - center.z));
+        if (normal.sqrMagnitude < 1e-12f)
+        {
+            return Vector3.up;
+        }
+
+        return normal.normalized;
+    }
+
+    private static Vector3 GetAbsoluteScale(Vector3 scale)
+    {
+        return new Vector3(Mathf.Abs(scale.x), Mathf.Abs(scale.y), Mathf.Abs(scale.z));
+    }
+
+    private static bool IsLayerInMask(int layer, LayerMask mask)
+    {
+        if (layer < 0 || layer > 31)
+        {
+            return false;
+        }
+
+        return (mask.value & (1 << layer)) != 0;
+    }
+
     private void LogCollisionTargetIfNeeded(Collider other, Vector3 hitPoint, Vector3 hitNormal)
     {
         if (!logCollisionTarget) return;
@@ -243,12 +496,25 @@ public class GravityAffectedMover : MonoBehaviour
 
     private void UpdateFacingFromVelocity()
     {
-        Vector2 planarVelocity = new Vector2(velocity.x, velocity.y);
-        if (planarVelocity.sqrMagnitude < minFacingSpeed * minFacingSpeed) return;
+        Quaternion fallbackRotation = rb != null ? rb.rotation : transform.rotation;
+        ApplyFacingRotation(ResolveFacingRotation(velocity, fallbackRotation));
+    }
+
+    private Quaternion ResolveFacingRotation(Vector3 planarVelocity, Quaternion fallbackRotation)
+    {
+        Vector2 planar = new Vector2(planarVelocity.x, planarVelocity.y);
+        if (planar.sqrMagnitude < minFacingSpeed * minFacingSpeed)
+        {
+            return fallbackRotation;
+        }
 
         // Spaceship forward axis is +Y, so subtract 90 degrees from atan2 heading.
         float z = Mathf.Atan2(planarVelocity.y, planarVelocity.x) * Mathf.Rad2Deg - 90f;
-        Quaternion rotation = Quaternion.Euler(0f, 0f, z);
+        return Quaternion.Euler(0f, 0f, z);
+    }
+
+    private void ApplyFacingRotation(Quaternion rotation)
+    {
         if (rb != null)
         {
             rb.MoveRotation(rotation);
@@ -329,6 +595,11 @@ public class GravityAffectedMover : MonoBehaviour
         {
             worldPosition = GetComponent<WorldPosition>();
             if (worldPosition == null) Debug.LogError("GravityAffectedMover: WorldPosition is missing.");
+        }
+
+        if (hullCollider == null)
+        {
+            hullCollider = GetComponent<BoxCollider>();
         }
 
         if (spaceship == null)
@@ -478,5 +749,4 @@ public class GravityAffectedMover : MonoBehaviour
         if (collider.CompareTag("Icon")) return false;
         return collider.GetComponentInParent<Gravity>() != null;
     }
-
 }
