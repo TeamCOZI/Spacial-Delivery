@@ -249,26 +249,24 @@ public partial class UserInput
     private bool TryRaycastFocusHit(Ray ray, out FocusHitResult selectedHit)
     {
         bool hasVisualHit = TryRaycastFocusedSatelliteVisualHit(ray, out FocusHitResult visualHit);
+        if (!hasVisualHit)
+        {
+            hasVisualHit = TryRaycastVisualSceneHit(ray, out visualHit);
+        }
+
         RaycastHit[] hits = Physics.RaycastAll(ray, Mathf.Infinity, focusRaycastMask, QueryTriggerInteraction.Collide);
         bool hasPhysicsHit = TrySelectPhysicsFocusHit(hits, out FocusHitResult physicsHit);
 
-        if (hasVisualHit && hasPhysicsHit)
+        if (hasVisualHit)
         {
-            if (TryResolveFocusedSatellite(out ArtificialSatellite focusedSatellite) &&
+            if (hasPhysicsHit &&
+                TryResolveFocusedSatellite(out ArtificialSatellite focusedSatellite) &&
                 IsHitWithinSatellite(physicsHit.transform, focusedSatellite))
             {
                 selectedHit = visualHit;
                 return true;
             }
 
-            selectedHit = physicsHit.distance + 0.001f < visualHit.distance
-                ? physicsHit
-                : visualHit;
-            return true;
-        }
-
-        if (hasVisualHit)
-        {
             selectedHit = visualHit;
             return true;
         }
@@ -367,6 +365,88 @@ public partial class UserInput
         return true;
     }
 
+    private bool TryRaycastVisualSceneHit(Ray ray, out FocusHitResult selectedHit)
+    {
+        selectedHit = default;
+
+        Collider[] colliders = FindObjectsByType<Collider>(FindObjectsSortMode.None);
+        if (colliders == null || colliders.Length == 0)
+        {
+            return false;
+        }
+
+        bool found = false;
+        float bestDistance = float.PositiveInfinity;
+        FocusHitResult bestHit = default;
+
+        for (int i = 0; i < colliders.Length; i++)
+        {
+            Collider collider = colliders[i];
+            if (collider == null || !collider.enabled || !collider.gameObject.activeInHierarchy) continue;
+            if (((1 << collider.gameObject.layer) & focusRaycastMask) == 0) continue;
+            if (!IsVisualFocusCandidate(collider.transform)) continue;
+
+            if (!TryRaycastVisualCollider(ray, collider, out Vector3 hitPoint, out Vector3 hitNormal, out float hitDistance))
+            {
+                continue;
+            }
+
+            FocusHitResult hit = new FocusHitResult(collider.transform, collider, hitPoint, hitNormal, hitDistance);
+            if (!found || hit.distance < bestDistance)
+            {
+                found = true;
+                bestDistance = hit.distance;
+                bestHit = hit;
+            }
+        }
+
+        if (!found)
+        {
+            return false;
+        }
+
+        selectedHit = bestHit;
+        return true;
+    }
+
+    private bool IsVisualFocusCandidate(Transform candidate)
+    {
+        if (candidate == null) return false;
+
+        if (candidate.CompareTag("Icon") || candidate.name == "Icon")
+        {
+            return true;
+        }
+
+        if (candidate.GetComponentInParent<AssemblyPartFocus>() != null)
+        {
+            return true;
+        }
+
+        if (candidate.GetComponentInParent<ScaledSpaceProxyTarget>() != null)
+        {
+            return true;
+        }
+
+        if (SpaceshipFocusUtility.TryResolveSpaceship(candidate, out _))
+        {
+            return true;
+        }
+
+        Transform cursor = candidate;
+        while (cursor != null)
+        {
+            if (cursor.GetComponent<UpdateFocusInfo>() != null)
+            {
+                return true;
+            }
+
+            cursor = cursor.parent;
+        }
+
+        return false;
+    }
+
     private static bool TryRaycastVisualPart(Ray ray, AssemblyPartFocus partFocus, out FocusHitResult selectedHit)
     {
         selectedHit = default;
@@ -440,6 +520,11 @@ public partial class UserInput
         hitDistance = 0f;
         if (collider == null) return false;
 
+        if (collider is SphereCollider sphereCollider)
+        {
+            return TryRaycastVisualSphereCollider(ray, sphereCollider, out hitPoint, out hitNormal, out hitDistance);
+        }
+
         if (collider is BoxCollider boxCollider)
         {
             return TryRaycastVisualBoxCollider(ray, boxCollider, out hitPoint, out hitNormal, out hitDistance);
@@ -453,6 +538,50 @@ public partial class UserInput
 
         hitPoint = ray.GetPoint(hitDistance);
         hitNormal = -ray.direction;
+        return true;
+    }
+
+    private static bool TryRaycastVisualSphereCollider(
+        Ray ray,
+        SphereCollider sphereCollider,
+        out Vector3 hitPoint,
+        out Vector3 hitNormal,
+        out float hitDistance)
+    {
+        hitPoint = default;
+        hitNormal = default;
+        hitDistance = 0f;
+        if (sphereCollider == null) return false;
+
+        Transform colliderTransform = sphereCollider.transform;
+        Vector3 center = colliderTransform.TransformPoint(sphereCollider.center);
+        Vector3 lossyScale = colliderTransform.lossyScale;
+        float maxScale = Mathf.Max(Mathf.Abs(lossyScale.x), Mathf.Abs(lossyScale.y), Mathf.Abs(lossyScale.z));
+        float radius = sphereCollider.radius * Mathf.Max(0.0001f, maxScale);
+
+        Vector3 offset = ray.origin - center;
+        float a = Vector3.Dot(ray.direction, ray.direction);
+        float b = 2f * Vector3.Dot(ray.direction, offset);
+        float c = Vector3.Dot(offset, offset) - (radius * radius);
+        float discriminant = (b * b) - (4f * a * c);
+        if (discriminant < 0f)
+        {
+            return false;
+        }
+
+        float sqrtDiscriminant = Mathf.Sqrt(discriminant);
+        float denominator = 2f * a;
+        float near = (-b - sqrtDiscriminant) / denominator;
+        float far = (-b + sqrtDiscriminant) / denominator;
+        if (far < 0f)
+        {
+            return false;
+        }
+
+        float t = near >= 0f ? near : far;
+        hitPoint = ray.GetPoint(t);
+        hitNormal = (hitPoint - center).normalized;
+        hitDistance = t;
         return true;
     }
 

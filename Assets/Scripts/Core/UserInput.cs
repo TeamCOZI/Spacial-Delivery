@@ -99,7 +99,6 @@ public partial class UserInput : MonoBehaviour, IInputService
     private void LateUpdate()
     {
         if (Mouse.current == null) return;
-
         FocusHover();
     }
 }
