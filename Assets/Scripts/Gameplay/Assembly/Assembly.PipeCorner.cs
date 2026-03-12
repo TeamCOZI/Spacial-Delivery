@@ -40,6 +40,13 @@ public partial class Assembly
             SmallScaleLayerUtility.ApplyRecursively(ghostSegment.transform);
             SetRendererColorRecursive(ghostSegment.transform, ghostColor);
             EnsureRendererTransparencyRecursive(ghostSegment.transform);
+            ConfigurePipeGhostPortsLikePlacedSegment(
+                ghostSegment,
+                isCorner,
+                previousDir,
+                nextDir,
+                showInputPort: i == 0,
+                showOutputPort: i == path.Count - 1);
         }
     }
 
@@ -111,5 +118,43 @@ public partial class Assembly
         arm.localRotation = (dir.x != 0) ? Quaternion.identity : Quaternion.Euler(0f, 0f, 90f);
         arm.localPosition = normalizedDir * (cellSize * 0.25f);
         arm.localScale = new Vector3(length, thickness, 1f);
+    }
+
+    private void ConfigurePipeGhostPortsLikePlacedSegment(
+        GameObject ghostSegment,
+        bool isCorner,
+        Vector2Int previousDir,
+        Vector2Int nextDir,
+        bool showInputPort,
+        bool showOutputPort)
+    {
+        if (ghostSegment == null || part == null) return;
+
+        AssemblyPartPortProfile profile = ComponentUtility.GetOrAddComponent<AssemblyPartPortProfile>(ghostSegment);
+        if (isCorner)
+        {
+            Vector3 inputLocal = new Vector3(-previousDir.x, -previousDir.y, 0f) * (cellSize * 0.5f);
+            Vector3 outputLocal = new Vector3(nextDir.x, nextDir.y, 0f) * (cellSize * 0.5f);
+            ConfigureRuntimePipePorts(
+                ghostSegment,
+                profile,
+                true,
+                inputLocal,
+                outputLocal,
+                showInputPort,
+                showOutputPort);
+        }
+        else
+        {
+            ConfigureRuntimePorts(
+                ghostSegment,
+                part,
+                profile,
+                true,
+                showInputPort,
+                showOutputPort);
+        }
+
+        SmallScaleLayerUtility.ApplyRecursively(ghostSegment.transform);
     }
 }

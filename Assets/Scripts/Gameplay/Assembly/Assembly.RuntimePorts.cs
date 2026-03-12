@@ -3,7 +3,13 @@ using UnityEngine;
 
 public partial class Assembly
 {
-    private void ConfigureRuntimePorts(GameObject root, Part targetPart, AssemblyPartPortProfile profile, bool isGhost)
+    private void ConfigureRuntimePorts(
+        GameObject root,
+        Part targetPart,
+        AssemblyPartPortProfile profile,
+        bool isGhost,
+        bool createInputPort = true,
+        bool createOutputPort = true)
     {
         if (root == null || targetPart == null || profile == null) return;
 
@@ -24,7 +30,14 @@ public partial class Assembly
 
         Vector3 inputLocal = new Vector3(-halfWidthLocal, 0f, 0f);
         Vector3 outputLocal = new Vector3(halfWidthLocal, 0f, 0f);
-        ConfigureRuntimePipePorts(root, profile, isGhost, inputLocal, outputLocal);
+        ConfigureRuntimePipePorts(
+            root,
+            profile,
+            isGhost,
+            inputLocal,
+            outputLocal,
+            createInputPort,
+            createOutputPort);
     }
 
     private void ConfigureRuntimePipePorts(
@@ -32,7 +45,9 @@ public partial class Assembly
         AssemblyPartPortProfile profile,
         bool isGhost,
         Vector3 inputLocal,
-        Vector3 outputLocal)
+        Vector3 outputLocal,
+        bool createInputPort = true,
+        bool createOutputPort = true)
     {
         if (root == null || profile == null) return;
 
@@ -44,21 +59,34 @@ public partial class Assembly
 
         profile.SetInputPortLocalPositions(new[] { inputLocal });
 
-        GameObject portsRootObject = new GameObject(RuntimePortsRootName);
-        portsRootObject.transform.SetParent(root.transform, false);
+        AssemblyPort inputPort = null;
+        AssemblyPort outputPort = null;
+        if (createInputPort || createOutputPort)
+        {
+            GameObject portsRootObject = new GameObject(RuntimePortsRootName);
+            portsRootObject.transform.SetParent(root.transform, false);
 
-        AssemblyPort inputPort = CreateRuntimePortMarker(
-            portsRootObject.transform,
-            "InputPort",
-            AssemblyPortType.Input,
-            inputLocal,
-            isGhost);
-        AssemblyPort outputPort = CreateRuntimePortMarker(
-            portsRootObject.transform,
-            "OutputPort",
-            AssemblyPortType.Output,
-            outputLocal,
-            isGhost);
+            if (createInputPort)
+            {
+                inputPort = CreateRuntimePortMarker(
+                    portsRootObject.transform,
+                    "InputPort",
+                    AssemblyPortType.Input,
+                    inputLocal,
+                    isGhost);
+            }
+
+            if (createOutputPort)
+            {
+                outputPort = CreateRuntimePortMarker(
+                    portsRootObject.transform,
+                    "OutputPort",
+                    AssemblyPortType.Output,
+                    outputLocal,
+                    isGhost);
+            }
+        }
+
         ConfigureRuntimePartPortLayout(root, inputPort, outputPort, inputLocal, outputLocal);
     }
 
@@ -114,31 +142,36 @@ public partial class Assembly
         Vector3 inputLocal,
         Vector3 outputLocal)
     {
-        if (root == null || inputPort == null || outputPort == null) return;
+        if (root == null) return;
 
         AssemblyPartPortLayout layout = root.GetComponent<AssemblyPartPortLayout>();
         if (layout == null) layout = root.AddComponent<AssemblyPartPortLayout>();
 
-        List<AssemblyPartPortLayout.PortEntry> entries = new List<AssemblyPartPortLayout.PortEntry>(2)
+        List<AssemblyPartPortLayout.PortEntry> entries = new List<AssemblyPartPortLayout.PortEntry>(2);
+        if (inputPort != null)
         {
-            new AssemblyPartPortLayout.PortEntry
+            entries.Add(new AssemblyPartPortLayout.PortEntry
             {
                 portTransform = inputPort.transform,
                 relativeSourceCell = Vector2Int.zero,
                 side = ConvertMaskToPartLayoutSide(DirectionToSideMask(inputLocal)),
                 portType = AssemblyPortType.Input
-            },
-            new AssemblyPartPortLayout.PortEntry
+            });
+        }
+
+        if (outputPort != null)
+        {
+            entries.Add(new AssemblyPartPortLayout.PortEntry
             {
                 portTransform = outputPort.transform,
                 relativeSourceCell = Vector2Int.zero,
                 side = ConvertMaskToPartLayoutSide(DirectionToSideMask(outputLocal)),
                 portType = AssemblyPortType.Output
-            }
-        };
+            });
+        }
+
         layout.SetPorts(entries);
     }
-
     private GameObject CreatePortVisualClone()
     {
         GameObject template = GetOutputPortTemplate();
@@ -299,3 +332,4 @@ public partial class Assembly
         return target != null && target.name.Contains(OutputPortNameToken);
     }
 }
+
