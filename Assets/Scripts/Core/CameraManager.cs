@@ -53,6 +53,9 @@ public partial class CameraManager : FocusEventSubscriber
     private float rotationOffsetZ;
     private float rotationOffsetVelocity;
     private bool forceInstantCameraUpdate;
+    private bool hasPendingDraggedFocusTransition;
+    private Transform pendingDraggedFocusTarget;
+    private Vector3 pendingDraggedCameraLocalPosition;
 
     private bool isAssemblyMode = false;
     private Action<float> starScaleHandler;
@@ -159,6 +162,7 @@ public partial class CameraManager : FocusEventSubscriber
     {
         if (oldFocus != null) target = ResolveFocusFollowPosition(oldFocus);
         Vector3 appliedDragOffset = ResolveAppliedDragOffset(oldFocus);
+        Vector3 focusAnchorPosition = target + appliedDragOffset;
 
         if (forceInstantCameraUpdate)
         {
@@ -178,6 +182,7 @@ public partial class CameraManager : FocusEventSubscriber
             );
         }
 
+        Vector3 desiredCameraPosition;
         if (isAssemblyMode)
         {
             float targetOrthoSize = Mathf.Max(assemblyMinOrthoSize, -zoomOffset / 10f);
@@ -200,9 +205,14 @@ public partial class CameraManager : FocusEventSubscriber
                     );
                 }
             }
-            transform.position = target + new Vector3(offset.x, offset.y, zoomOffset) + appliedDragOffset;
+            desiredCameraPosition = target + new Vector3(offset.x, offset.y, zoomOffset) + appliedDragOffset;
         }
-        else transform.position = target + offset + appliedDragOffset;
+        else
+        {
+            desiredCameraPosition = target + offset + appliedDragOffset;
+        }
+
+        transform.position = ResolveCollisionConstrainedCameraPosition(oldFocus, focusAnchorPosition, desiredCameraPosition);
 
         UpdateFocusRotation();
         smallScaleOverlayCamera?.SyncNow();
@@ -259,12 +269,18 @@ public partial class CameraManager : FocusEventSubscriber
         }
 
         Vector3 plannedDragOffset = ResolveAppliedDragOffset(oldFocus);
+        Vector3 focusAnchorPosition = plannedTarget + plannedDragOffset;
+        Vector3 desiredCameraPosition;
         if (isAssemblyMode)
         {
-            return plannedTarget + new Vector3(offset.x, offset.y, zoomOffset) + plannedDragOffset;
+            desiredCameraPosition = plannedTarget + new Vector3(offset.x, offset.y, zoomOffset) + plannedDragOffset;
+        }
+        else
+        {
+            desiredCameraPosition = plannedTarget + offset + plannedDragOffset;
         }
 
-        return plannedTarget + offset + plannedDragOffset;
+        return ResolveCollisionConstrainedCameraPosition(oldFocus, focusAnchorPosition, desiredCameraPosition);
     }
 
     private Vector3 ResolveAppliedDragOffset(Transform focus)
@@ -342,5 +358,3 @@ public partial class CameraManager : FocusEventSubscriber
     }
 
 }
-
-
