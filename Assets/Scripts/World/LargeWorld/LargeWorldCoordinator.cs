@@ -101,6 +101,11 @@ public class LargeWorldCoordinator : MonoBehaviour
             Rigidbody rb = wp.GetComponent<Rigidbody>();
             if (rb != null)
             {
+                if (forceTransformSync)
+                {
+                    SuspendOrbitInterpolationForOriginRebase(wp);
+                }
+
                 rb.position = localPosition;
                 if (forceTransformSync)
                 {
@@ -111,6 +116,16 @@ public class LargeWorldCoordinator : MonoBehaviour
             {
                 wp.transform.position = localPosition;
             }
+        }
+    }
+    private static void SuspendOrbitInterpolationForOriginRebase(WorldPosition wp)
+    {
+        if (wp == null) return;
+
+        OrbitRevolution orbitRevolution = wp.GetComponent<OrbitRevolution>();
+        if (orbitRevolution != null)
+        {
+            orbitRevolution.SuspendInterpolationForOriginRebase();
         }
     }
     private bool TryRecenterVisualWorldOrigin()
@@ -357,6 +372,7 @@ public class LargeWorldCoordinator : MonoBehaviour
             {
                 if (forceTeleport)
                 {
+                    SuspendOrbitInterpolationForOriginRebase(wp);
                     rb.position = localPosition;
                     wp.transform.position = localPosition;
                 }
@@ -372,4 +388,5 @@ public class LargeWorldCoordinator : MonoBehaviour
         }
     }
 }
+
 

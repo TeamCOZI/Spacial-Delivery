@@ -4,6 +4,7 @@ using UnityEngine;
 public class OrbitRevolution : MonoBehaviour
 {
     private const float OrbitSpinVisualOffsetZ = -90f;
+    private const int OriginRebaseInterpolationCooldownSteps = 2;
 
     [Header("Orbit Revolution Settings")]
     public GameObject center;
@@ -27,11 +28,14 @@ public class OrbitRevolution : MonoBehaviour
     private double selfRotationAnglePrecise;
     private Quaternion initialWorldRotation;
     private bool isTimeManagerRegistered;
+    private RigidbodyInterpolation configuredInterpolation = RigidbodyInterpolation.Interpolate;
+    private int interpolationResumeFixedStepsRemaining;
 
     private void Start()
     {
         rigidbodyComponent = GetComponent<Rigidbody>();
-        rigidbodyComponent.interpolation = RigidbodyInterpolation.Interpolate;
+        configuredInterpolation = RigidbodyInterpolation.Interpolate;
+        rigidbodyComponent.interpolation = configuredInterpolation;
         rigidbodyComponent.collisionDetectionMode = rigidbodyComponent.isKinematic
             ? CollisionDetectionMode.ContinuousSpeculative
             : CollisionDetectionMode.ContinuousDynamic;
@@ -76,6 +80,8 @@ public class OrbitRevolution : MonoBehaviour
 
     private void FixedUpdate()
     {
+        UpdateInterpolationResetState();
+
         if (!isInitialized || revolutionPeriod == 0f) return;
 
         fixedStepCounter++;
@@ -207,6 +213,39 @@ public class OrbitRevolution : MonoBehaviour
         return Vector3.zero;
     }
 
+    public void SuspendInterpolationForOriginRebase()
+    {
+        if (rigidbodyComponent == null)
+        {
+            rigidbodyComponent = GetComponent<Rigidbody>();
+            if (rigidbodyComponent == null) return;
+            configuredInterpolation = rigidbodyComponent.interpolation;
+        }
+
+        if (configuredInterpolation == RigidbodyInterpolation.None)
+        {
+            return;
+        }
+
+        rigidbodyComponent.interpolation = RigidbodyInterpolation.None;
+        interpolationResumeFixedStepsRemaining = OriginRebaseInterpolationCooldownSteps;
+    }
+
+    private void UpdateInterpolationResetState()
+    {
+        if (interpolationResumeFixedStepsRemaining <= 0 || rigidbodyComponent == null)
+        {
+            return;
+        }
+
+        interpolationResumeFixedStepsRemaining--;
+        if (interpolationResumeFixedStepsRemaining > 0)
+        {
+            return;
+        }
+
+        rigidbodyComponent.interpolation = configuredInterpolation;
+    }
     private void TryRegisterToTimeManager()
     {
         if (isTimeManagerRegistered) return;
@@ -226,3 +265,4 @@ public class OrbitRevolution : MonoBehaviour
         isTimeManagerRegistered = false;
     }
 }
+
