@@ -69,16 +69,17 @@ public partial class CameraManager
         return focus.position;
     }
 
-    private void UpdateDragOffset(Vector2 dragOffset)
+    private void UpdateDragOffset(Vector2 dragDelta)
     {
         bool shouldClampDragDelta = oldFocus != null;
         if (shouldClampDragDelta &&
-            dragOffset.sqrMagnitude > maxDragDeltaPerFrame * maxDragDeltaPerFrame)
+            dragDelta.sqrMagnitude > maxDragDeltaPerFrame * maxDragDeltaPerFrame)
         {
-            dragOffset = dragOffset.normalized * maxDragDeltaPerFrame;
+            dragDelta = dragDelta.normalized * maxDragDeltaPerFrame;
         }
 
-        this.dragOffset -= dragOffset;
+        dragDelta = ResolveStoredDragDelta(oldFocus, dragDelta);
+        this.dragOffset -= dragDelta;
 
         if (isAssemblyMode)
         {
@@ -99,7 +100,6 @@ public partial class CameraManager
             }
         }
     }
-
     private void UpdateZoomOffset(float zoomOffset)
     {
         float maxZ = starScale;
@@ -151,3 +151,4 @@ public partial class CameraManager
             && (isAssemblyMode || FocusPolicy.IsSatelliteRelatedFocus(focus));
     }
 }
+

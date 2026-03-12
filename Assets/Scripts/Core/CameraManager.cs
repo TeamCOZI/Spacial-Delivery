@@ -158,6 +158,7 @@ public partial class CameraManager : FocusEventSubscriber
     private void UpdateCameraPos()
     {
         if (oldFocus != null) target = ResolveFocusFollowPosition(oldFocus);
+        Vector3 appliedDragOffset = ResolveAppliedDragOffset(oldFocus);
 
         if (forceInstantCameraUpdate)
         {
@@ -199,9 +200,9 @@ public partial class CameraManager : FocusEventSubscriber
                     );
                 }
             }
-            transform.position = target + new Vector3(offset.x, offset.y, zoomOffset) + new Vector3(dragOffset.x, dragOffset.y, 0);
+            transform.position = target + new Vector3(offset.x, offset.y, zoomOffset) + appliedDragOffset;
         }
-        else transform.position = target + offset + new Vector3(dragOffset.x, dragOffset.y, 0);
+        else transform.position = target + offset + appliedDragOffset;
 
         UpdateFocusRotation();
         smallScaleOverlayCamera?.SyncNow();
@@ -257,7 +258,7 @@ public partial class CameraManager : FocusEventSubscriber
             plannedTarget = ResolveFocusFollowPosition(oldFocus);
         }
 
-        Vector3 plannedDragOffset = new Vector3(dragOffset.x, dragOffset.y, 0f);
+        Vector3 plannedDragOffset = ResolveAppliedDragOffset(oldFocus);
         if (isAssemblyMode)
         {
             return plannedTarget + new Vector3(offset.x, offset.y, zoomOffset) + plannedDragOffset;
@@ -266,6 +267,34 @@ public partial class CameraManager : FocusEventSubscriber
         return plannedTarget + offset + plannedDragOffset;
     }
 
+    private Vector3 ResolveAppliedDragOffset(Transform focus)
+    {
+        Vector3 planarDragOffset = new Vector3(dragOffset.x, dragOffset.y, 0f);
+        if (!ShouldRotateDragOffsetWithFocus(focus))
+        {
+            return planarDragOffset;
+        }
+
+        float rotationZ = FocusPolicy.ResolveTargetRotationZ(focus);
+        return Quaternion.Euler(0f, 0f, rotationZ) * planarDragOffset;
+    }
+
+    private Vector2 ResolveStoredDragDelta(Transform focus, Vector2 worldDragDelta)
+    {
+        if (!ShouldRotateDragOffsetWithFocus(focus))
+        {
+            return worldDragDelta;
+        }
+
+        float rotationZ = FocusPolicy.ResolveTargetRotationZ(focus);
+        Vector3 localDragDelta = Quaternion.Inverse(Quaternion.Euler(0f, 0f, rotationZ)) * new Vector3(worldDragDelta.x, worldDragDelta.y, 0f);
+        return new Vector2(localDragDelta.x, localDragDelta.y);
+    }
+
+    private bool ShouldRotateDragOffsetWithFocus(Transform focus)
+    {
+        return CanFollowFocusRotation(focus);
+    }
     private void TrySubscribeUserInputEvents()
     {
         if (isUserInputSubscribed) return;
@@ -313,3 +342,5 @@ public partial class CameraManager : FocusEventSubscriber
     }
 
 }
+
+
