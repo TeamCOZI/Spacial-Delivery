@@ -38,7 +38,7 @@ public class LargeWorldCoordinator : MonoBehaviour
         bool originChanged = TryRecenterVisualWorldOrigin();
         if (originChanged)
         {
-            SyncAllTransforms(includeOrbitDriven: true);
+            SyncAllTransforms(includeOrbitDriven: true, forceTransformSync: true);
             Physics.SyncTransforms();
             return;
         }
@@ -85,7 +85,7 @@ public class LargeWorldCoordinator : MonoBehaviour
         return worldOrigin + (Double3)localPos;
     }
 
-    public void SyncAllTransforms(bool includeOrbitDriven = true)
+    public void SyncAllTransforms(bool includeOrbitDriven = true, bool forceTransformSync = false)
     {
         foreach (WorldPosition wp in tracked)
         {
@@ -102,6 +102,10 @@ public class LargeWorldCoordinator : MonoBehaviour
             if (rb != null)
             {
                 rb.position = localPosition;
+                if (forceTransformSync)
+                {
+                    wp.transform.position = localPosition;
+                }
             }
             else
             {
@@ -109,7 +113,6 @@ public class LargeWorldCoordinator : MonoBehaviour
             }
         }
     }
-
     private bool TryRecenterVisualWorldOrigin()
     {
         if (!TryResolveDesiredWorldOrigin(out Double3 nextOrigin))
@@ -355,6 +358,7 @@ public class LargeWorldCoordinator : MonoBehaviour
                 if (forceTeleport)
                 {
                     rb.position = localPosition;
+                    wp.transform.position = localPosition;
                 }
                 else
                 {
@@ -368,3 +372,4 @@ public class LargeWorldCoordinator : MonoBehaviour
         }
     }
 }
+

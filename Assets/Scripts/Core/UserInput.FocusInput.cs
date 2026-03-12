@@ -30,7 +30,6 @@ public partial class UserInput
     [SerializeField] private bool enableClickDebugLog = true;
     [SerializeField] private bool showRayGizmos = true;
     [SerializeField, Min(1f)] private float rayGizmoLength = 10000f;
-    [SerializeField] private bool enableRaycastHitDebugLog = false;
 
     private void FocusHover()
     {
@@ -255,63 +254,14 @@ public partial class UserInput
             hasVisualHit = TryRaycastVisualSceneHit(ray, out visualHit);
         }
 
-        RaycastHit[] hits = enableRaycastHitDebugLog
-            ? Physics.RaycastAll(ray, Mathf.Infinity, focusRaycastMask, QueryTriggerInteraction.Collide)
-            : Array.Empty<RaycastHit>();
-        bool hasPhysicsHit = TrySelectPhysicsFocusHit(hits, out FocusHitResult physicsHit);
-
         if (hasVisualHit)
         {
             selectedHit = visualHit;
-            LogFocusRaycastDecision(hits.Length, hasVisualHit, visualHit, hasPhysicsHit, physicsHit, "visual");
             return true;
-        }
-
-        if (hasPhysicsHit)
-        {
-            LogFocusRaycastDecision(hits.Length, hasVisualHit, visualHit, hasPhysicsHit, physicsHit, "ignored-physics");
         }
 
         selectedHit = default;
         return false;
-    }
-
-    private void LogFocusRaycastDecision(
-        int physicsHitCount,
-        bool hasVisualHit,
-        FocusHitResult visualHit,
-        bool hasPhysicsHit,
-        FocusHitResult physicsHit,
-        string selectedSource)
-    {
-        if (!enableRaycastHitDebugLog) return;
-
-        Transform currentFocus = GetCurrentFocus();
-        string focusName = currentFocus != null ? currentFocus.name : "<none>";
-        string visualDescription = hasVisualHit ? DescribeFocusHit(visualHit) : "<none>";
-        string physicsDescription = hasPhysicsHit ? DescribeFocusHit(physicsHit) : "<none>";
-
-        Debug.Log(
-            $"[FocusRaycast] selected={selectedSource} focus={focusName} physicsHitCount={physicsHitCount} visual={visualDescription} physics={physicsDescription}"
-        );
-    }
-
-    private static string DescribeFocusHit(FocusHitResult hit)
-    {
-        Transform hitTransform = hit.transform;
-        Collider hitCollider = hit.collider;
-        GameObject hitObject = hitCollider != null
-            ? hitCollider.gameObject
-            : (hitTransform != null ? hitTransform.gameObject : null);
-
-        string transformName = hitTransform != null ? hitTransform.name : "<null>";
-        string objectName = hitObject != null ? hitObject.name : "<null>";
-        int layer = hitObject != null ? hitObject.layer : -1;
-        string layerName = hitObject != null ? LayerMask.LayerToName(layer) : "<none>";
-        string tag = hitObject != null ? hitObject.tag : "<none>";
-        string colliderName = hitCollider != null ? hitCollider.name : "<none>";
-
-        return $"{{transform={transformName}, object={objectName}, collider={colliderName}, layer={layerName}({layer}), tag={tag}, point={hit.point}, normal={hit.normal}, distance={hit.distance:F3}}}";
     }
     private static bool TrySelectPhysicsFocusHit(RaycastHit[] hits, out FocusHitResult selectedHit)
     {
@@ -722,5 +672,7 @@ public partial class UserInput
         return hitTransform == satellite.transform || hitTransform.IsChildOf(satellite.transform);
     }
 }
+
+
 
 
