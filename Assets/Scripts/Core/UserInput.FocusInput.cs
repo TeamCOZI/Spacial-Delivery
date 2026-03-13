@@ -28,6 +28,7 @@ public partial class UserInput
     }
 
     [SerializeField] private bool enableClickDebugLog = true;
+    [SerializeField] private bool enableRaycastHitDebugLog = true;
     [SerializeField] private bool showRayGizmos = true;
     [SerializeField, Min(1f)] private float rayGizmoLength = 10000f;
 
@@ -107,6 +108,16 @@ public partial class UserInput
         focusEvent?.Invoke(null);
     }
 
+    private void ResetCurrentFocusViewByKey()
+    {
+        if (Keyboard.current == null) return;
+        if (!Keyboard.current.xKey.wasPressedThisFrame) return;
+
+        Transform current = GetCurrentFocus();
+        if (current == null) return;
+
+        CameraManager.Instance?.ResetToCurrentFocusView();
+    }
     private static Icon ResolveHoveredIcon(Transform hitTransform)
     {
         if (hitTransform == null) return null;
@@ -254,14 +265,95 @@ public partial class UserInput
             hasVisualHit = TryRaycastVisualSceneHit(ray, out visualHit);
         }
 
+        RaycastHit[] physicsHits = Physics.RaycastAll(ray, Mathf.Infinity, focusRaycastMask, QueryTriggerInteraction.Collide);
+        bool hasPhysicsHit = TrySelectPhysicsFocusHit(physicsHits, out FocusHitResult physicsHit);
+
         if (hasVisualHit)
         {
+            LogRaycastHit("visual", visualHit, hasVisualHit, visualHit, hasPhysicsHit, physicsHit, physicsHits.Length);
             selectedHit = visualHit;
             return true;
         }
 
+        if (hasPhysicsHit)
+        {
+            LogRaycastHit("ignored-physics", physicsHit, hasVisualHit, visualHit, hasPhysicsHit, physicsHit, physicsHits.Length);
+        }
+
         selectedHit = default;
         return false;
+    }
+
+    private void LogRaycastHit(
+        string selectedSource,
+        FocusHitResult selectedHit,
+        bool hasVisualHit,
+        FocusHitResult visualHit,
+        bool hasPhysicsHit,
+        FocusHitResult physicsHit,
+        int physicsHitCount)
+    {
+        if (!enableRaycastHitDebugLog) return;
+
+        Debug.Log(
+            $"[FocusRaycast] selected={selectedSource} " +
+            $"visual={FormatFocusHit(hasVisualHit, visualHit)} " +
+            $"physics={FormatFocusHit(hasPhysicsHit, physicsHit)} " +
+            $"chosen={FormatFocusHit(true, selectedHit)} " +
+            $"physicsHitCount={physicsHitCount}");
+    }
+
+    private static string FormatFocusHit(bool hasHit, FocusHitResult hit)
+    {
+        if (!hasHit)
+        {
+            return "none";
+        }
+
+        Transform hitTransform = hit.collider != null ? hit.collider.transform : hit.transform;
+        if (hitTransform == null)
+        {
+            return "missing-transform";
+        }
+
+        GameObject gameObject = hitTransform.gameObject;
+        string colliderName = hit.collider != null ? hit.collider.GetType().Name : "VisualMesh";
+        string iconOwnerSuffix = BuildIconOwnerSuffix(hitTransform);
+        return
+            $"name={gameObject.name}," +
+            $"collider={colliderName}," +
+            $"layer={LayerMask.LayerToName(gameObject.layer)}({gameObject.layer})," +
+            $"tag={gameObject.tag}," +
+            $"point={hit.point:F2}," +
+            $"normal={hit.normal:F2}," +
+            $"distance={hit.distance:F2}" +
+            iconOwnerSuffix;
+    }
+
+    private static string BuildIconOwnerSuffix(Transform hitTransform)
+    {
+        if (hitTransform == null)
+        {
+            return string.Empty;
+        }
+
+        bool isIconHit = hitTransform.CompareTag("Icon") || hitTransform.name == "Icon";
+        if (!isIconHit)
+        {
+            return string.Empty;
+        }
+
+        Icon resolvedIcon = ResolveHoveredIcon(hitTransform);
+        if (resolvedIcon == null)
+        {
+            return ",iconOwner=unresolved";
+        }
+
+        GameObject ownerObject = resolvedIcon.gameObject;
+        return
+            $",iconOwner={ownerObject.name}," +
+            $"iconOwnerLayer={LayerMask.LayerToName(ownerObject.layer)}({ownerObject.layer})," +
+            $"iconOwnerTag={ownerObject.tag}";
     }
     private static bool TrySelectPhysicsFocusHit(RaycastHit[] hits, out FocusHitResult selectedHit)
     {
@@ -672,6 +764,8 @@ public partial class UserInput
         return hitTransform == satellite.transform || hitTransform.IsChildOf(satellite.transform);
     }
 }
+
+
 
 
 

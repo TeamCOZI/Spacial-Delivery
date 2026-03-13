@@ -9,6 +9,7 @@ public partial class CameraManager
 
     private void UpdateFocus(Transform newFocus)
     {
+        Transform previousFocus = oldFocus;
         bool preserveDraggedView = TryConsumePendingDraggedFocusTransition(newFocus, out Vector3 preservedCameraLocalPosition);
         bool canFollow = CanFollowFocusRotation(newFocus);
         float newTargetRotation = canFollow ? FocusPolicy.ResolveTargetRotationZ(newFocus) : 0f;
@@ -49,17 +50,28 @@ public partial class CameraManager
         if (preserveDraggedView && newFocus != null)
         {
             ApplyDraggedFocusTransition(newFocus, preservedCameraLocalPosition);
+            preservedViewCollisionIgnoreFocus = previousFocus;
         }
         else
         {
             Vector3 offsetBasePosition = cameraComponent != null ? cameraComponent.transform.position : transform.position;
             offset = offsetBasePosition - target;
             dragOffset = Vector2.zero;
+            preservedViewCollisionIgnoreFocus = null;
         }
 
+        focusAutoPromoteMinObservedZoomDistance = float.PositiveInfinity;
         oldFocus = newFocus;
+        LogFocusChangedDebug(previousFocus, newFocus, preserveDraggedView, preservedCameraLocalPosition);
     }
 
+    internal void ResetToCurrentFocusView()
+    {
+        ClearPendingDraggedFocusTransition();
+        preservedViewCollisionIgnoreFocus = null;
+        UpdateFocus(oldFocus);
+        forceInstantCameraUpdate = false;
+    }
     private Vector3 ResolveFocusFollowPosition(Transform focus)
     {
         if (focus == null) return target;
@@ -80,13 +92,6 @@ public partial class CameraManager
 
     private void UpdateDragOffset(Vector2 dragDelta)
     {
-        bool shouldClampDragDelta = oldFocus != null;
-        if (shouldClampDragDelta &&
-            dragDelta.sqrMagnitude > maxDragDeltaPerFrame * maxDragDeltaPerFrame)
-        {
-            dragDelta = dragDelta.normalized * maxDragDeltaPerFrame;
-        }
-
         dragDelta = ResolveStoredDragDelta(oldFocus, dragDelta);
         this.dragOffset -= dragDelta;
 
@@ -156,6 +161,54 @@ public partial class CameraManager
         return null;
     }
 
+    private bool TryPromoteFocusToParentByZoomDistance(
+        Transform currentFocus,
+        Vector3 focusAnchorPosition,
+        Vector3 cameraPosition)
+    {
+        if (isAssemblyMode || currentFocus == null) return false;
+        if (!TryResolveParentFocusTarget(currentFocus, out Transform parentFocus)) return false;
+
+        float focusScale = FocusPolicy.GetZoomScaleForFocus(currentFocus);
+        if (focusScale <= 0f) return false;
+
+        float zoomDistance = Mathf.Abs(cameraPosition.z - focusAnchorPosition.z);
+        focusAutoPromoteMinObservedZoomDistance = Mathf.Min(focusAutoPromoteMinObservedZoomDistance, zoomDistance);
+
+        float minimumObservedThreshold = focusAutoPromoteMinObservedZoomDistance * 1.05f;
+        float promotionThreshold = Mathf.Max(focusScale * 100f, minimumObservedThreshold);
+        if (zoomDistance <= promotionThreshold) return false;
+
+        FocusManager focusManager = FocusManager.Instance;
+        if (focusManager == null) return false;
+
+        BeginPendingDraggedFocusTransition(parentFocus, cameraPosition);
+        BeginFocusTransitionDebug("auto-promote", currentFocus, parentFocus, focusAnchorPosition, cameraPosition);
+        focusManager.SetFocus(parentFocus);
+        return true;
+    }
+
+    private static bool TryResolveParentFocusTarget(Transform currentFocus, out Transform parentFocus)
+    {
+        parentFocus = null;
+        if (currentFocus == null) return false;
+
+        AssemblyPartFocus partFocus = currentFocus.GetComponent<AssemblyPartFocus>();
+        if (partFocus != null && partFocus.OwnerSatellite != null)
+        {
+            parentFocus = partFocus.OwnerSatellite.transform;
+            return true;
+        }
+
+        OrbitRevolution orbit = currentFocus.GetComponent<OrbitRevolution>();
+        if (orbit != null && orbit.center != null)
+        {
+            parentFocus = orbit.center.transform;
+            return true;
+        }
+
+        return false;
+    }
     private static Double3 ResolveDraggedViewWorldPoint(Vector3 plannedCameraLocalPosition)
     {
         LargeWorldCoordinator coordinator = LargeWorldCoordinator.Instance;
@@ -208,6 +261,64 @@ public partial class CameraManager
         Vector3 appliedDragOffset = ResolveAppliedDragOffset(newFocus);
         offset = preservedCameraLocalPosition - target - appliedDragOffset;
         offset.z = zoomOffset;
+    }
+
+    private void BeginFocusTransitionDebug(
+        string reason,
+        Transform fromFocus,
+        Transform toFocus,
+        Vector3 focusAnchorPosition,
+        Vector3 cameraPosition)
+    {
+        if (!enableFocusTransitionDebugLog) return;
+
+        focusTransitionDebugFramesRemaining = 5;
+        focusTransitionDebugLabel = $"{reason}:{GetFocusName(fromFocus)}->{GetFocusName(toFocus)}";
+        Debug.Log(
+            $"[CameraTransition] begin label={focusTransitionDebugLabel} " +
+            $"focusAnchorZ={focusAnchorPosition.z:F2} cameraZ={cameraPosition.z:F2} " +
+            $"zoomOffset={zoomOffset:F2} offsetZ={offset.z:F2} velocityZ={currentVelocity.z:F2}");
+    }
+
+    private void LogFocusChangedDebug(
+        Transform previousFocus,
+        Transform newFocus,
+        bool preserveDraggedView,
+        Vector3 preservedCameraLocalPosition)
+    {
+        if (!enableFocusTransitionDebugLog) return;
+
+        string preservedZ = preserveDraggedView ? preservedCameraLocalPosition.z.ToString("F2") : "n/a";
+        Debug.Log(
+            $"[CameraTransition] focus-changed from={GetFocusName(previousFocus)} to={GetFocusName(newFocus)} " +
+            $"preserve={preserveDraggedView} preservedZ={preservedZ} " +
+            $"zoomOffset={zoomOffset:F2} offsetZ={offset.z:F2} velocityZ={currentVelocity.z:F2} cameraZ={transform.position.z:F2}");
+    }
+
+    private void LogFocusTransitionFrame(
+        string phase,
+        Transform focus,
+        Vector3 focusAnchorPosition,
+        Vector3 desiredCameraPosition,
+        Vector3 resolvedCameraPosition)
+    {
+        if (!enableFocusTransitionDebugLog || focusTransitionDebugFramesRemaining <= 0) return;
+
+        Debug.Log(
+            $"[CameraTransition] {phase} label={focusTransitionDebugLabel} focus={GetFocusName(focus)} " +
+            $"focusAnchorZ={focusAnchorPosition.z:F2} desiredZ={desiredCameraPosition.z:F2} resolvedZ={resolvedCameraPosition.z:F2} " +
+            $"zoomOffset={zoomOffset:F2} offsetZ={offset.z:F2} velocityZ={currentVelocity.z:F2} drag={dragOffset}");
+
+        focusTransitionDebugFramesRemaining--;
+        if (focusTransitionDebugFramesRemaining <= 0)
+        {
+            focusTransitionDebugLabel = null;
+        }
+    }
+
+    private static string GetFocusName(Transform focus)
+    {
+        return focus != null ? focus.name : "null";
     }
 
     private static bool TryResolveNaturalCelestialFocusAtWorldPoint(Double3 worldPoint, out Transform focusTarget)
@@ -368,5 +479,15 @@ public partial class CameraManager
             && (isAssemblyMode || FocusPolicy.IsSatelliteRelatedFocus(focus));
     }
 }
+
+
+
+
+
+
+
+
+
+
 
 

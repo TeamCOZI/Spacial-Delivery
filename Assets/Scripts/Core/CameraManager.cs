@@ -56,6 +56,11 @@ public partial class CameraManager : FocusEventSubscriber
     private bool hasPendingDraggedFocusTransition;
     private Transform pendingDraggedFocusTarget;
     private Vector3 pendingDraggedCameraLocalPosition;
+    private Transform preservedViewCollisionIgnoreFocus;
+    [SerializeField] private bool enableFocusTransitionDebugLog = false;
+    private int focusTransitionDebugFramesRemaining;
+    private string focusTransitionDebugLabel;
+    private float focusAutoPromoteMinObservedZoomDistance = float.PositiveInfinity;
 
     private bool isAssemblyMode = false;
     private Action<float> starScaleHandler;
@@ -212,7 +217,10 @@ public partial class CameraManager : FocusEventSubscriber
             desiredCameraPosition = target + offset + appliedDragOffset;
         }
 
-        transform.position = ResolveCollisionConstrainedCameraPosition(oldFocus, focusAnchorPosition, desiredCameraPosition);
+        Vector3 resolvedCameraPosition = ResolveCollisionConstrainedCameraPosition(oldFocus, focusAnchorPosition, desiredCameraPosition);
+        transform.position = resolvedCameraPosition;
+        LogFocusTransitionFrame("late-update", oldFocus, focusAnchorPosition, desiredCameraPosition, resolvedCameraPosition);
+        TryPromoteFocusToParentByZoomDistance(oldFocus, focusAnchorPosition, transform.position);
 
         UpdateFocusRotation();
         smallScaleOverlayCamera?.SyncNow();
@@ -282,6 +290,7 @@ public partial class CameraManager : FocusEventSubscriber
 
         return ResolveCollisionConstrainedCameraPosition(oldFocus, focusAnchorPosition, desiredCameraPosition);
     }
+
 
     private Vector3 ResolveAppliedDragOffset(Transform focus)
     {
@@ -358,3 +367,7 @@ public partial class CameraManager : FocusEventSubscriber
     }
 
 }
+
+
+
+

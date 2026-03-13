@@ -92,6 +92,7 @@ public partial class UserInput : MonoBehaviour, IInputService
         if (Mouse.current == null) return;
 
         ClearSpaceshipFocusByKey();
+        ResetCurrentFocusViewByKey();
         Drag();
         Zoom();
     }
@@ -102,3 +103,4 @@ public partial class UserInput : MonoBehaviour, IInputService
         FocusHover();
     }
 }
+
