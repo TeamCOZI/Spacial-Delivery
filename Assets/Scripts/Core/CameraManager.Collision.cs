@@ -36,8 +36,6 @@ public partial class CameraManager
         float probeRadius = GetCameraCollisionProbeRadius();
         float collisionPadding = GetCameraCollisionPadding();
         Transform collisionRoot = ResolveCameraCollisionRoot(focus);
-        Transform preservedIgnoreRoot = ResolveCameraCollisionRoot(preservedViewCollisionIgnoreFocus);
-
         float minimumDistance = GetMinimumFocusCameraDistance();
         if (TryResolveFocusSurfaceDistance(collisionRoot, focusAnchorPosition, armDirection, desiredDistance, out float surfaceDistance))
         {
@@ -49,7 +47,7 @@ public partial class CameraManager
         {
             Vector3 castOrigin = focusAnchorPosition + armDirection * minimumDistance;
             float castDistance = desiredDistance - minimumDistance;
-            if (TryResolveObstacleDistance(collisionRoot, preservedIgnoreRoot, castOrigin, armDirection, castDistance, out float obstacleDistance))
+            if (TryResolveObstacleDistance(collisionRoot, castOrigin, armDirection, castDistance, out float obstacleDistance))
             {
                 resolvedDistance = Mathf.Min(
                     resolvedDistance,
@@ -153,7 +151,6 @@ public partial class CameraManager
 
     private bool TryResolveObstacleDistance(
         Transform collisionRoot,
-        Transform preservedIgnoreRoot,
         Vector3 castOrigin,
         Vector3 armDirection,
         float castDistance,
@@ -190,12 +187,6 @@ public partial class CameraManager
             {
                 continue;
             }
-
-            if (preservedIgnoreRoot != null && collider.transform.IsChildOf(preservedIgnoreRoot))
-            {
-                continue;
-            }
-
             if (hit.distance >= bestDistance)
             {
                 continue;
@@ -235,4 +226,7 @@ public partial class CameraManager
         return collider != null && collider.enabled && !collider.isTrigger;
     }
 }
+
+
+
 

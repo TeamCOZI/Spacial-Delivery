@@ -56,10 +56,6 @@ public partial class CameraManager : FocusEventSubscriber
     private bool hasPendingDraggedFocusTransition;
     private Transform pendingDraggedFocusTarget;
     private Vector3 pendingDraggedCameraLocalPosition;
-    private Transform preservedViewCollisionIgnoreFocus;
-    [SerializeField] private bool enableFocusTransitionDebugLog = false;
-    private int focusTransitionDebugFramesRemaining;
-    private string focusTransitionDebugLabel;
     private float focusAutoPromoteMinObservedZoomDistance = float.PositiveInfinity;
 
     private bool isAssemblyMode = false;
@@ -167,7 +163,7 @@ public partial class CameraManager : FocusEventSubscriber
     {
         if (oldFocus != null) target = ResolveFocusFollowPosition(oldFocus);
         Vector3 appliedDragOffset = ResolveAppliedDragOffset(oldFocus);
-        Vector3 focusAnchorPosition = target + appliedDragOffset;
+        Vector3 focusAnchorPosition = target;
 
         if (forceInstantCameraUpdate)
         {
@@ -217,9 +213,7 @@ public partial class CameraManager : FocusEventSubscriber
             desiredCameraPosition = target + offset + appliedDragOffset;
         }
 
-        Vector3 resolvedCameraPosition = ResolveCollisionConstrainedCameraPosition(oldFocus, focusAnchorPosition, desiredCameraPosition);
-        transform.position = resolvedCameraPosition;
-        LogFocusTransitionFrame("late-update", oldFocus, focusAnchorPosition, desiredCameraPosition, resolvedCameraPosition);
+        transform.position = ResolveCollisionConstrainedCameraPosition(oldFocus, focusAnchorPosition, desiredCameraPosition);
         TryPromoteFocusToParentByZoomDistance(oldFocus, focusAnchorPosition, transform.position);
 
         UpdateFocusRotation();
@@ -277,7 +271,7 @@ public partial class CameraManager : FocusEventSubscriber
         }
 
         Vector3 plannedDragOffset = ResolveAppliedDragOffset(oldFocus);
-        Vector3 focusAnchorPosition = plannedTarget + plannedDragOffset;
+        Vector3 focusAnchorPosition = plannedTarget;
         Vector3 desiredCameraPosition;
         if (isAssemblyMode)
         {
@@ -367,6 +361,8 @@ public partial class CameraManager : FocusEventSubscriber
     }
 
 }
+
+
 
 
 
