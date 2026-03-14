@@ -43,6 +43,7 @@ public partial class CameraManager : FocusEventSubscriber
     private Vector3 offset;
     private Vector2 dragOffset;
     private float zoomOffset;
+    private bool resetZoomOnNextFocusChange;
 
     private Camera cameraComponent;
     private SmallScaleOverlayCamera smallScaleOverlayCamera;
@@ -215,6 +216,7 @@ public partial class CameraManager : FocusEventSubscriber
 
         transform.position = ResolveCollisionConstrainedCameraPosition(oldFocus, focusAnchorPosition, desiredCameraPosition);
         TryPromoteFocusToParentByZoomDistance(oldFocus, focusAnchorPosition, transform.position);
+        Debug.Log($"[CameraZoomOffset] frame={Time.frameCount} zoomOffset={zoomOffset:F4} cameraZ={transform.position.z:F4}");
 
         UpdateFocusRotation();
         smallScaleOverlayCamera?.SyncNow();

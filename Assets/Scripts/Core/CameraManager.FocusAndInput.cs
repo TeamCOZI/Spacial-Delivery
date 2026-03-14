@@ -4,10 +4,12 @@ public partial class CameraManager
 {
     protected override void HandleFocusChanged(Transform focused)
     {
-        UpdateFocus(focused);
+        bool shouldResetZoom = resetZoomOnNextFocusChange;
+        resetZoomOnNextFocusChange = false;
+        UpdateFocus(focused, shouldResetZoom);
     }
 
-    private void UpdateFocus(Transform newFocus)
+    private void UpdateFocus(Transform newFocus, bool resetZoom = false)
     {
         bool preserveDraggedView = TryConsumePendingDraggedFocusTransition(newFocus, out Vector3 preservedCameraLocalPosition);
         bool canFollow = CanFollowFocusRotation(newFocus);
@@ -20,7 +22,7 @@ public partial class CameraManager
 
         if (newFocus != null)
         {
-            if (!preserveDraggedView)
+            if (resetZoom && !preserveDraggedView)
             {
                 zoomOffset = ResolveResetZoomOffset(newFocus);
             }
@@ -54,8 +56,13 @@ public partial class CameraManager
         if (IsCurrentFocusViewResetPendingOrApplied()) return;
 
         ClearPendingDraggedFocusTransition();
-        UpdateFocus(oldFocus);
+        UpdateFocus(oldFocus, true);
         forceInstantCameraUpdate = false;
+    }
+
+    internal void RequestZoomResetOnNextFocusChange()
+    {
+        resetZoomOnNextFocusChange = true;
     }
     private Vector3 ResolveFocusFollowPosition(Transform focus)
     {
@@ -200,7 +207,7 @@ public partial class CameraManager
         float focusScale = FocusPolicy.GetZoomScaleForFocus(currentFocus);
         if (focusScale <= 0f) return false;
 
-        float zoomDistance = Mathf.Abs(cameraPosition.z - focusAnchorPosition.z);
+        float zoomDistance = Mathf.Abs(zoomOffset);
         focusAutoPromoteMinObservedZoomDistance = Mathf.Min(focusAutoPromoteMinObservedZoomDistance, zoomDistance);
 
         float minimumObservedThreshold = focusAutoPromoteMinObservedZoomDistance * 1.05f;

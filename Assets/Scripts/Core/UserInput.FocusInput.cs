@@ -93,6 +93,10 @@ public partial class UserInput
 
         Transform hitTarget = hit.collider != null ? hit.collider.transform : hitTransform;
         Transform resolvedTransform = ResolveFocusTransform(hitTarget);
+        if (resolvedTransform != GetCurrentFocus())
+        {
+            CameraManager.Instance?.RequestZoomResetOnNextFocusChange();
+        }
         focusEvent?.Invoke(resolvedTransform);
     }
 
