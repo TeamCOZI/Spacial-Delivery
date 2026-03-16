@@ -285,16 +285,18 @@ public partial class CameraManager
 
     private void ApplyDraggedFocusTransition(Transform newFocus, Vector3 preservedCameraLocalPosition)
     {
-        Vector3 desiredOffset = preservedCameraLocalPosition - target;
-        zoomOffset = desiredOffset.z;
+        float preservedZoomOffset = zoomOffset;
+        float preservedLocalZ = preservedCameraLocalPosition.z - target.z;
 
+        Vector3 desiredOffset = preservedCameraLocalPosition - target;
         Vector3 desiredPlanarOffset = desiredOffset;
         desiredPlanarOffset.z = 0f;
 
         dragOffset = ResolveStoredDragDelta(newFocus, new Vector2(desiredPlanarOffset.x, desiredPlanarOffset.y));
         Vector3 appliedDragOffset = ResolveAppliedDragOffset(newFocus);
         offset = preservedCameraLocalPosition - target - appliedDragOffset;
-        offset.z = zoomOffset;
+        offset.z = preservedLocalZ;
+        zoomOffset = preservedZoomOffset;
     }
 
     private static bool TryResolveNaturalCelestialFocusAtWorldPoint(Double3 worldPoint, out Transform focusTarget)
@@ -406,17 +408,26 @@ public partial class CameraManager
 
     private void UpdateZoomOffset(float zoomOffset)
     {
-        float maxZ = starScale;
-        if (oldFocus != null)
+        float maxZ;
+        if (isAssemblyMode)
         {
-            if (isAssemblyMode)
-            {
-                maxZ = -assemblyMinDistance;
-            }
-            else
-            {
-                maxZ = -GetMinimumFocusCameraDistance();
-            }
+            maxZ = -assemblyMinDistance;
+        }
+        else if (oldFocus != null)
+        {
+            maxZ = -GetMinimumFocusCameraDistance();
+        }
+        else
+        {
+            maxZ = -Mathf.Max(unfocusedMinDistance, GetMinimumFocusCameraDistance());
+        }
+
+        if (zoomOffset < 0f && isFocusSurfaceMinimumDistanceActive)
+        {
+            float previousZoomOffset = this.zoomOffset;
+            this.zoomOffset = focusSurfaceMinimumDistanceZoomOffset;
+            Debug.Log($"[CameraZoomSurfaceSync] frame={Time.frameCount} input={zoomOffset:F4} previousZoomOffset={previousZoomOffset:F4} syncedZoomOffset={this.zoomOffset:F4} cameraZ={transform.position.z:F4}");
+            isFocusSurfaceMinimumDistanceActive = false;
         }
 
         this.zoomOffset = Mathf.Clamp(this.zoomOffset + zoomOffset * Mathf.Abs(this.zoomOffset) * zoomSpeed, minZ, maxZ);

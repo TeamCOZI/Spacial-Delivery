@@ -24,6 +24,10 @@ public partial class CameraManager : FocusEventSubscriber
 
     [Header("Zoom Settings")]
     public float zoomSpeed;
+    [Min(0.01f)] public float unfocusedMinDistance = 10f;
+
+    [Header("Collision Settings")]
+    [Min(0.01f)] public float cameraCollisionSurfaceOffset = 2.75f;
 
     [Header("Focus Rotation")]
     public bool followFocusZRotation = true;
@@ -43,6 +47,8 @@ public partial class CameraManager : FocusEventSubscriber
     private Vector3 offset;
     private Vector2 dragOffset;
     private float zoomOffset;
+    private bool isFocusSurfaceMinimumDistanceActive;
+    private float focusSurfaceMinimumDistanceZoomOffset;
     private bool resetZoomOnNextFocusChange;
 
     private Camera cameraComponent;
@@ -97,6 +103,8 @@ public partial class CameraManager : FocusEventSubscriber
             assemblyMinOrthoSize = WorldScale.ScaleLength(assemblyMinOrthoSize);
             assemblyDefaultDistance = WorldScale.ScaleLength(assemblyDefaultDistance);
             assemblyFocusDistance = WorldScale.ScaleLength(assemblyFocusDistance);
+            unfocusedMinDistance = WorldScale.ScaleLength(unfocusedMinDistance);
+            cameraCollisionSurfaceOffset = WorldScale.ScaleLength(cameraCollisionSurfaceOffset);
             maxDragDeltaPerFrame = WorldScale.ScaleLength(maxDragDeltaPerFrame);
             physicsFocusRecenterThreshold = Mathf.Max(1f, WorldScale.ScaleLength(physicsFocusRecenterThreshold));
             transform.position = WorldScale.ScaleVector(transform.position);
@@ -215,8 +223,9 @@ public partial class CameraManager : FocusEventSubscriber
         }
 
         transform.position = ResolveCollisionConstrainedCameraPosition(oldFocus, focusAnchorPosition, desiredCameraPosition);
+
         TryPromoteFocusToParentByZoomDistance(oldFocus, focusAnchorPosition, transform.position);
-        Debug.Log($"[CameraZoomOffset] frame={Time.frameCount} zoomOffset={zoomOffset:F4} cameraZ={transform.position.z:F4}");
+        Debug.Log($"[CameraZoomOffset] frame={Time.frameCount} zoomOffset={zoomOffset:F4} cameraZ={transform.position.z:F4} surfaceMinActive={isFocusSurfaceMinimumDistanceActive} surfaceMinZoomOffset={focusSurfaceMinimumDistanceZoomOffset:F4}");
 
         UpdateFocusRotation();
         smallScaleOverlayCamera?.SyncNow();
@@ -284,7 +293,7 @@ public partial class CameraManager : FocusEventSubscriber
             desiredCameraPosition = plannedTarget + offset + plannedDragOffset;
         }
 
-        return ResolveCollisionConstrainedCameraPosition(oldFocus, focusAnchorPosition, desiredCameraPosition);
+        return ResolveCollisionConstrainedCameraPosition(oldFocus, focusAnchorPosition, desiredCameraPosition, false);
     }
 
 
