@@ -202,6 +202,7 @@ public partial class CameraManager
         Vector3 cameraPosition)
     {
         if (isAssemblyMode || currentFocus == null) return false;
+        if (FocusPolicy.IsLauncherPartFocus(currentFocus)) return false;
         if (!TryResolveParentFocusTarget(currentFocus, out Transform parentFocus)) return false;
 
         float focusScale = FocusPolicy.GetZoomScaleForFocus(currentFocus);
@@ -466,6 +467,7 @@ public partial class CameraManager
             && (isAssemblyMode || FocusPolicy.IsSatelliteRelatedFocus(focus));
     }
 }
+
 
 
 

@@ -184,14 +184,15 @@ public partial class CameraManager
 
         float sqrtDiscriminant = Mathf.Sqrt(discriminant);
         float denominator = 2f * a;
-        float near = (-b - sqrtDiscriminant) / denominator;
-        float far = (-b + sqrtDiscriminant) / denominator;
-        if (far < 0f)
+        float entry = (-b - sqrtDiscriminant) / denominator;
+        float exit = (-b + sqrtDiscriminant) / denominator;
+        if (exit < 0f)
         {
             return false;
         }
 
-        hitDistance = near >= 0f ? near : far;
+        // Keep the signed entry distance so inside-volume queries resolve the back surface.
+        hitDistance = entry;
         return true;
     }
 
@@ -214,7 +215,8 @@ public partial class CameraManager
 
         if (tMax < 0f) return false;
 
-        hitDistance = tMin >= 0f ? tMin : tMax;
+        // Keep the signed entry distance so inside-volume queries resolve the back face.
+        hitDistance = tMin;
         return true;
     }
 
@@ -258,3 +260,5 @@ public partial class CameraManager
             && !collider.isTrigger;
     }
 }
+
+
