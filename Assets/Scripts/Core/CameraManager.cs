@@ -25,6 +25,7 @@ public partial class CameraManager : FocusEventSubscriber
     [Header("Zoom Settings")]
     public float zoomSpeed;
     [Min(0.01f)] public float unfocusedMinDistance = 10f;
+    [Min(0f)] public float gravityZoomTransitionDuration = 0.5f;
 
     [Header("Collision Settings")]
     [Min(0.01f)] public float cameraCollisionSurfaceOffset = 2.75f;
@@ -52,6 +53,10 @@ public partial class CameraManager : FocusEventSubscriber
     private bool hasCameraCollisionMinimumZ;
     private float cameraCollisionMinimumZ;
     private bool resetZoomOnNextFocusChange;
+    private Gravity activeSpaceshipGravityZoomSource;
+    private bool isGravityZoomTransitionActive;
+    private float gravityZoomTransitionCurrentTargetZ;
+    private float gravityZoomTransitionVelocity;
 
     private Camera cameraComponent;
     private SmallScaleOverlayCamera smallScaleOverlayCamera;
@@ -172,6 +177,7 @@ public partial class CameraManager : FocusEventSubscriber
 
     private void UpdateCameraPos()
     {
+        UpdateSpaceshipGravityFieldZoom();
         if (oldFocus != null) target = ResolveFocusFollowPosition(oldFocus);
         Vector3 appliedDragOffset = ResolveAppliedDragOffset(oldFocus);
         Vector3 focusAnchorPosition = target;
@@ -179,14 +185,18 @@ public partial class CameraManager : FocusEventSubscriber
         if (forceInstantCameraUpdate)
         {
             currentVelocity = Vector3.zero;
+            gravityZoomTransitionVelocity = 0f;
+            isGravityZoomTransitionActive = false;
+            gravityZoomTransitionCurrentTargetZ = zoomOffset;
             AV = 0f;
             offset = new Vector3(0f, 0f, zoomOffset);
         }
         else
         {
+            float offsetZTarget = ResolveCurrentOffsetZTarget();
             offset = Vector3.SmoothDamp(
                 offset,
-                new Vector3(0, 0, zoomOffset),
+                new Vector3(0f, 0f, offsetZTarget),
                 ref currentVelocity,
                 smoothTime,
                 Mathf.Infinity,
@@ -227,7 +237,6 @@ public partial class CameraManager : FocusEventSubscriber
         transform.position = ResolveCollisionConstrainedCameraPosition(oldFocus, focusAnchorPosition, desiredCameraPosition);
 
         TryPromoteFocusToParentByZoomDistance(oldFocus, focusAnchorPosition, transform.position);
-        Debug.Log($"[CameraZoomOffset] frame={Time.frameCount} zoomOffset={zoomOffset:F4} cameraZ={transform.position.z:F4} surfaceMinActive={isFocusSurfaceMinimumDistanceActive} surfaceMinZoomOffset={focusSurfaceMinimumDistanceZoomOffset:F4} cameraMinActive={hasCameraCollisionMinimumZ} cameraMinZ={cameraCollisionMinimumZ:F4}");
 
         UpdateFocusRotation();
         smallScaleOverlayCamera?.SyncNow();
@@ -374,6 +383,16 @@ public partial class CameraManager : FocusEventSubscriber
     }
 
 }
+
+
+
+
+
+
+
+
+
+
 
 
 

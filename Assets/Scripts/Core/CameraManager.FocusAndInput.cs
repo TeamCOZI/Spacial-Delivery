@@ -46,6 +46,12 @@ public partial class CameraManager
             offset = offsetBasePosition - target;
             dragOffset = Vector2.zero;
         }
+        if (!TryResolveFocusSpaceship(newFocus, out _))
+        {
+            activeSpaceshipGravityZoomSource = null;
+            CancelGravityZoomTransition();
+        }
+
         focusAutoPromoteMinObservedZoomDistance = float.PositiveInfinity;
         oldFocus = newFocus;
     }
@@ -64,6 +70,27 @@ public partial class CameraManager
     {
         resetZoomOnNextFocusChange = true;
     }
+
+    internal void ApplyImmediateLauncherLaunchZoom(Transform launcher)
+    {
+        if (launcher == null || isAssemblyMode) return;
+        if (!TryResolveFocusSpaceship(oldFocus, out _)) return;
+        if (!TryResolveLaunchOwnerSatellite(launcher, out ArtificialSatellite ownerSatellite)) return;
+
+        Transform launchZoomReference = ResolveLaunchImmediateZoomReference(ownerSatellite);
+        zoomOffset = ResolveAlignedFocusZoomOffset(launchZoomReference);
+        offset.z = zoomOffset;
+        currentVelocity.z = 0f;
+        gravityZoomTransitionCurrentTargetZ = zoomOffset;
+        gravityZoomTransitionVelocity = 0f;
+        isGravityZoomTransitionActive = false;
+
+        Gravity ownerGravity = launchZoomReference != null ? launchZoomReference.GetComponent<Gravity>() : null;
+        if (ownerGravity != null)
+        {
+            activeSpaceshipGravityZoomSource = ownerGravity;
+        }
+    }
     private Vector3 ResolveFocusFollowPosition(Transform focus)
     {
         if (focus == null) return target;
@@ -80,6 +107,40 @@ public partial class CameraManager
         }
 
         return focus.position;
+    }
+
+    private static bool TryResolveLaunchOwnerSatellite(Transform launcher, out ArtificialSatellite ownerSatellite)
+    {
+        ownerSatellite = null;
+        if (launcher == null) return false;
+
+        AssemblyPartFocus partFocus = launcher.GetComponent<AssemblyPartFocus>();
+        if (partFocus == null)
+        {
+            partFocus = launcher.GetComponentInParent<AssemblyPartFocus>();
+        }
+
+        if (partFocus != null && partFocus.OwnerSatellite != null)
+        {
+            ownerSatellite = partFocus.OwnerSatellite;
+            return true;
+        }
+
+        ownerSatellite = launcher.GetComponentInParent<ArtificialSatellite>();
+        return ownerSatellite != null;
+    }
+
+    private static Transform ResolveLaunchImmediateZoomReference(ArtificialSatellite ownerSatellite)
+    {
+        if (ownerSatellite == null) return null;
+
+        OrbitRevolution orbit = ownerSatellite.GetComponent<OrbitRevolution>();
+        if (orbit != null && orbit.center != null)
+        {
+            return orbit.center.transform;
+        }
+
+        return ownerSatellite.transform;
     }
 
     private float ResolveResetZoomOffset(Transform focus)
@@ -106,7 +167,15 @@ public partial class CameraManager
             return zoomOffset;
         }
 
-        return FocusPolicy.GetZoomScaleForFocus(focus) * followZ;
+        return ResolveAlignedFocusZoomOffset(focus);
+    }
+
+    private float ResolveAlignedFocusZoomOffset(Transform focus)
+    {
+        if (focus == null) return followZ;
+
+        float focusScale = Mathf.Max(0.01f, FocusPolicy.GetZoomScaleForFocus(focus));
+        return focusScale * followZ;
     }
 
     private bool IsCurrentFocusViewResetPendingOrApplied()
@@ -407,8 +476,214 @@ public partial class CameraManager
         return dx * dx + dy * dy;
     }
 
-    private void UpdateZoomOffset(float zoomOffset)
+    private void UpdateSpaceshipGravityFieldZoom()
     {
+        if (isAssemblyMode)
+        {
+            activeSpaceshipGravityZoomSource = null;
+            CancelGravityZoomTransition();
+            return;
+        }
+
+        if (!TryResolveFocusSpaceship(oldFocus, out _))
+        {
+            activeSpaceshipGravityZoomSource = null;
+            CancelGravityZoomTransition();
+            return;
+        }
+
+        Gravity previousGravitySource = activeSpaceshipGravityZoomSource;
+        Gravity nextGravitySource = ResolveCurrentSpaceshipGravityZoomSource(oldFocus);
+        if (nextGravitySource == previousGravitySource)
+        {
+            return;
+        }
+
+        activeSpaceshipGravityZoomSource = nextGravitySource;
+        if (nextGravitySource == null)
+        {
+            return;
+        }
+
+        zoomOffset = ResolveAlignedFocusZoomOffset(nextGravitySource.transform);
+        if (ShouldUseSlowGravityExitTransition(previousGravitySource, nextGravitySource))
+        {
+            BeginGravityZoomTransition();
+            return;
+        }
+
+        CancelGravityZoomTransition();
+    }
+
+    private void BeginGravityZoomTransition()
+    {
+        if (gravityZoomTransitionDuration <= 0f)
+        {
+            CancelGravityZoomTransition();
+            return;
+        }
+
+        isGravityZoomTransitionActive = true;
+        gravityZoomTransitionCurrentTargetZ = offset.z;
+        gravityZoomTransitionVelocity = 0f;
+    }
+
+    private bool ShouldUseSlowGravityExitTransition(Gravity previousGravitySource, Gravity nextGravitySource)
+    {
+        if (previousGravitySource == null || nextGravitySource == null)
+        {
+            return false;
+        }
+
+        float previousZoomOffset = ResolveAlignedFocusZoomOffset(previousGravitySource.transform);
+        float nextZoomOffset = ResolveAlignedFocusZoomOffset(nextGravitySource.transform);
+        return nextZoomOffset < previousZoomOffset - 0.001f;
+    }
+
+    private void CancelGravityZoomTransition(bool suppressCurrentGravitySource = false)
+    {
+        isGravityZoomTransitionActive = false;
+        gravityZoomTransitionVelocity = 0f;
+        gravityZoomTransitionCurrentTargetZ = zoomOffset;
+
+        if (!suppressCurrentGravitySource)
+        {
+            return;
+        }
+
+        if (isAssemblyMode || !TryResolveFocusSpaceship(oldFocus, out _))
+        {
+            return;
+        }
+
+        activeSpaceshipGravityZoomSource = ResolveCurrentSpaceshipGravityZoomSource(oldFocus);
+    }
+
+    private float ResolveCurrentOffsetZTarget()
+    {
+        if (!ShouldUseGravityZoomTransition())
+        {
+            gravityZoomTransitionCurrentTargetZ = zoomOffset;
+            return zoomOffset;
+        }
+
+        gravityZoomTransitionCurrentTargetZ = Mathf.SmoothDamp(
+            gravityZoomTransitionCurrentTargetZ,
+            zoomOffset,
+            ref gravityZoomTransitionVelocity,
+            Mathf.Max(0.0001f, gravityZoomTransitionDuration),
+            Mathf.Infinity,
+            Time.unscaledDeltaTime
+        );
+
+        const float positionEpsilon = 0.001f;
+        const float velocityEpsilon = 0.001f;
+        if (Mathf.Abs(gravityZoomTransitionCurrentTargetZ - zoomOffset) <= positionEpsilon
+            && Mathf.Abs(gravityZoomTransitionVelocity) <= velocityEpsilon)
+        {
+            CancelGravityZoomTransition();
+            gravityZoomTransitionCurrentTargetZ = zoomOffset;
+            return zoomOffset;
+        }
+
+        return gravityZoomTransitionCurrentTargetZ;
+    }
+
+    private bool ShouldUseGravityZoomTransition()
+    {
+        return isGravityZoomTransitionActive
+            && !isAssemblyMode
+            && activeSpaceshipGravityZoomSource != null
+            && TryResolveFocusSpaceship(oldFocus, out _);
+    }
+    private Gravity ResolveCurrentSpaceshipGravityZoomSource(Transform focus)
+    {
+        if (focus == null) return null;
+
+        Double3 spaceshipWorldPoint = ResolveFocusWorldOrigin(focus);
+        var gravities = Gravity.ActiveGravities;
+        if (gravities == null || gravities.Count == 0)
+        {
+            return null;
+        }
+
+        Gravity bestGravity = null;
+        int bestDepth = int.MinValue;
+        int bestRadius = int.MaxValue;
+        double bestDistanceSq = double.MaxValue;
+
+        for (int i = 0; i < gravities.Count; i++)
+        {
+            Gravity gravity = gravities[i];
+            if (gravity == null) continue;
+
+            int gravityRadius = gravity.GravityRadius;
+            if (gravityRadius <= 0) continue;
+
+            Double3 gravityWorldPoint = ResolveFocusWorldOrigin(gravity.transform);
+            double distanceSq = GetPlanarDistanceSq(spaceshipWorldPoint, gravityWorldPoint);
+            double radiusSq = (double)gravityRadius * gravityRadius;
+            if (distanceSq > radiusSq)
+            {
+                continue;
+            }
+
+            int hierarchyDepth = GetGravityHierarchyDepth(gravity.transform);
+            bool isBetterCandidate = hierarchyDepth > bestDepth;
+            if (!isBetterCandidate && hierarchyDepth == bestDepth)
+            {
+                isBetterCandidate = gravityRadius < bestRadius;
+            }
+            if (!isBetterCandidate && hierarchyDepth == bestDepth && gravityRadius == bestRadius)
+            {
+                isBetterCandidate = distanceSq < bestDistanceSq;
+            }
+            if (!isBetterCandidate)
+            {
+                continue;
+            }
+
+            bestGravity = gravity;
+            bestDepth = hierarchyDepth;
+            bestRadius = gravityRadius;
+            bestDistanceSq = distanceSq;
+        }
+
+        return bestGravity;
+    }
+
+    private static int GetGravityHierarchyDepth(Transform gravitySource)
+    {
+        if (gravitySource == null) return int.MinValue;
+
+        int depth = 0;
+        Transform current = gravitySource;
+        while (current != null)
+        {
+            OrbitRevolution orbit = current.GetComponent<OrbitRevolution>();
+            if (orbit == null || orbit.center == null)
+            {
+                break;
+            }
+
+            if (orbit.center.GetComponent<Gravity>() != null)
+            {
+                depth++;
+            }
+
+            current = orbit.center.transform;
+        }
+
+        return depth;
+    }
+
+    private void UpdateZoomOffset(float zoomDelta)
+    {
+        if (!Mathf.Approximately(zoomDelta, 0f))
+        {
+            CancelGravityZoomTransition(suppressCurrentGravitySource: true);
+        }
+
         float maxZ;
         if (isAssemblyMode)
         {
@@ -423,15 +698,15 @@ public partial class CameraManager
             maxZ = -Mathf.Max(unfocusedMinDistance, GetMinimumFocusCameraDistance());
         }
 
-        if (zoomOffset < 0f && isFocusSurfaceMinimumDistanceActive)
+        if (zoomDelta < 0f && isFocusSurfaceMinimumDistanceActive)
         {
             float previousZoomOffset = this.zoomOffset;
             this.zoomOffset = focusSurfaceMinimumDistanceZoomOffset;
-            Debug.Log($"[CameraZoomSurfaceSync] frame={Time.frameCount} input={zoomOffset:F4} previousZoomOffset={previousZoomOffset:F4} syncedZoomOffset={this.zoomOffset:F4} cameraZ={transform.position.z:F4}");
+            Debug.Log($"[CameraZoomSurfaceSync] frame={Time.frameCount} input={zoomDelta:F4} previousZoomOffset={previousZoomOffset:F4} syncedZoomOffset={this.zoomOffset:F4} cameraZ={transform.position.z:F4}");
             isFocusSurfaceMinimumDistanceActive = false;
         }
 
-        this.zoomOffset = Mathf.Clamp(this.zoomOffset + zoomOffset * Mathf.Abs(this.zoomOffset) * zoomSpeed, minZ, maxZ);
+        this.zoomOffset = Mathf.Clamp(this.zoomOffset + zoomDelta * Mathf.Abs(this.zoomOffset) * zoomSpeed, minZ, maxZ);
     }
 
     private void UpdateFocusRotation()
@@ -467,6 +742,25 @@ public partial class CameraManager
             && (isAssemblyMode || FocusPolicy.IsSatelliteRelatedFocus(focus));
     }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

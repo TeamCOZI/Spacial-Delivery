@@ -34,7 +34,9 @@ public class LauncherLaunchFocusHandler : MonoBehaviour
         if (!CoreRuntimeAccess.TryGetFocusManager(out FocusManager focusManager)) return;
 
         Spaceship spaceship = launchResult.spaceship.GetComponent<Spaceship>();
-        focusManager.SetFocus(SpaceshipFocusUtility.ResolveFocusTarget(spaceship));
+        Transform focusTarget = SpaceshipFocusUtility.ResolveFocusTarget(spaceship);
+        focusManager.SetFocus(focusTarget);
+        CameraManager.Instance?.ApplyImmediateLauncherLaunchZoom(launchResult.launcher);
     }
 
     private void EnsureLaunchController()
@@ -45,3 +47,5 @@ public class LauncherLaunchFocusHandler : MonoBehaviour
         }
     }
 }
+
+

@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 
 public static class LauncherSpawner
 {
@@ -9,12 +9,14 @@ public static class LauncherSpawner
     public readonly struct LaunchResult
     {
         public readonly GameObject spaceship;
+        public readonly Transform launcher;
         public readonly Vector3 spawnPosition;
         public readonly Vector3 launchDirection;
         public readonly Vector3 launchVelocity;
 
-        public LaunchResult(GameObject spaceship, Vector3 spawnPosition, Vector3 launchDirection, Vector3 launchVelocity)
+        public LaunchResult(Transform launcher, GameObject spaceship, Vector3 spawnPosition, Vector3 launchDirection, Vector3 launchVelocity)
         {
+            this.launcher = launcher;
             this.spaceship = spaceship;
             this.spawnPosition = spawnPosition;
             this.launchDirection = launchDirection;
@@ -76,7 +78,7 @@ public static class LauncherSpawner
 
         spaceshipController.Launch(launchVelocity);
 
-        result = new LaunchResult(spaceship, spawnPosition, planarLaunchDir, launchVelocity);
+        result = new LaunchResult(launcher, spaceship, spawnPosition, planarLaunchDir, launchVelocity);
         return true;
     }
 
@@ -267,3 +269,5 @@ public static class LauncherSpawner
     }
 
 }
+
+
