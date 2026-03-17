@@ -24,10 +24,12 @@ public class Spaceship : MonoBehaviour
     private IFocusService subscribedFocusService;
     private bool isFocusSubscribed;
     private int appliedRenderLayer = -1;
+    private Transform currentTarget;
 
     public event Action<SpaceshipState> StateChanged;
     public SpaceshipState CurrentState { get; private set; } = SpaceshipState.Idle;
     public Transform FocusTarget => focusProxy != null ? focusProxy.transform : transform;
+    public Transform CurrentTarget => currentTarget;
 
     private void Awake()
     {
@@ -64,6 +66,17 @@ public class Spaceship : MonoBehaviour
         gravityMover.Launch(new Vector3(velocity.x, velocity.y, 0f));
         ApplyFocusedRenderInterpolation();
         SetState(SpaceshipState.Launched);
+    }
+
+    public void ToggleTarget(Transform target)
+    {
+        Transform nextTarget = currentTarget == target ? null : target;
+        SetTarget(nextTarget);
+    }
+
+    public void ClearTarget()
+    {
+        SetTarget(null);
     }
 
     private void LateUpdate()
@@ -233,6 +246,12 @@ public class Spaceship : MonoBehaviour
         }
     }
 
+    private void SetTarget(Transform target)
+    {
+        if (currentTarget == target) return;
+        currentTarget = target;
+    }
+
     private void OnDestroy()
     {
         TryUnsubscribeFocusEvents();
@@ -265,3 +284,5 @@ public class Spaceship : MonoBehaviour
         StateChanged?.Invoke(newState);
     }
 }
+
+

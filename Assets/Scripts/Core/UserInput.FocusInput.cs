@@ -93,6 +93,16 @@ public partial class UserInput
 
         Transform hitTarget = hit.collider != null ? hit.collider.transform : hitTransform;
         Transform resolvedTransform = ResolveFocusTransform(hitTarget);
+        if (SpaceshipFocusUtility.TryResolveSpaceship(GetCurrentFocus(), out Spaceship focusedSpaceship))
+        {
+            Transform targetTransform = ResolveSpaceshipTargetTransform(resolvedTransform);
+            if (targetTransform != null)
+            {
+                focusedSpaceship.ToggleTarget(targetTransform);
+            }
+            return;
+        }
+
         if (resolvedTransform != GetCurrentFocus())
         {
             CameraManager.Instance?.RequestZoomResetOnNextFocusChange();
@@ -243,6 +253,15 @@ public partial class UserInput
         }
 
         return candidate;
+    }
+
+    private static Transform ResolveSpaceshipTargetTransform(Transform candidate)
+    {
+        if (candidate == null) return null;
+        if (candidate.GetComponent<Star>() != null) return candidate;
+        if (candidate.GetComponent<Planet>() != null) return candidate;
+        if (candidate.GetComponent<Satellite>() != null) return candidate;
+        return null;
     }
 
     private static Transform GetCurrentFocus()
@@ -768,6 +787,8 @@ public partial class UserInput
         return hitTransform == satellite.transform || hitTransform.IsChildOf(satellite.transform);
     }
 }
+
+
 
 
 

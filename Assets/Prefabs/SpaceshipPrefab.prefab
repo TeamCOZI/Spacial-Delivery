@@ -215,7 +215,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2c45e7138a875c14f8cd561ac6720d4f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpaceshipFuel
-  maxFuel: 100
+  maxFuel: 300
   refillOnAwake: 1
 --- !u!114 &273902934507048028
 MonoBehaviour:
@@ -230,7 +230,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpaceshipFlightController
   fuelConsumeRate: 10
-  thrustAcceleration: 120
+  thrustAcceleration: 240
 --- !u!114 &273902934507048029
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -248,3 +248,4 @@ MonoBehaviour:
     y: 0
     z: 0
   initializeFromTransform: 1
+

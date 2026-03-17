@@ -4,7 +4,7 @@ using UnityEngine;
 [DisallowMultipleComponent]
 public class SpaceshipFuel : MonoBehaviour
 {
-    [SerializeField, Min(0f)] private float maxFuel = 100f;
+    [SerializeField, Min(0f)] private float maxFuel = 300f;
     [SerializeField] private bool refillOnAwake = true;
 
     private float currentFuel;
@@ -68,3 +68,4 @@ public class SpaceshipFuel : MonoBehaviour
         OnFuelUpdated?.Invoke(this, currentFuel, maxFuel);
     }
 }
+

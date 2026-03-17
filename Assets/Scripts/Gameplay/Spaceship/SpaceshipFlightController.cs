@@ -13,7 +13,7 @@ public class SpaceshipFlightController : MonoBehaviour
     [SerializeField, Min(0f)] private float fuelConsumeRate = 10f;
 
     [Header("Thrust")]
-    [SerializeField, Min(0f)] private float thrustAcceleration = 120f;
+    [SerializeField, Min(0f)] private float thrustAcceleration = 240f;
 
     private GravityAffectedMover mover;
     private SpaceshipFuel fuel;
@@ -117,3 +117,4 @@ public class SpaceshipFlightController : MonoBehaviour
     }
 
 }
+
