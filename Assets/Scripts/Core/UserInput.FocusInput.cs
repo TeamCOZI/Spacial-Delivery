@@ -32,6 +32,8 @@ public partial class UserInput
     [SerializeField] private bool showRayGizmos = true;
     [SerializeField, Min(1f)] private float rayGizmoLength = 10000f;
 
+    private const float VisualHelperHitDistancePenalty = 0.01f;
+    private const string CoreFocusGridPlaneName = "CoreFocusGridPlane";
     private void FocusHover()
     {
         if (IsAssemblyModeActive())
@@ -430,36 +432,57 @@ public partial class UserInput
             return false;
         }
 
-        AssemblyPartFocus[] partFocuses = focusedSatellite.GetComponentsInChildren<AssemblyPartFocus>(true);
-        bool found = false;
-        float bestDistance = float.PositiveInfinity;
-        FocusHitResult bestHit = default;
+        bool foundColliderHit = false;
+        float bestColliderDistance = float.PositiveInfinity;
+        FocusHitResult bestColliderHit = default;
 
+        bool foundHelperHit = false;
+        float bestHelperScore = float.PositiveInfinity;
+        FocusHitResult bestHelperHit = default;
+
+        AssemblyPartFocus[] partFocuses = focusedSatellite.GetComponentsInChildren<AssemblyPartFocus>(true);
         for (int i = 0; i < partFocuses.Length; i++)
         {
             AssemblyPartFocus partFocus = partFocuses[i];
             if (partFocus == null || !partFocus.gameObject.activeInHierarchy) continue;
 
-            if (!TryRaycastVisualPart(ray, partFocus, out FocusHitResult hit))
+            if (!TryRaycastVisualPart(ray, partFocus, out FocusHitResult colliderHit, out FocusHitResult helperHit))
             {
                 continue;
             }
 
-            if (!found || hit.distance < bestDistance)
+            if (colliderHit.collider != null && (!foundColliderHit || colliderHit.distance < bestColliderDistance))
             {
-                found = true;
-                bestDistance = hit.distance;
-                bestHit = hit;
+                foundColliderHit = true;
+                bestColliderDistance = colliderHit.distance;
+                bestColliderHit = colliderHit;
+            }
+
+            if (helperHit.transform != null)
+            {
+                float helperScore = helperHit.distance + VisualHelperHitDistancePenalty;
+                if (!foundHelperHit || helperScore < bestHelperScore)
+                {
+                    foundHelperHit = true;
+                    bestHelperScore = helperScore;
+                    bestHelperHit = helperHit;
+                }
             }
         }
 
-        if (!found)
+        if (foundHelperHit && (!foundColliderHit || bestHelperScore < bestColliderDistance))
         {
-            return false;
+            selectedHit = bestHelperHit;
+            return true;
         }
 
-        selectedHit = bestHit;
-        return true;
+        if (foundColliderHit)
+        {
+            selectedHit = bestColliderHit;
+            return true;
+        }
+
+        return false;
     }
 
     private bool TryRaycastVisualSceneHit(Ray ray, out FocusHitResult selectedHit)
@@ -544,14 +567,15 @@ public partial class UserInput
         return false;
     }
 
-    private static bool TryRaycastVisualPart(Ray ray, AssemblyPartFocus partFocus, out FocusHitResult selectedHit)
+    private static bool TryRaycastVisualPart(Ray ray, AssemblyPartFocus partFocus, out FocusHitResult colliderHit, out FocusHitResult helperHit)
     {
-        selectedHit = default;
+        colliderHit = default;
+        helperHit = default;
         if (partFocus == null) return false;
 
-        bool found = false;
-        float bestDistance = float.PositiveInfinity;
-        FocusHitResult bestHit = default;
+        bool foundAnyHit = false;
+        float bestColliderDistance = float.PositiveInfinity;
+        float bestHelperDistance = float.PositiveInfinity;
 
         Collider[] colliders = partFocus.GetComponentsInChildren<Collider>(true);
         for (int i = 0; i < colliders.Length; i++)
@@ -565,43 +589,142 @@ public partial class UserInput
             }
 
             FocusHitResult hit = new FocusHitResult(partFocus.transform, collider, hitPoint, hitNormal, hitDistance);
-            if (!found || hit.distance < bestDistance)
+            if (hit.distance < bestColliderDistance)
             {
-                found = true;
-                bestDistance = hit.distance;
-                bestHit = hit;
+                foundAnyHit = true;
+                bestColliderDistance = hit.distance;
+                colliderHit = hit;
             }
         }
 
-        if (!found)
+        Renderer[] renderers = partFocus.GetComponentsInChildren<Renderer>(true);
+        for (int i = 0; i < renderers.Length; i++)
         {
-            Renderer[] renderers = partFocus.GetComponentsInChildren<Renderer>(true);
-            for (int i = 0; i < renderers.Length; i++)
+            Renderer renderer = renderers[i];
+            if (!IsExplicitPartVisualHelperRenderer(renderer)) continue;
+
+            if (!TryRaycastVisualHelperRenderer(ray, renderer, out Vector3 hitPoint, out Vector3 hitNormal, out float hitDistance))
             {
-                Renderer renderer = renderers[i];
-                if (renderer == null || !renderer.enabled) continue;
+                continue;
+            }
 
-                Bounds bounds = renderer.bounds;
-                if (!bounds.IntersectRay(ray, out float hitDistance)) continue;
-
-                Vector3 hitPoint = ray.GetPoint(hitDistance);
-                Vector3 hitNormal = -ray.direction;
-                FocusHitResult hit = new FocusHitResult(partFocus.transform, null, hitPoint, hitNormal, hitDistance);
-                if (!found || hit.distance < bestDistance)
-                {
-                    found = true;
-                    bestDistance = hit.distance;
-                    bestHit = hit;
-                }
+            FocusHitResult hit = new FocusHitResult(partFocus.transform, null, hitPoint, hitNormal, hitDistance);
+            if (hit.distance < bestHelperDistance)
+            {
+                foundAnyHit = true;
+                bestHelperDistance = hit.distance;
+                helperHit = hit;
             }
         }
 
-        if (!found)
+        return foundAnyHit;
+    }
+
+    private static bool IsExplicitPartVisualHelperRenderer(Renderer renderer)
+    {
+        if (renderer == null || !renderer.enabled) return false;
+
+        Transform rendererTransform = renderer.transform;
+        if (rendererTransform == null || !rendererTransform.gameObject.activeInHierarchy) return false;
+
+        if (string.Equals(rendererTransform.name, CoreFocusGridPlaneName, StringComparison.Ordinal))
+        {
+            return true;
+        }
+
+        return rendererTransform.GetComponentInParent<AssemblyPortVisualMarker>(true) != null;
+    }
+
+    private static bool TryRaycastVisualHelperRenderer(
+        Ray ray,
+        Renderer renderer,
+        out Vector3 hitPoint,
+        out Vector3 hitNormal,
+        out float hitDistance)
+    {
+        hitPoint = default;
+        hitNormal = default;
+        hitDistance = 0f;
+        if (renderer == null) return false;
+
+        if (TryGetRendererLocalBounds(renderer, out Bounds localBounds))
+        {
+            return TryRaycastVisualOrientedBounds(
+                ray,
+                renderer.transform,
+                localBounds.center,
+                localBounds.size,
+                out hitPoint,
+                out hitNormal,
+                out hitDistance);
+        }
+
+        Bounds bounds = renderer.bounds;
+        if (!bounds.IntersectRay(ray, out hitDistance))
         {
             return false;
         }
 
-        selectedHit = bestHit;
+        hitPoint = ray.GetPoint(hitDistance);
+        hitNormal = -ray.direction;
+        return true;
+    }
+
+    private static bool TryGetRendererLocalBounds(Renderer renderer, out Bounds localBounds)
+    {
+        localBounds = default;
+        if (renderer == null) return false;
+
+        if (renderer is SkinnedMeshRenderer skinnedMeshRenderer)
+        {
+            localBounds = skinnedMeshRenderer.localBounds;
+            return true;
+        }
+
+        MeshFilter meshFilter = renderer.GetComponent<MeshFilter>();
+        if (meshFilter != null && meshFilter.sharedMesh != null)
+        {
+            localBounds = meshFilter.sharedMesh.bounds;
+            return true;
+        }
+
+        return false;
+    }
+
+    private static bool TryRaycastVisualOrientedBounds(
+        Ray ray,
+        Transform boundsTransform,
+        Vector3 boundsCenter,
+        Vector3 boundsSize,
+        out Vector3 hitPoint,
+        out Vector3 hitNormal,
+        out float hitDistance)
+    {
+        hitPoint = default;
+        hitNormal = default;
+        hitDistance = 0f;
+        if (boundsTransform == null) return false;
+
+        Matrix4x4 worldToLocal = boundsTransform.worldToLocalMatrix;
+        Vector3 localOrigin = worldToLocal.MultiplyPoint3x4(ray.origin) - boundsCenter;
+        Vector3 localDirection = worldToLocal.MultiplyVector(ray.direction);
+        Vector3 extents = boundsSize * 0.5f;
+
+        float tMin = 0f;
+        float tMax = float.PositiveInfinity;
+        Vector3 localNormal = Vector3.zero;
+
+        if (!ClipAxis(localOrigin.x, localDirection.x, extents.x, Vector3.right, ref tMin, ref tMax, ref localNormal)) return false;
+        if (!ClipAxis(localOrigin.y, localDirection.y, extents.y, Vector3.up, ref tMin, ref tMax, ref localNormal)) return false;
+        if (!ClipAxis(localOrigin.z, localDirection.z, extents.z, Vector3.forward, ref tMin, ref tMax, ref localNormal)) return false;
+
+        if (tMax < 0f) return false;
+
+        float localHitT = tMin >= 0f ? tMin : tMax;
+        Vector3 localHitPoint = localOrigin + (localDirection * localHitT) + boundsCenter;
+        hitPoint = boundsTransform.localToWorldMatrix.MultiplyPoint3x4(localHitPoint);
+        hitNormal = boundsTransform.TransformDirection(localNormal).normalized;
+        hitDistance = Vector3.Distance(ray.origin, hitPoint);
         return true;
     }
 

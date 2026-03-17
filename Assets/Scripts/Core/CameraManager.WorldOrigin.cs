@@ -30,6 +30,13 @@ public partial class CameraManager
             return (Double3)spaceship.transform.position;
         }
 
+        if (focus.GetComponent<AssemblyPartFocus>() != null)
+        {
+            WorldPosition focusWp = focus.GetComponent<WorldPosition>();
+            if (focusWp != null) return focusWp.worldPosition;
+            return (Double3)focus.position;
+        }
+
         if (TryResolveFocusOwnerSatellite(focus, out ArtificialSatellite ownerSatellite))
         {
             WorldPosition ownerWp = ownerSatellite.GetComponent<WorldPosition>();
@@ -102,6 +109,17 @@ public partial class CameraManager
             }
 
             return coordinator.ToWorld(spaceship.transform.position);
+        }
+
+        if (focus.GetComponent<AssemblyPartFocus>() != null)
+        {
+            WorldPosition partFocusWorldPosition = focus.GetComponent<WorldPosition>();
+            if (partFocusWorldPosition != null)
+            {
+                return partFocusWorldPosition.worldPosition;
+            }
+
+            return coordinator.ToWorld(focus.position);
         }
 
         if (IsPhysicsDrivenFocus(focus))

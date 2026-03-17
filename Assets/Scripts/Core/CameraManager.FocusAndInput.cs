@@ -101,9 +101,9 @@ public partial class CameraManager
         }
 
         AssemblyPartFocus partFocus = focus.GetComponent<AssemblyPartFocus>();
-        if (partFocus != null && partFocus.OwnerSatellite != null)
+        if (partFocus != null)
         {
-            return partFocus.OwnerSatellite.transform.position;
+            return partFocus.transform.position;
         }
 
         return focus.position;
