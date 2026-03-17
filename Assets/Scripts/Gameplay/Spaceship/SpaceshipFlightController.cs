@@ -19,6 +19,10 @@ public class SpaceshipFlightController : MonoBehaviour
     private SpaceshipFuel fuel;
     private PlayerInput sharedPlayerInput;
     private InputAction moveAction;
+    private Vector3 requestedAutomatedAcceleration;
+    private bool hasAutomatedAccelerationRequest;
+
+    public float MaxThrustAcceleration => thrustAcceleration;
 
     private void Awake()
     {
@@ -33,11 +37,15 @@ public class SpaceshipFlightController : MonoBehaviour
 
     private void Update()
     {
-        if (!CanApplyThrust()) return;
+        if (ConsumeAutomatedAccelerationRequest(Time.deltaTime))
+        {
+            return;
+        }
+
+        if (!CanApplyManualThrust()) return;
         if (!TryGetThrustDirection(out Vector3 thrustDirection)) return;
 
-        mover.AddAcceleration(thrustDirection * thrustAcceleration, Time.deltaTime);
-        fuel.Consume(fuelConsumeRate * Time.deltaTime);
+        TryApplyAcceleration(thrustDirection * thrustAcceleration, Time.deltaTime);
     }
 
     public void RefillFuel()
@@ -46,6 +54,38 @@ public class SpaceshipFlightController : MonoBehaviour
         {
             fuel.Refill();
         }
+    }
+
+    public void RequestAutomatedAcceleration(Vector3 acceleration)
+    {
+        requestedAutomatedAcceleration = new Vector3(acceleration.x, acceleration.y, 0f);
+        hasAutomatedAccelerationRequest = true;
+    }
+
+    public bool CanApplyAutomatedThrust()
+    {
+        return CanApplySharedThrust();
+    }
+
+    public bool TryApplyAcceleration(Vector3 requestedAcceleration, float deltaTime)
+    {
+        if (!CanApplySharedThrust()) return false;
+        if (deltaTime <= 0f) return false;
+
+        float maxAcceleration = Mathf.Max(0f, thrustAcceleration);
+        if (maxAcceleration <= 0f) return false;
+
+        Vector3 planarAcceleration = new Vector3(requestedAcceleration.x, requestedAcceleration.y, 0f);
+        float requestedMagnitude = planarAcceleration.magnitude;
+        if (requestedMagnitude * requestedMagnitude <= MoveInputEpsilonSqr) return false;
+
+        float appliedMagnitude = Mathf.Min(requestedMagnitude, maxAcceleration);
+        Vector3 appliedAcceleration = planarAcceleration / requestedMagnitude * appliedMagnitude;
+        mover.AddAcceleration(appliedAcceleration, deltaTime);
+
+        float throttle = appliedMagnitude / maxAcceleration;
+        fuel.Consume(fuelConsumeRate * throttle * deltaTime);
+        return true;
     }
 
     private bool IsFocused()
@@ -86,11 +126,17 @@ public class SpaceshipFlightController : MonoBehaviour
         return moveAction;
     }
 
-    private bool CanApplyThrust()
+    private bool CanApplyManualThrust()
+    {
+        if (!CanApplySharedThrust()) return false;
+        if (!IsFocused()) return false;
+        return true;
+    }
+
+    private bool CanApplySharedThrust()
     {
         if (mover == null || !mover.IsLaunched) return false;
         if (IsMovementPaused()) return false;
-        if (!IsFocused()) return false;
         if (fuel == null || !fuel.HasFuel()) return false;
         return true;
     }
@@ -116,5 +162,14 @@ public class SpaceshipFlightController : MonoBehaviour
         return CoreRuntimeAccess.TryGetTimeManager(out TimeManager timeManager) && timeManager.IsPaused;
     }
 
-}
+    private bool ConsumeAutomatedAccelerationRequest(float deltaTime)
+    {
+        if (!hasAutomatedAccelerationRequest) return false;
 
+        Vector3 requestedAcceleration = requestedAutomatedAcceleration;
+        requestedAutomatedAcceleration = Vector3.zero;
+        hasAutomatedAccelerationRequest = false;
+        TryApplyAcceleration(requestedAcceleration, deltaTime);
+        return true;
+    }
+}

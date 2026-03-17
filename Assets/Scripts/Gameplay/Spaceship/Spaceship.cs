@@ -20,6 +20,7 @@ public class Spaceship : MonoBehaviour
     private GravityAffectedMover gravityMover;
     private SpaceshipFuel fuel;
     private SpaceshipFlightController flightController;
+    private SpaceshipRendezvousController rendezvousController;
     private SpaceshipFocusProxy focusProxy;
     private IFocusService subscribedFocusService;
     private bool isFocusSubscribed;
@@ -97,6 +98,8 @@ public class Spaceship : MonoBehaviour
         if (gravityMover == null) gravityMover = GetComponent<GravityAffectedMover>();
         if (fuel == null) fuel = GetComponent<SpaceshipFuel>();
         if (flightController == null) flightController = GetComponent<SpaceshipFlightController>();
+        if (rendezvousController == null) rendezvousController = GetComponent<SpaceshipRendezvousController>();
+        if (rendezvousController == null) rendezvousController = gameObject.AddComponent<SpaceshipRendezvousController>();
 
         if (rigidbodyComponent == null || worldPosition == null || gravityMover == null || fuel == null || flightController == null)
         {
@@ -116,7 +119,8 @@ public class Spaceship : MonoBehaviour
             { "Category", "Spaceship" },
             { "State", CurrentState.ToString() },
             { "Fuel", $"{Mathf.CeilToInt(fuelValue)} / {Mathf.CeilToInt(maxFuelValue)}" },
-            { "Speed", speed.ToString("0.##") }
+            { "Speed", speed.ToString("0.##") },
+            { "Rendezvous", rendezvousController != null && rendezvousController.IsActive ? "Active" : "Idle" }
         };
     }
 

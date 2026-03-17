@@ -7,6 +7,7 @@ public class TimeControllerUI : MonoBehaviour
     {
         if (Keyboard.current == null) return;
         if (!Keyboard.current.spaceKey.wasPressedThisFrame) return;
+        if (SpaceshipRendezvousUtility.ShouldReserveSpaceInput()) return;
 
         ExecuteIfTimeManagerExists(static manager =>
         {

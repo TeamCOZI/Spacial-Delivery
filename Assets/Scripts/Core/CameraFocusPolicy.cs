@@ -23,7 +23,7 @@ public static class CameraFocusPolicy
 
     public static bool IsSatelliteRelatedFocus(Transform focus)
     {
-        return Current.IsSatelliteRelatedFocus(focus);
+        return Current.IsSatelliteRelatedFocus(focus);       
     }
 
     public static bool IsLauncherPartFocus(Transform focus)
