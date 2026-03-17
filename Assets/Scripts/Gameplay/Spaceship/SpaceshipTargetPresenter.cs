@@ -6,6 +6,18 @@ using UnityEngine.UI;
 [DisallowMultipleComponent]
 public class SpaceshipTargetPresenter : FocusEventSubscriber
 {
+    private readonly struct TargetVisualPose
+    {
+        public readonly Vector3 screenPosition;
+        public readonly bool isInFrontOfCamera;
+
+        public TargetVisualPose(Vector3 screenPosition, bool isInFrontOfCamera)
+        {
+            this.screenPosition = screenPosition;
+            this.isInFrontOfCamera = isInFrontOfCamera;
+        }
+    }
+
     [Header("Label")]
     [SerializeField] private Vector2 labelSize = new Vector2(220f, 52f);
     [SerializeField] private Vector2 screenOffset = new Vector2(0f, 28f);
@@ -20,6 +32,11 @@ public class SpaceshipTargetPresenter : FocusEventSubscriber
     private Camera worldCamera;
     private Spaceship focusedSpaceship;
     private Transform displayedTarget;
+    private int lastCanvasUpdateFrame = -1;
+    private int cachedPoseFrame = -1;
+    private Transform cachedPoseTarget;
+    private Camera cachedPoseCamera;
+    private TargetVisualPose cachedPose;
 
     private void Awake()
     {
@@ -28,9 +45,24 @@ public class SpaceshipTargetPresenter : FocusEventSubscriber
         HideLabel();
     }
 
+    protected override void OnEnable()
+    {
+        base.OnEnable();
+        Canvas.willRenderCanvases += HandleWillRenderCanvases;
+    }
+
+    protected override void OnDisable()
+    {
+        Canvas.willRenderCanvases -= HandleWillRenderCanvases;
+        base.OnDisable();
+    }
+
     protected override void LateUpdate()
     {
-        UpdateTargetLabel();
+        if (labelRect == null || labelText == null || canvasRect == null)
+        {
+            EnsureLabel();
+        }
     }
 
     protected override void HandleFocusChanged(Transform focused)
@@ -45,6 +77,7 @@ public class SpaceshipTargetPresenter : FocusEventSubscriber
         }
 
         displayedTarget = null;
+        ResetCachedPose();
         UpdateTargetLabel();
     }
 
@@ -146,13 +179,13 @@ public class SpaceshipTargetPresenter : FocusEventSubscriber
             return;
         }
 
-        Vector3 screenPosition = worldCamera.WorldToScreenPoint(ResolveTargetAnchor(target));
-        if (screenPosition.z <= 0f)
+        if (!TryGetTargetVisualPose(target, worldCamera, out TargetVisualPose pose) || !pose.isInFrontOfCamera)
         {
             HideLabel();
             return;
         }
 
+        Vector3 screenPosition = pose.screenPosition;
         if (displayedTarget != target)
         {
             displayedTarget = target;
@@ -187,6 +220,7 @@ public class SpaceshipTargetPresenter : FocusEventSubscriber
     private void HideLabel()
     {
         displayedTarget = null;
+        ResetCachedPose();
         if (labelRect != null && labelRect.gameObject.activeSelf)
         {
             labelRect.gameObject.SetActive(false);
@@ -203,38 +237,47 @@ public class SpaceshipTargetPresenter : FocusEventSubscriber
         return worldCamera != null;
     }
 
-    private static Vector3 ResolveTargetAnchor(Transform target)
+    private void HandleWillRenderCanvases()
     {
-        if (target == null) return Vector3.zero;
-
-        Collider collider = target.GetComponent<Collider>();
-        if (collider == null)
+        if (lastCanvasUpdateFrame == Time.frameCount)
         {
-            collider = target.GetComponentInChildren<Collider>(true);
-        }
-        if (collider != null)
-        {
-            Bounds bounds = collider.bounds;
-            return new Vector3(bounds.center.x, bounds.max.y, bounds.center.z);
+            return;
         }
 
-        Renderer renderer = target.GetComponent<Renderer>();
-        if (renderer == null)
+        lastCanvasUpdateFrame = Time.frameCount;
+        UpdateTargetLabel();
+    }
+
+    private bool TryGetTargetVisualPose(Transform target, Camera camera, out TargetVisualPose pose)
+    {
+        pose = default;
+        if (target == null) return false;
+
+        if (cachedPoseFrame == Time.frameCount && cachedPoseTarget == target && cachedPoseCamera == camera)
         {
-            renderer = target.GetComponentInChildren<Renderer>(true);
-        }
-        if (renderer != null)
-        {
-            Bounds bounds = renderer.bounds;
-            return new Vector3(bounds.center.x, bounds.max.y, bounds.center.z);
+            pose = cachedPose;
+            return true;
         }
 
-        float scale = Mathf.Max(
-            Mathf.Abs(target.lossyScale.x),
-            Mathf.Abs(target.lossyScale.y),
-            Mathf.Abs(target.lossyScale.z),
-            0.5f);
-        return target.position + Vector3.up * scale;
+        Vector3 screenPosition = camera != null
+            ? camera.WorldToScreenPoint(target.position)
+            : Vector3.zero;
+        bool isInFrontOfCamera = camera == null || screenPosition.z > 0f;
+
+        pose = new TargetVisualPose(screenPosition, isInFrontOfCamera);
+        cachedPoseFrame = Time.frameCount;
+        cachedPoseTarget = target;
+        cachedPoseCamera = camera;
+        cachedPose = pose;
+        return true;
+    }
+
+    private void ResetCachedPose()
+    {
+        cachedPoseFrame = -1;
+        cachedPoseTarget = null;
+        cachedPoseCamera = null;
+        cachedPose = default;
     }
 
     private static TMP_FontAsset ResolveReferenceFont()
@@ -249,4 +292,3 @@ public class SpaceshipTargetPresenter : FocusEventSubscriber
         return null;
     }
 }
-
