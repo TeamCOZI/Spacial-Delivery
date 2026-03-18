@@ -113,6 +113,20 @@ public class Spaceship : MonoBehaviour
         float maxFuelValue = fuel != null ? fuel.MaxFuel : 0f;
         float speed = gravityMover != null ? gravityMover.CurrentVelocity.magnitude : 0f;
 
+        OrbitRevolution orbitRevolution = GetComponent<OrbitRevolution>();
+        if (rendezvousController != null && rendezvousController.IsOrbitCommitted && orbitRevolution != null)
+        {
+            speed = orbitRevolution.GetCurrentOrbitalVelocity().magnitude;
+        }
+
+        string rendezvousState = "Idle";
+        if (rendezvousController != null)
+        {
+            if (rendezvousController.IsOrbitCommitted) rendezvousState = "Orbit";
+            else if (rendezvousController.HasStableOrbitCandidate) rendezvousState = "Ready";
+            else if (rendezvousController.IsActive) rendezvousState = "Active";
+        }
+
         return new Dictionary<string, string>
         {
             { "Name", name },
@@ -120,7 +134,7 @@ public class Spaceship : MonoBehaviour
             { "State", CurrentState.ToString() },
             { "Fuel", $"{Mathf.CeilToInt(fuelValue)} / {Mathf.CeilToInt(maxFuelValue)}" },
             { "Speed", speed.ToString("0.##") },
-            { "Rendezvous", rendezvousController != null && rendezvousController.IsActive ? "Active" : "Idle" }
+            { "Rendezvous", rendezvousState }
         };
     }
 
@@ -174,11 +188,16 @@ public class Spaceship : MonoBehaviour
         focusProxy?.SetInteractionEnabled(!isFocused);
     }
 
-    private void ApplyFocusedRenderInterpolation()
+    public void RefreshFocusPresentation()
     {
         bool isFocused = SpaceshipFocusUtility.TryResolveSpaceship(FocusManager.currentFocus, out Spaceship focusedSpaceship)
             && focusedSpaceship == this;
         ApplyFocusedRenderInterpolation(isFocused);
+    }
+
+    private void ApplyFocusedRenderInterpolation()
+    {
+        RefreshFocusPresentation();
     }
 
     private void ApplyFocusedRenderInterpolation(bool isFocused)
@@ -186,9 +205,11 @@ public class Spaceship : MonoBehaviour
         CacheRequiredComponents();
         if (rigidbodyComponent == null || gravityMover == null) return;
 
-        // When a launched ship is the camera anchor, match its rendered pose to the
-        // interpolated celestial bodies so the background does not appear to jitter.
-        rigidbodyComponent.interpolation = (isFocused && gravityMover.IsLaunched)
+        bool isOrbitDriven = rendezvousController != null && rendezvousController.IsOrbitCommitted;
+
+        // Launched ships only need interpolation while focused, but an orbit-driven ship
+        // should keep the same visual treatment as other OrbitRevolution bodies.
+        rigidbodyComponent.interpolation = (isOrbitDriven || (isFocused && gravityMover.IsLaunched))
             ? RigidbodyInterpolation.Interpolate
             : RigidbodyInterpolation.None;
     }
@@ -288,5 +309,4 @@ public class Spaceship : MonoBehaviour
         StateChanged?.Invoke(newState);
     }
 }
-
 

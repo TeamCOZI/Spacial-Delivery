@@ -10,6 +10,11 @@ public sealed class DefaultCameraFocusPolicy : ICameraFocusPolicy
             return 0f;
         }
 
+        if (TryResolveCommittedSpaceshipCameraRotationZ(focus, out float committedSpaceshipRotationZ))
+        {
+            return committedSpaceshipRotationZ;
+        }
+
         Transform rotationSource = ResolveFocusRotationSource(focus);
         return rotationSource != null ? rotationSource.eulerAngles.z : 0f;
     }
@@ -36,7 +41,18 @@ public sealed class DefaultCameraFocusPolicy : ICameraFocusPolicy
         if (focus.GetComponent<ArtificialSatellite>() != null) return true;
 
         AssemblyPartFocus partFocus = focus.GetComponent<AssemblyPartFocus>();
-        return partFocus != null && partFocus.OwnerSatellite != null;
+        if (partFocus != null && partFocus.OwnerSatellite != null)
+        {
+            return true;
+        }
+
+        if (SpaceshipFocusUtility.TryResolveSpaceship(focus, out Spaceship spaceship) && spaceship != null)
+        {
+            SpaceshipRendezvousController rendezvousController = spaceship.GetComponent<SpaceshipRendezvousController>();
+            return rendezvousController != null && rendezvousController.IsOrbitCommitted;
+        }
+
+        return false;
     }
 
     public bool IsLauncherPartFocus(Transform focus)
@@ -53,6 +69,19 @@ public sealed class DefaultCameraFocusPolicy : ICameraFocusPolicy
     public bool IsSpaceshipFocus(Transform focus)
     {
         return SpaceshipFocusUtility.TryResolveSpaceship(focus, out _);
+    }
+
+    private static bool TryResolveCommittedSpaceshipCameraRotationZ(Transform focus, out float rotationZ)
+    {
+        rotationZ = 0f;
+
+        if (!SpaceshipFocusUtility.TryResolveSpaceship(focus, out Spaceship spaceship) || spaceship == null)
+        {
+            return false;
+        }
+
+        SpaceshipRendezvousController rendezvousController = spaceship.GetComponent<SpaceshipRendezvousController>();
+        return rendezvousController != null && rendezvousController.TryGetCommittedOrbitCameraRotationZ(out rotationZ);
     }
 
     private static float GetFocusLossyScale(Transform focus)
@@ -81,3 +110,4 @@ public sealed class DefaultCameraFocusPolicy : ICameraFocusPolicy
         return focus;
     }
 }
+

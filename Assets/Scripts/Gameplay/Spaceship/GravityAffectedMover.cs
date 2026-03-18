@@ -68,6 +68,7 @@ public class GravityAffectedMover : MonoBehaviour
 
     public bool IsLaunched => launched;
     public Vector3 CurrentVelocity => velocity;
+    public float BaseGravityAcceleration => gravityAcceleration;
 
     private void Awake()
     {
@@ -120,6 +121,36 @@ public class GravityAffectedMover : MonoBehaviour
         }
 
         launched = true;
+    }
+
+    public void EnterOrbitDrivenState()
+    {
+        EnsureDependencies();
+
+        launched = false;
+        velocity = Vector3.zero;
+        queuedVelocityDelta = Vector3.zero;
+        pausedLinearVelocity = Vector3.zero;
+        pausedAngularVelocity = Vector3.zero;
+        pauseKinematicApplied = false;
+        launchedAtUnscaledTime = float.NegativeInfinity;
+        lastLoggedCollider = null;
+        lastCollisionLogTime = float.NegativeInfinity;
+        lastRawLoggedCollider = null;
+        lastRawCollisionLogTime = float.NegativeInfinity;
+        lastLaunchDynamicsLogTime = float.NegativeInfinity;
+        RestoreIgnoredLaunchCollisions();
+
+        if (rb != null)
+        {
+            rb.isKinematic = true;
+            rb.useGravity = false;
+            rb.linearVelocity = Vector3.zero;
+            rb.angularVelocity = Vector3.zero;
+            rb.constraints = RigidbodyConstraints.FreezePositionZ | RigidbodyConstraints.FreezeRotation;
+            rb.collisionDetectionMode = CollisionDetectionMode.ContinuousSpeculative;
+            rb.detectCollisions = enableCollision && !DisableAllSpaceshipCollisions;
+        }
     }
 
     public void TemporarilyIgnoreCollisionsWith(Collider[] otherColliders)
@@ -213,14 +244,26 @@ public class GravityAffectedMover : MonoBehaviour
         UpdateFacingFromVelocity();
     }
 
+    public Vector3 EvaluateCurrentGravityAcceleration()
+    {
+        EnsureDependencies();
+        if (worldPosition == null) return Vector3.zero;
+        return ComputeGravityAcceleration(worldPosition.worldPosition);
+    }
+
     private Vector3 ComputeGravityAcceleration()
+    {
+        if (worldPosition == null) return Vector3.zero;
+        return ComputeGravityAcceleration(worldPosition.worldPosition);
+    }
+
+    private Vector3 ComputeGravityAcceleration(Double3 self)
     {
         if (DisableAllSpaceshipGravity) return Vector3.zero;
 
         IReadOnlyList<Gravity> gravities = Gravity.ActiveGravities;
         if (gravities == null || gravities.Count == 0) return Vector3.zero;
 
-        Double3 self = worldPosition.worldPosition;
         Vector3 acceleration = Vector3.zero;
 
         for (int i = 0; i < gravities.Count; i++)
@@ -855,3 +898,7 @@ public class GravityAffectedMover : MonoBehaviour
         RestoreIgnoredLaunchCollisions();
     }
 }
+
+
+
+

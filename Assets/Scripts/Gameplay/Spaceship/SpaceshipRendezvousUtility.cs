@@ -10,7 +10,7 @@ public static class SpaceshipRendezvousUtility
         public readonly WorldPosition spaceshipWorldPosition;
         public readonly Transform target;
         public readonly OrbitRevolution targetOrbit;
-        public readonly Transform parent;
+        public readonly Gravity targetGravity;
 
         public Context(
             Spaceship spaceship,
@@ -19,7 +19,7 @@ public static class SpaceshipRendezvousUtility
             WorldPosition spaceshipWorldPosition,
             Transform target,
             OrbitRevolution targetOrbit,
-            Transform parent)
+            Gravity targetGravity)
         {
             this.spaceship = spaceship;
             this.flightController = flightController;
@@ -27,13 +27,24 @@ public static class SpaceshipRendezvousUtility
             this.spaceshipWorldPosition = spaceshipWorldPosition;
             this.target = target;
             this.targetOrbit = targetOrbit;
-            this.parent = parent;
+            this.targetGravity = targetGravity;
         }
     }
 
     public static bool ShouldReserveSpaceInput()
     {
-        if (!TryResolveFocusedContext(out Context context)) return false;
+        if (!SpaceshipFocusUtility.TryResolveSpaceship(FocusManager.currentFocus, out Spaceship spaceship) || spaceship == null)
+        {
+            return false;
+        }
+
+        SpaceshipRendezvousController rendezvousController = spaceship.GetComponent<SpaceshipRendezvousController>();
+        if (rendezvousController != null)
+        {
+            return rendezvousController.ShouldReserveActivationInput();
+        }
+
+        if (!TryResolveContext(spaceship, out Context context)) return false;
         return context.flightController != null && context.flightController.CanApplyAutomatedThrust();
     }
 
@@ -56,9 +67,10 @@ public static class SpaceshipRendezvousUtility
         Transform target = spaceship.CurrentTarget;
         if (target == null) return false;
 
-        OrbitRevolution targetOrbit = target.GetComponent<OrbitRevolution>();
-        if (targetOrbit == null || targetOrbit.center == null) return false;
+        Gravity targetGravity = target.GetComponent<Gravity>();
+        if (targetGravity == null || targetGravity.GravityRadius <= 0) return false;
 
+        OrbitRevolution targetOrbit = target.GetComponent<OrbitRevolution>();
         SpaceshipFlightController flightController = spaceship.GetComponent<SpaceshipFlightController>();
         GravityAffectedMover mover = spaceship.GetComponent<GravityAffectedMover>();
         WorldPosition spaceshipWorldPosition = spaceship.GetComponent<WorldPosition>();
@@ -71,7 +83,7 @@ public static class SpaceshipRendezvousUtility
             spaceshipWorldPosition,
             target,
             targetOrbit,
-            targetOrbit.center.transform);
+            targetGravity);
         return true;
     }
 
@@ -111,6 +123,21 @@ public static class SpaceshipRendezvousUtility
             Vector3 rigidbodyVelocity = rigidbodyComponent.linearVelocity;
             rigidbodyVelocity.z = 0f;
             return rigidbodyVelocity;
+        }
+
+        return Vector3.zero;
+    }
+
+    public static Vector3 ResolvePlanarAcceleration(Transform source)
+    {
+        if (source == null) return Vector3.zero;
+
+        OrbitRevolution orbit = source.GetComponent<OrbitRevolution>();
+        if (orbit != null)
+        {
+            Vector3 orbitalAcceleration = orbit.GetCurrentOrbitalAcceleration();
+            orbitalAcceleration.z = 0f;
+            return orbitalAcceleration;
         }
 
         return Vector3.zero;

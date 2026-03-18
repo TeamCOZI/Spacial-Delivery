@@ -8,7 +8,8 @@ public class OrbitVisualizer : MonoBehaviour
     public Color lineColor = new Color(255, 128, 0);
     public float staticLlineWidth = 0.005f;
 
-    private OrbitRevolution orbitRevolutionComponent;
+        private OrbitRevolution orbitRevolutionComponent;
+    private SpaceshipRendezvousController spaceshipRendezvousController;
     private Camera cameraComponent;
 
     private GameObject revolutionOrbit;
@@ -17,12 +18,14 @@ public class OrbitVisualizer : MonoBehaviour
     private Vector3[] cachedWorldPoints;
     private float cachedSemiMajor = -1f;
     private float cachedSemiMinor = -1f;
+    private float cachedOrbitTilt = float.NaN;
     
     private float tanFovHalf;
 
-    private void Awake()
+        private void Awake()
     {
         orbitRevolutionComponent = GetComponent<OrbitRevolution>();
+        spaceshipRendezvousController = GetComponent<SpaceshipRendezvousController>();
         if (Camera.main == null)
         {
             Debug.LogError("Camera is missing.");
@@ -73,7 +76,7 @@ public class OrbitVisualizer : MonoBehaviour
         }
     }
 
-    private void UpdateRevolutionOrbit()
+        private void UpdateRevolutionOrbit()
     {
         float width = 2.0f * Mathf.Abs(cameraComponent.transform.position.z) * tanFovHalf * staticLlineWidth;
 
@@ -86,8 +89,14 @@ public class OrbitVisualizer : MonoBehaviour
             return;
         }
 
-        if (!Mathf.Approximately(cachedSemiMajor, orbitRevolutionComponent.semiMajorAxis) ||
-            !Mathf.Approximately(cachedSemiMinor, orbitRevolutionComponent.semiMinorAxis))
+        bool useInterpolatedSampling = spaceshipRendezvousController != null && spaceshipRendezvousController.IsOrbitCommitted;
+        if (useInterpolatedSampling)
+        {
+            RegenerateInterpolatedOrbitPoints();
+        }
+        else if (!Mathf.Approximately(cachedSemiMajor, orbitRevolutionComponent.semiMajorAxis) ||
+                 !Mathf.Approximately(cachedSemiMinor, orbitRevolutionComponent.semiMinorAxis) ||
+                 !Mathf.Approximately(cachedOrbitTilt, orbitRevolutionComponent.orbitTiltDegrees))
         {
             RegenerateOrbitPoints();
         }
@@ -101,7 +110,7 @@ public class OrbitVisualizer : MonoBehaviour
         lineRendererComponent.SetPositions(cachedWorldPoints);
     }
 
-    private void RegenerateOrbitPoints()
+        private void RegenerateOrbitPoints()
     {
         if (cachedPoints == null || lineRendererComponent == null) return;
 
@@ -114,13 +123,41 @@ public class OrbitVisualizer : MonoBehaviour
 
         cachedSemiMajor = orbitRevolutionComponent.semiMajorAxis;
         cachedSemiMinor = orbitRevolutionComponent.semiMinorAxis;
+        cachedOrbitTilt = orbitRevolutionComponent.orbitTiltDegrees;
 
         for (int i = 0; i < count; i++)
         {
-            float angle = (float)i / (count - 1) * 2f * Mathf.PI;
-            float x = Mathf.Cos(angle) * cachedSemiMajor;
-            float y = Mathf.Sin(angle) * cachedSemiMinor;
-            cachedPoints[i] = new Vector3(x, y, 0);
+            float angleDegrees = (float)i / (count - 1) * 360f;
+            cachedPoints[i] = orbitRevolutionComponent.GetOrbitOffset(angleDegrees);
+        }
+    }
+
+    private void RegenerateInterpolatedOrbitPoints()
+    {
+        if (cachedPoints == null || lineRendererComponent == null) return;
+
+        int count = lineRendererComponent.positionCount;
+        if (cachedPoints.Length != count)
+        {
+            cachedPoints = new Vector3[count];
+            cachedWorldPoints = new Vector3[count];
+        }
+
+        cachedSemiMajor = orbitRevolutionComponent.semiMajorAxis;
+        cachedSemiMinor = orbitRevolutionComponent.semiMinorAxis;
+        cachedOrbitTilt = orbitRevolutionComponent.orbitTiltDegrees;
+
+        for (int i = 0; i < count; i++)
+        {
+            float angleDegrees = (float)i / (count - 1) * 360f;
+            cachedPoints[i] = orbitRevolutionComponent.GetInterpolatedOrbitOffset(angleDegrees);
         }
     }
 }
+
+
+
+
+
+
+

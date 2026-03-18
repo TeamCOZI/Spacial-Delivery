@@ -155,6 +155,7 @@ public partial class Assembly : MonoBehaviour
 
     private void OnDestroy()
     {
+        DisposeSelectionDragVisual();
         if (Instance == this)
         {
             Instance = null;
@@ -647,6 +648,8 @@ public partial class Assembly : MonoBehaviour
         Cancel();
         RefreshOutputPortsNow();
         isSelectionMode = true;
+        TryEnsureSelectionDragVisual();
+        ResetSelectionDragState();
         selectionStartOwner = null;
         isRemoveSelectionPreviewActive = false;
         selectedOwners.Clear();
@@ -661,6 +664,7 @@ public partial class Assembly : MonoBehaviour
         if (!isSelectionMode && removeHoverOwners.Count == 0) return;
 
         isSelectionMode = false;
+        ResetSelectionDragState();
         selectionStartOwner = null;
         isRemoveSelectionPreviewActive = false;
         selectedOwners.Clear();
@@ -677,6 +681,7 @@ public partial class Assembly : MonoBehaviour
         BuildRemovalSetForSelectedParts(selectedOwners, removableRoots);
         if (!TryRemoveParts(removableRoots)) return;
 
+        ResetSelectionDragState();
         selectionStartOwner = null;
         isRemoveSelectionPreviewActive = false;
         selectedOwners.Clear();
@@ -695,6 +700,7 @@ public partial class Assembly : MonoBehaviour
     {
         if (artificialSatellite == null || !assemblyPlaneCreated)
         {
+            ResetSelectionDragState();
             ClearRemoveHoverVisual();
             return;
         }
@@ -707,11 +713,9 @@ public partial class Assembly : MonoBehaviour
             return;
         }
 
-        GameObject hoveredPart = null;
-        _ = TryGetSelectablePartUnderMouse(out hoveredPart);
-
         if (isRemoveSelectionPreviewActive && selectedOwners.Count > 0)
         {
+            ResetSelectionDragState();
             removeCascadePreviewOwners.Clear();
             BuildRemovalSetForSelectedParts(selectedOwners, removeCascadePreviewOwners);
             currentSelectionHighlightMode = SelectionHighlightMode.Invalid;
@@ -720,73 +724,11 @@ public partial class Assembly : MonoBehaviour
             return;
         }
 
-        selectionPreviewOwners.Clear();
-        if (selectedOwners.Count > 0)
-        {
-            foreach (GameObject selected in selectedOwners)
-            {
-                if (selected != null) selectionPreviewOwners.Add(selected);
-            }
-        }
-
-        if (selectionStartOwner == null)
-        {
-            if (hoveredPart != null && !selectionPreviewOwners.Contains(hoveredPart))
-            {
-                selectionPreviewOwners.Add(hoveredPart);
-            }
-        }
-        else
-        {
-            selectionPathOwners.Clear();
-            if (hoveredPart != null && TryFindPartPath(selectionStartOwner, hoveredPart, selectionPathOwners))
-            {
-                for (int i = 0; i < selectionPathOwners.Count; i++)
-                {
-                    GameObject owner = selectionPathOwners[i];
-                    if (owner != null && !selectionPreviewOwners.Contains(owner))
-                    {
-                        selectionPreviewOwners.Add(owner);
-                    }
-                }
-            }
-            else if (!selectionPreviewOwners.Contains(selectionStartOwner))
-            {
-                selectionPreviewOwners.Add(selectionStartOwner);
-            }
-        }
-
+        HandleSelectionRectangleInput();
         currentSelectionHighlightMode = SelectionHighlightMode.Valid;
+        PopulateSelectionPreviewOwners();
         SetRemoveHoverTargets(selectionPreviewOwners);
         RefreshRemoveHoverVisual();
-
-        if (Mouse.current == null || !Mouse.current.leftButton.wasPressedThisFrame) return;
-        if (hoveredPart == null) return;
-
-        if (selectionStartOwner == null)
-        {
-            selectionStartOwner = hoveredPart;
-            selectedOwners.Clear();
-            return;
-        }
-
-        selectionPathOwners.Clear();
-        if (TryFindPartPath(selectionStartOwner, hoveredPart, selectionPathOwners) && selectionPathOwners.Count > 0)
-        {
-            selectedOwners.Clear();
-            for (int i = 0; i < selectionPathOwners.Count; i++)
-            {
-                GameObject owner = selectionPathOwners[i];
-                if (owner != null) selectedOwners.Add(owner);
-            }
-        }
-        else
-        {
-            selectedOwners.Clear();
-            selectedOwners.Add(selectionStartOwner);
-        }
-
-        selectionStartOwner = null;
     }
 
     private bool TryGetHoveredGridCell(out Vector2Int cell)
@@ -1088,7 +1030,7 @@ public partial class Assembly : MonoBehaviour
 
     private Color ResolveSelectionHighlightColor(SelectionHighlightMode mode)
     {
-        return mode == SelectionHighlightMode.Invalid ? GhostInvalidColor : GhostValidColor;
+        return mode == SelectionHighlightMode.Invalid ? GhostInvalidColor : SelectionValidColor;
     }
 
     private void ClearRemoveHoverVisual()
@@ -2107,3 +2049,5 @@ public partial class Assembly : MonoBehaviour
 
 
 }
+
+

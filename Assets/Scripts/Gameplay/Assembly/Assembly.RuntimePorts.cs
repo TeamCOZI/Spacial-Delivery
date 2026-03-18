@@ -66,7 +66,8 @@ public partial class Assembly
             GameObject portsRootObject = new GameObject(RuntimePortsRootName);
             portsRootObject.transform.SetParent(root.transform, false);
 
-            bool createVisualMarker = isGhost;
+            // Installed runtime ports also need a visual clone; combined-only mode keeps these visible via AssemblyPortVisualMarker.
+            bool createVisualMarker = true;
 
             if (createInputPort)
             {

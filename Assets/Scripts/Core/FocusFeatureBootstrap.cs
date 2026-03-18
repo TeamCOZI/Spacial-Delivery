@@ -7,12 +7,12 @@ using UnityEngine;
 [RequireComponent(typeof(LauncherDirectionGuide))]
 [RequireComponent(typeof(SpaceshipHUDPresenter))]
 [RequireComponent(typeof(SpaceshipTargetPresenter))]
+[RequireComponent(typeof(SpaceshipOrbitCommitPresenter))]
 public class FocusFeatureBootstrap : MonoBehaviour
 {
     private void Awake()
     {
         _ = ComponentUtility.GetOrAddComponent<SpaceshipTargetPresenter>(gameObject);
+        _ = ComponentUtility.GetOrAddComponent<SpaceshipOrbitCommitPresenter>(gameObject);
     }
 }
-
-
