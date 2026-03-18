@@ -10,6 +10,18 @@ public class GravityAffectedMover : MonoBehaviour
     private const bool DisableAllSpaceshipCollisions = false;
     private const bool DisableAllSpaceshipGravity = false;
 
+    private struct IgnoredCollisionPair
+    {
+        public readonly Collider hostCollider;
+        public readonly Collider shipCollider;
+
+        public IgnoredCollisionPair(Collider hostCollider, Collider shipCollider)
+        {
+            this.hostCollider = hostCollider;
+            this.shipCollider = shipCollider;
+        }
+    }
+
     [Header("Gravity")]
     [SerializeField, Min(0f)] private float gravityAcceleration = 80f;
     [SerializeField, Min(0f)] private float maxAcceleration = 250f;
@@ -23,6 +35,7 @@ public class GravityAffectedMover : MonoBehaviour
     [SerializeField] private bool logCollisionTarget = true;
     [SerializeField, Min(0f)] private float collisionLogDelayAfterLaunchSeconds = 0.2f;
     [SerializeField, Min(0f)] private float collisionLogIntervalSeconds = 0.2f;
+    [SerializeField, Min(0f)] private float launchHostCollisionIgnoreSeconds = 0.35f;
 
     [Header("Launch Diagnostics")]
     [SerializeField] private bool debugLaunchDiagnostics = false;
@@ -50,6 +63,8 @@ public class GravityAffectedMover : MonoBehaviour
     private float lastRawCollisionLogTime = float.NegativeInfinity;
     private float lastLaunchDynamicsLogTime = float.NegativeInfinity;
     private Spaceship spaceship;
+    private readonly List<IgnoredCollisionPair> ignoredLaunchCollisionPairs = new List<IgnoredCollisionPair>();
+    private float restoreIgnoredLaunchCollisionsAtUnscaledTime = float.PositiveInfinity;
 
     public bool IsLaunched => launched;
     public Vector3 CurrentVelocity => velocity;
@@ -107,6 +122,35 @@ public class GravityAffectedMover : MonoBehaviour
         launched = true;
     }
 
+    public void TemporarilyIgnoreCollisionsWith(Collider[] otherColliders)
+    {
+        EnsureDependencies();
+
+        if (otherColliders == null || otherColliders.Length == 0) return;
+
+        Collider[] shipColliders = GetComponentsInChildren<Collider>(true);
+        if (shipColliders == null || shipColliders.Length == 0) return;
+
+        RestoreIgnoredLaunchCollisions();
+
+        for (int i = 0; i < otherColliders.Length; i++)
+        {
+            Collider other = otherColliders[i];
+            if (!IsSolidCollider(other)) continue;
+
+            for (int j = 0; j < shipColliders.Length; j++)
+            {
+                Collider shipCollider = shipColliders[j];
+                if (!IsSolidCollider(shipCollider)) continue;
+
+                Physics.IgnoreCollision(other, shipCollider, true);
+                ignoredLaunchCollisionPairs.Add(new IgnoredCollisionPair(other, shipCollider));
+            }
+        }
+
+        restoreIgnoredLaunchCollisionsAtUnscaledTime = Time.unscaledTime + launchHostCollisionIgnoreSeconds;
+    }
+
     public void AddAcceleration(Vector3 acceleration, float deltaTime)
     {
         if (!launched) return;
@@ -118,6 +162,7 @@ public class GravityAffectedMover : MonoBehaviour
 
     private void FixedUpdate()
     {
+        RestoreIgnoredLaunchCollisionsIfReady();
         if (!launched || worldPosition == null) return;
         if (IsMovementPaused())
         {
@@ -569,6 +614,7 @@ public class GravityAffectedMover : MonoBehaviour
     private void OnCollisionEnter(Collision collision)
     {
         if (collision == null) return;
+        TryLogLauncherCollisionSuccess(collision);
         if (TryHandleCelestialCollision(collision)) return;
         LogRawCollisionIfNeeded(collision, "Enter");
         ContactPoint contact = collision.contactCount > 0 ? collision.GetContact(0) : default;
@@ -743,10 +789,69 @@ public class GravityAffectedMover : MonoBehaviour
         return true;
     }
 
+    private bool TryLogLauncherCollisionSuccess(Collision collision)
+    {
+        if (!launched || collision == null) return false;
+
+        Collider other = ResolveOtherCollider(collision);
+        if (!IsLauncherCollider(other)) return false;
+
+        Debug.Log("Success");
+        return true;
+    }
+
+    private void RestoreIgnoredLaunchCollisionsIfReady()
+    {
+        if (ignoredLaunchCollisionPairs.Count == 0) return;
+        if (Time.unscaledTime < restoreIgnoredLaunchCollisionsAtUnscaledTime) return;
+        RestoreIgnoredLaunchCollisions();
+    }
+
+    private void RestoreIgnoredLaunchCollisions()
+    {
+        for (int i = 0; i < ignoredLaunchCollisionPairs.Count; i++)
+        {
+            IgnoredCollisionPair pair = ignoredLaunchCollisionPairs[i];
+            if (pair.hostCollider == null || pair.shipCollider == null) continue;
+            Physics.IgnoreCollision(pair.hostCollider, pair.shipCollider, false);
+        }
+
+        ignoredLaunchCollisionPairs.Clear();
+        restoreIgnoredLaunchCollisionsAtUnscaledTime = float.PositiveInfinity;
+    }
+
+    private static bool IsLauncherCollider(Collider collider)
+    {
+        if (collider == null) return false;
+
+        AssemblyPartFocus partFocus = collider.GetComponent<AssemblyPartFocus>();
+        if (partFocus == null) partFocus = collider.GetComponentInParent<AssemblyPartFocus>();
+        if (partFocus != null && partFocus.SourcePart != null)
+        {
+            string partName = partFocus.SourcePart.partName;
+            return !string.IsNullOrWhiteSpace(partName)
+                && string.Equals(partName, "Launcher", System.StringComparison.OrdinalIgnoreCase);
+        }
+
+        string colliderName = collider.name;
+        return !string.IsNullOrWhiteSpace(colliderName)
+            && colliderName.IndexOf("Launcher", System.StringComparison.OrdinalIgnoreCase) >= 0;
+    }
+
+    private static bool IsSolidCollider(Collider collider)
+    {
+        return collider != null && collider.enabled && !collider.isTrigger;
+    }
+
     private static bool IsCelestialCollider(Collider collider)
     {
         if (collider == null) return false;
         if (collider.CompareTag("Icon")) return false;
         return collider.GetComponentInParent<Gravity>() != null;
+    }
+
+    private void OnDestroy()
+    {
+        RestoreIgnoredLaunchCollisions();
     }
 }

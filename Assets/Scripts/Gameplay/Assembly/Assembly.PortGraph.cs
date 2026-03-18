@@ -57,8 +57,17 @@ public partial class Assembly
             }
             outputPorts.Add(outputPort);
 
-            AssemblyPortPulse pulse = ComponentUtility.GetOrAddComponent<AssemblyPortPulse>(current.gameObject);
-            outputPortPulses.Add(pulse);
+            Renderer portRenderer = current.GetComponent<Renderer>();
+            AssemblyPortPulse pulse = current.GetComponent<AssemblyPortPulse>();
+            if (portRenderer != null)
+            {
+                pulse = pulse != null ? pulse : ComponentUtility.GetOrAddComponent<AssemblyPortPulse>(current.gameObject);
+                outputPortPulses.Add(pulse);
+            }
+            else if (pulse != null)
+            {
+                Destroy(pulse);
+            }
         }
 
         BuildCoreLayoutMapping();

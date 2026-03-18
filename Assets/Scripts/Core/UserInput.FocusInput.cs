@@ -263,6 +263,7 @@ public partial class UserInput
         if (candidate.GetComponent<Star>() != null) return candidate;
         if (candidate.GetComponent<Planet>() != null) return candidate;
         if (candidate.GetComponent<Satellite>() != null) return candidate;
+        if (candidate.GetComponent<ArtificialSatellite>() != null) return candidate;
         return null;
     }
 

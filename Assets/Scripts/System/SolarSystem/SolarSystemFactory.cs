@@ -39,6 +39,7 @@ public class SolarSystemFactory
         // Generates and assigns random factor.
         star.transform.localScale = Vector3.one * WorldScale.ScaleLength(solarSystemSettings.starScale);
         rigidbodyComponent.mass = solarSystemSettings.starMass;
+        DoubleMassIfGravityExists(star, rigidbodyComponent);
 
         starComponent.starType = starType.MainSequenceStar;
 
@@ -111,6 +112,7 @@ public class SolarSystemFactory
         planet.transform.localScale = Vector3.one * WorldScale.ScaleLength(planetBiomeSettings.scale);
         planetComponent.scale = Mathf.RoundToInt(planet.transform.lossyScale.x);
         rigidbodyComponent.mass = planetBiomeSettings.mass;
+        DoubleMassIfGravityExists(planet, rigidbodyComponent);
         gravityComponent.GravityRadius = WorldScale.ScaleLength(planetBiomeSettings.gravityRadius);
 
         revolutionComponent.center = star;
@@ -164,6 +166,7 @@ public class SolarSystemFactory
         satellite.transform.localScale = Vector3.one * WorldScale.ScaleLength(satelliteBiomeSettings.scale);
         satelliteComponent.scale = Mathf.RoundToInt(satellite.transform.lossyScale.x);
         rigidbodyComponent.mass = Mathf.RoundToInt(satelliteBiomeSettings.mass);
+        DoubleMassIfGravityExists(satellite, rigidbodyComponent);
         gravityComponent.GravityRadius = Mathf.RoundToInt(WorldScale.ScaleLength(satelliteBiomeSettings.gravityRadius));
 
         revolutionComponent.center = planet;
@@ -232,6 +235,13 @@ public class SolarSystemFactory
         periods.Sort();
 
         return periods;
+    }
+
+    private static void DoubleMassIfGravityExists(GameObject celestialBody, Rigidbody rigidbodyComponent)
+    {
+        if (celestialBody == null || rigidbodyComponent == null) return;
+        if (celestialBody.GetComponent<Gravity>() == null) return;
+        rigidbodyComponent.mass *= 2f;
     }
 
     private static bool TryInitializeWorldComponents(GameObject target, string prefabName)

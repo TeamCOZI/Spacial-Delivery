@@ -101,22 +101,13 @@ public static class LauncherSpawner
         Transform hostRoot = ResolveLaunchHostRoot(launcher);
         if (hostRoot == null) return;
 
+        GravityAffectedMover mover = spaceship.GetComponent<GravityAffectedMover>();
+        if (mover == null) return;
+
         Collider[] launcherColliders = hostRoot.GetComponentsInChildren<Collider>(true);
-        Collider[] shipColliders = spaceship.GetComponentsInChildren<Collider>(true);
-        if (launcherColliders == null || shipColliders == null) return;
+        if (launcherColliders == null || launcherColliders.Length == 0) return;
 
-        for (int i = 0; i < launcherColliders.Length; i++)
-        {
-            Collider a = launcherColliders[i];
-            if (a == null) continue;
-
-            for (int j = 0; j < shipColliders.Length; j++)
-            {
-                Collider b = shipColliders[j];
-                if (b == null) continue;
-                Physics.IgnoreCollision(a, b, true);
-            }
-        }
+        mover.TemporarilyIgnoreCollisionsWith(launcherColliders);
     }
 
     private static Vector3 PositionSpaceshipForClearLaunch(

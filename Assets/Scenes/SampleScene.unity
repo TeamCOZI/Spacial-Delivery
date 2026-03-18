@@ -752,12 +752,14 @@ MonoBehaviour:
   assemblyFocusDistanceMultiplier: 6
   assemblyFocusDistance: 10
   zoomSpeed: 10
+  unfocusedMinDistance: 10
+  gravityZoomTransitionDuration: 0.5
+  cameraCollisionSurfaceOffset: 2.75
   followFocusZRotation: 1
   followFocusZRotationInAssembly: 0
   focusRotationSmoothTime: 0.08
   maxDragDeltaPerFrame: 500
   physicsFocusRecenterThreshold: 2000
-  enableFocusTransitionDebugLog: 0
 --- !u!54 &1141793160
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -868,6 +870,7 @@ GameObject:
   - component: {fileID: 1566422092}
   - component: {fileID: 1566422091}
   - component: {fileID: 1566422090}
+  - component: {fileID: 1566422096}
   m_Layer: 0
   m_Name: Focus Manager
   m_TagString: Untagged
@@ -992,6 +995,22 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2f6a26278f3a12145b5151597654f0a5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::LauncherLaunchFocusHandler
+--- !u!114 &1566422096
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1566422087}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 042b9ae7adb1f3a4da37479d91f48669, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SpaceshipTargetPresenter
+  labelSize: {x: 220, y: 52}
+  screenOffset: {x: 0, y: 28}
+  backgroundColor: {r: 0.92, g: 0.34, b: 0.18, a: 0.92}
+  textColor: {r: 1, g: 1, b: 1, a: 1}
 --- !u!1 &1981877679
 GameObject:
   m_ObjectHideFlags: 0
@@ -2798,5 +2817,3 @@ SceneRoots:
   - {fileID: 961547062}
   - {fileID: 984064454}
   - {fileID: 3100002402}
-
-

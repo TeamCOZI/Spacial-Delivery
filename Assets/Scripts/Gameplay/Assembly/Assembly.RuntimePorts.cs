@@ -66,6 +66,8 @@ public partial class Assembly
             GameObject portsRootObject = new GameObject(RuntimePortsRootName);
             portsRootObject.transform.SetParent(root.transform, false);
 
+            bool createVisualMarker = isGhost;
+
             if (createInputPort)
             {
                 inputPort = CreateRuntimePortMarker(
@@ -73,7 +75,8 @@ public partial class Assembly
                     "InputPort",
                     AssemblyPortType.Input,
                     inputLocal,
-                    isGhost);
+                    isGhost,
+                    createVisualMarker);
             }
 
             if (createOutputPort)
@@ -83,7 +86,8 @@ public partial class Assembly
                     "OutputPort",
                     AssemblyPortType.Output,
                     outputLocal,
-                    isGhost);
+                    isGhost,
+                    createVisualMarker);
             }
         }
 
@@ -95,14 +99,20 @@ public partial class Assembly
         string name,
         AssemblyPortType portType,
         Vector3 localPosition,
-        bool isGhost)
+        bool isGhost,
+        bool createVisualMarker)
     {
-        GameObject marker = CreatePortVisualClone();
+        GameObject marker = createVisualMarker
+            ? CreatePortVisualClone()
+            : new GameObject();
         marker.name = name;
         marker.transform.SetParent(parent, false);
         marker.transform.localPosition = localPosition;
         marker.transform.localRotation = Quaternion.identity;
-        MatchWorldScale(marker.transform, GetPortVisualWorldScale());
+        if (createVisualMarker)
+        {
+            MatchWorldScale(marker.transform, GetPortVisualWorldScale());
+        }
 
         Collider markerCollider = marker.GetComponent<Collider>();
         if (markerCollider != null)
@@ -110,23 +120,29 @@ public partial class Assembly
             Destroy(markerCollider);
         }
 
-        _ = ComponentUtility.GetOrAddComponent<AssemblyPortVisualMarker>(marker);
+        if (createVisualMarker)
+        {
+            _ = ComponentUtility.GetOrAddComponent<AssemblyPortVisualMarker>(marker);
+        }
         AssemblyPort assemblyPort = ComponentUtility.GetOrAddComponent<AssemblyPort>(marker);
         assemblyPort.PortType = portType;
         assemblyPort.SetOccupied(false);
         assemblyPort.LocalDirection = localPosition.sqrMagnitude > DirectionEpsilonSqr
             ? localPosition.normalized
             : DefaultPortDirection;
-        SetDockingDirection(marker.transform, localPosition);
+        if (createVisualMarker)
+        {
+            SetDockingDirection(marker.transform, localPosition);
+        }
 
-        if (portType == AssemblyPortType.Input)
+        if (createVisualMarker && portType == AssemblyPortType.Input)
         {
             Color inputColor = InputPortColor;
             if (isGhost) inputColor.a = GhostValidColor.a;
             if (isGhost) EnsureRendererTransparencyRecursive(marker.transform);
             SetRendererColorRecursive(marker.transform, inputColor);
         }
-        else if (isGhost)
+        else if (createVisualMarker && isGhost)
         {
             EnsureRendererTransparencyRecursive(marker.transform);
             SetRendererAlphaRecursive(marker.transform, GhostValidColor.a);
@@ -292,7 +308,10 @@ public partial class Assembly
 
         for (int i = 0; i < outputPorts.Count; i++)
         {
-            if (outputPorts[i] != null) return outputPorts[i].gameObject;
+            AssemblyPort outputPort = outputPorts[i];
+            if (outputPort == null) continue;
+            if (!HasPortVisualTemplate(outputPort.transform)) continue;
+            return outputPort.gameObject;
         }
 
         return null;
@@ -308,10 +327,19 @@ public partial class Assembly
             Transform current = allTransforms[i];
             if (current == null) continue;
             if (current.GetComponentInParent<AssemblyGhostMarker>() != null) continue;
-            if (IsOutputPortTransform(current)) return current.gameObject;
+            if (!IsOutputPortTransform(current)) continue;
+            if (!HasPortVisualTemplate(current)) continue;
+            return current.gameObject;
         }
 
         return null;
+    }
+
+    private static bool HasPortVisualTemplate(Transform target)
+    {
+        if (target == null) return false;
+        if (target.GetComponentInChildren<Renderer>(true) == null) return false;
+        return true;
     }
 
     private static void MatchWorldScale(Transform target, Vector3 desiredWorldScale)

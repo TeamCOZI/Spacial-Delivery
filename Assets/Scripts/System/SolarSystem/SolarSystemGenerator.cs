@@ -67,6 +67,11 @@ public class SolarSystemGenerator : MonoBehaviour
 
             planet.GetComponent<Planet>().ChildSatellites.Add(satellite);
             star.GetComponent<Star>().ChildPlanets.Add(planet);
+
+            if (!TryGenerateArtificialSatellite(planet))
+            {
+                return;
+            }
         }
 
         // Instantiating asteriod belt.
@@ -83,7 +88,6 @@ public class SolarSystemGenerator : MonoBehaviour
         star.GetComponent<Star>().ChildPlanets.Add(asteroidBelt);
 
         // Instantiating outer planets.
-        bool artificialSatellitePlaced = false;
         for (int i = 4; i < 6; i++)
         {
             BiomeSettings biomeSettings = solarSystemFactory.PlanetBiomeSettings(i);
@@ -114,59 +118,91 @@ public class SolarSystemGenerator : MonoBehaviour
                 satelliteOrbit += satelliteOrbitIncrease;
 
                 planet.GetComponent<Planet>().ChildSatellites.Add(satellite);
-
-                // Place the artificial satellite around Planet 6's second moon (j == 1).
-                if (!artificialSatellitePlaced && i == 5 && j == 1)
-                {
-                    GameObject artificialSatellite = Instantiate(
-                        solarSystemSettings.artificialSatellitePrefab,
-                        planet.transform.position,
-                        Quaternion.identity,
-                        transform
-                    );
-                    artificialSatellite.name = "Artificial Satellite";
-                    if (!TryInitializeWorldComponents(artificialSatellite, "Artificial Satellite Prefab"))
-                    {
-                        Destroy(artificialSatellite);
-                        return;
-                    }
-
-                    ArtificialSatellite artificialSatelliteComponent = artificialSatellite.GetComponent<ArtificialSatellite>();
-                    Rigidbody rigidbodyComponent = artificialSatellite.GetComponent<Rigidbody>();
-                    Gravity gravityComponent = artificialSatellite.GetComponent<Gravity>();
-                    OrbitRevolution orbitRevolutionComponent = artificialSatellite.GetComponent<OrbitRevolution>();
-
-                    if (artificialSatelliteComponent == null || rigidbodyComponent == null || gravityComponent == null || orbitRevolutionComponent == null)
-                    {
-                        Debug.LogError("Artificial Satellite Prefab is missing required components.");
-                        Destroy(artificialSatellite);
-                        return;
-                    }
-
-                    artificialSatellite.transform.localScale = Vector3.one * WorldScale.ScaleLength(artificialSatelliteComponent.scale * 10f);
-                    rigidbodyComponent.mass = 0f;
-                    gravityComponent.GravityRadius = Mathf.RoundToInt(WorldScale.ScaleLength(artificialSatelliteComponent.scale * 100f));
-
-                    orbitRevolutionComponent.center = satellite;
-                    Gravity satelliteGravity = satellite.GetComponent<Gravity>();
-                    float orbitRadius = satelliteGravity != null
-                        ? satelliteGravity.GravityRadius * 0.5f
-                        : (planet.transform.lossyScale.x + WorldScale.ScaleLength(artificialSatelliteComponent.altitude));
-                    orbitRevolutionComponent.semiMajorAxis = orbitRadius;
-                    orbitRevolutionComponent.semiMinorAxis = orbitRadius;
-                    orbitRevolutionComponent.currentAngle = UnityEngine.Random.Range(0, 360);
-                    orbitRevolutionComponent.revolutionPeriod = 1f;
-
-                    artificialSatelliteComponent.UpdateFocusInfo();
-                    planet.GetComponent<Planet>().ChildSatellites.Add(artificialSatellite);
-                    artificialSatellitePlaced = true;
-                }
             }
 
             star.GetComponent<Star>().ChildPlanets.Add(planet);
+
+            if (!TryGenerateArtificialSatellite(planet))
+            {
+                return;
+            }
         }
 
         star.GetComponent<Gravity>().GravityRadius = Mathf.RoundToInt(planetOrbit);
+    }
+
+    private bool TryGenerateArtificialSatellite(GameObject planet)
+    {
+        if (solarSystemSettings == null || solarSystemSettings.artificialSatellitePrefab == null)
+        {
+            Debug.LogError("SolarSystemGenerator: Artificial satellite prefab is not assigned.");
+            return false;
+        }
+
+        if (planet == null)
+        {
+            Debug.LogError("SolarSystemGenerator: Cannot create an artificial satellite for a null planet.");
+            return false;
+        }
+
+        Planet planetComponent = planet.GetComponent<Planet>();
+        if (planetComponent == null)
+        {
+            Debug.LogError($"SolarSystemGenerator: {planet.name} is missing a Planet component.");
+            return false;
+        }
+
+        GameObject artificialSatellite = Instantiate(
+            solarSystemSettings.artificialSatellitePrefab,
+            planet.transform.position,
+            Quaternion.identity,
+            transform
+        );
+        artificialSatellite.name = planet.name + " - Artificial Satellite";
+        if (!TryInitializeWorldComponents(artificialSatellite, "Artificial Satellite Prefab"))
+        {
+            Destroy(artificialSatellite);
+            return false;
+        }
+
+        ArtificialSatellite artificialSatelliteComponent = artificialSatellite.GetComponent<ArtificialSatellite>();
+        Rigidbody rigidbodyComponent = artificialSatellite.GetComponent<Rigidbody>();
+        Gravity gravityComponent = artificialSatellite.GetComponent<Gravity>();
+        OrbitRevolution orbitRevolutionComponent = artificialSatellite.GetComponent<OrbitRevolution>();
+
+        if (artificialSatelliteComponent == null || rigidbodyComponent == null || gravityComponent == null || orbitRevolutionComponent == null)
+        {
+            Debug.LogError("Artificial Satellite Prefab is missing required components.");
+            Destroy(artificialSatellite);
+            return false;
+        }
+
+        artificialSatellite.transform.localScale = Vector3.one * WorldScale.ScaleLength(artificialSatelliteComponent.scale * 10f);
+        rigidbodyComponent.mass = 0f;
+        DoubleMassIfGravityExists(artificialSatellite, rigidbodyComponent);
+        gravityComponent.GravityRadius = Mathf.RoundToInt(WorldScale.ScaleLength(artificialSatelliteComponent.scale * 100f));
+
+        float orbitRadius = planetComponent.scale + Mathf.Max(
+            WorldScale.ScaleLength(artificialSatelliteComponent.altitude),
+            WorldScale.ScaleLength(solarSystemSettings.satelliteInitialOrbit * 0.5f));
+
+        orbitRevolutionComponent.center = planet;
+        orbitRevolutionComponent.semiMajorAxis = orbitRadius;
+        orbitRevolutionComponent.semiMinorAxis = orbitRadius;
+        orbitRevolutionComponent.currentAngle = UnityEngine.Random.Range(0, 360);
+        orbitRevolutionComponent.revolutionPeriod = 1f;
+
+        artificialSatelliteComponent.UpdateFocusInfo();
+        planetComponent.ChildSatellites.Add(artificialSatellite);
+
+        return true;
+    }
+
+    private static void DoubleMassIfGravityExists(GameObject celestialBody, Rigidbody rigidbodyComponent)
+    {
+        if (celestialBody == null || rigidbodyComponent == null) return;
+        if (celestialBody.GetComponent<Gravity>() == null) return;
+        rigidbodyComponent.mass *= 2f;
     }
 
     private static bool TryInitializeWorldComponents(GameObject target, string prefabName)
