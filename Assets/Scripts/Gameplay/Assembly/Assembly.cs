@@ -73,6 +73,9 @@ public partial class Assembly : MonoBehaviour
         new Dictionary<AssemblyPort, (Vector2Int sourceCell, CellSideMask outputSide)>();
     private bool outputPortRefreshQueued = false;
     private Coroutine outputPortRefreshCoroutine;
+    [Header("Removal")]
+    [Tooltip("If enabled, deleting selected parts also removes parts that become disconnected from the Core.")]
+    [SerializeField] private bool removeDisconnectedPartsAfterDeletion = false;
     [SerializeField] private bool debugPipePlacement = true;
     [SerializeField] private bool debugHoverCellPortMapping = true;
     [SerializeField] private bool enableInputPortAutoMapping = false;
@@ -1398,11 +1401,6 @@ public partial class Assembly : MonoBehaviour
         result.Clear();
         if (initiallyRemovedOwners == null || artificialSatellite == null) return;
 
-        Dictionary<GameObject, HashSet<GameObject>> adjacency = new Dictionary<GameObject, HashSet<GameObject>>();
-        HashSet<GameObject> coreConnectedSeeds = new HashSet<GameObject>();
-        BuildPartAdjacencyGraph(adjacency, coreConnectedSeeds);
-
-        HashSet<GameObject> allParts = new HashSet<GameObject>(adjacency.Keys);
         HashSet<GameObject> removed = new HashSet<GameObject>();
         foreach (GameObject owner in initiallyRemovedOwners)
         {
@@ -1412,14 +1410,22 @@ public partial class Assembly : MonoBehaviour
 
         if (removed.Count == 0) return;
 
-        HashSet<GameObject> reachableBefore = ComputeReachableFromCore(adjacency, coreConnectedSeeds, null);
-        HashSet<GameObject> reachableAfter = ComputeReachableFromCore(adjacency, coreConnectedSeeds, removed);
-
-        foreach (GameObject part in allParts)
+        if (removeDisconnectedPartsAfterDeletion)
         {
-            if (part == null) continue;
-            if (!reachableBefore.Contains(part)) continue;
-            if (!reachableAfter.Contains(part)) removed.Add(part);
+            Dictionary<GameObject, HashSet<GameObject>> adjacency = new Dictionary<GameObject, HashSet<GameObject>>();
+            HashSet<GameObject> coreConnectedSeeds = new HashSet<GameObject>();
+            BuildPartAdjacencyGraph(adjacency, coreConnectedSeeds);
+
+            HashSet<GameObject> allParts = new HashSet<GameObject>(adjacency.Keys);
+            HashSet<GameObject> reachableBefore = ComputeReachableFromCore(adjacency, coreConnectedSeeds, null);
+            HashSet<GameObject> reachableAfter = ComputeReachableFromCore(adjacency, coreConnectedSeeds, removed);
+
+            foreach (GameObject part in allParts)
+            {
+                if (part == null) continue;
+                if (!reachableBefore.Contains(part)) continue;
+                if (!reachableAfter.Contains(part)) removed.Add(part);
+            }
         }
 
         foreach (GameObject owner in removed)

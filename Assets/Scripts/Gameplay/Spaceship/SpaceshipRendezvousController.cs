@@ -56,6 +56,8 @@ public class SpaceshipRendezvousController : MonoBehaviour
     [Header("Orbit Control")]
     [SerializeField, Min(0f)] private float orbitRadiusAdjustRate = 12f;
     [SerializeField, Min(0f)] private float orbitSpeedAdjustRate = 8f;
+    [SerializeField, Min(0.01f)] private float orbitRadiusSmoothTime = 0.2f;
+    [SerializeField, Min(0.01f)] private float orbitSpeedSmoothTime = 0.2f;
     [SerializeField, Min(0.01f)] private float minimumCommittedOrbitSpeed = 0.1f;
 
     private Spaceship spaceship;
@@ -76,7 +78,11 @@ public class SpaceshipRendezvousController : MonoBehaviour
     private PlayerInput sharedPlayerInput;
     private InputAction moveAction;
     private float committedOrbitTangentialSpeed;
-
+    private float committedOrbitTargetRadius;
+    private float committedOrbitTargetTangentialSpeed;
+    private float committedOrbitRadiusAdjustVelocity;
+    private float committedOrbitSpeedAdjustVelocity;
+    private bool hasCommittedOrbitControlTargets;
     public bool IsActive { get; private set; }
     public bool IsOrbitCommitted => orbitCommitted;
     public bool HasStableOrbitCandidate => IsStableOrbitCandidateAvailable();
@@ -216,6 +222,7 @@ public class SpaceshipRendezvousController : MonoBehaviour
         orbitRevolution.rotateAroundZWithOrbit = false;
         orbitRevolution.timeMultiplier = 1f;
         committedOrbitTangentialSpeed = Mathf.Max(minimumCommittedOrbitSpeed, commitState.tangentialSpeed);
+        SetCommittedOrbitControlTargets(commitState.orbitRadius, committedOrbitTangentialSpeed, orbitRevolution.timeMultiplier);
 
         OrbitVisualizer orbitVisualizer = ComponentUtility.GetOrAddComponent<OrbitVisualizer>(gameObject);
         if (orbitVisualizer != null)
@@ -274,27 +281,70 @@ public class SpaceshipRendezvousController : MonoBehaviour
 
         OrbitRevolution orbitRevolution = GetComponent<OrbitRevolution>();
         if (orbitRevolution == null || orbitRevolution.center == null) return;
-
-        Vector2 moveInput = ReadMoveInput();
-        if (moveInput.sqrMagnitude <= 0.000001f) return;
         if (!TryResolveCommittedOrbitRadiusBounds(orbitRevolution, out float minimumOrbitRadius, out float maximumOrbitRadius)) return;
 
         EnsureCommittedOrbitSpeedInitialized(orbitRevolution);
+        EnsureCommittedOrbitControlTargetsInitialized(orbitRevolution, minimumOrbitRadius, maximumOrbitRadius);
 
         float deltaTime = Time.fixedDeltaTime;
         if (deltaTime <= 0f) return;
 
+        Vector2 moveInput = ReadMoveInput();
         float currentRadius = Mathf.Max(OrbitDistanceEpsilon, orbitRevolution.semiMajorAxis);
-        float nextRadius = Mathf.Clamp(currentRadius + (moveInput.y * orbitRadiusAdjustRate * deltaTime), minimumOrbitRadius, maximumOrbitRadius);
         float speedInput = orbitRevolution.isClockwise ? moveInput.x : -moveInput.x;
+        committedOrbitTargetRadius = Mathf.Clamp(
+            committedOrbitTargetRadius + (moveInput.y * orbitRadiusAdjustRate * deltaTime),
+            minimumOrbitRadius,
+            maximumOrbitRadius);
+
+        float currentTargetMaximumSpeed = ComputeMaximumCommittedOrbitSpeed(committedOrbitTargetRadius, orbitRevolution.timeMultiplier);
+        committedOrbitTargetTangentialSpeed = Mathf.Clamp(
+            committedOrbitTargetTangentialSpeed + (speedInput * orbitSpeedAdjustRate * deltaTime),
+            minimumCommittedOrbitSpeed,
+            currentTargetMaximumSpeed);
+
+        float nextRadius = Mathf.SmoothDamp(
+            currentRadius,
+            committedOrbitTargetRadius,
+            ref committedOrbitRadiusAdjustVelocity,
+            orbitRadiusSmoothTime,
+            Mathf.Infinity,
+            deltaTime);
+        nextRadius = Mathf.Clamp(nextRadius, minimumOrbitRadius, maximumOrbitRadius);
+        if (Mathf.Abs(nextRadius - committedOrbitTargetRadius) <= OrbitDistanceEpsilon)
+        {
+            nextRadius = committedOrbitTargetRadius;
+            committedOrbitRadiusAdjustVelocity = 0f;
+        }
+
+        float currentSpeed = Mathf.Max(minimumCommittedOrbitSpeed, committedOrbitTangentialSpeed);
         float maximumOrbitSpeed = ComputeMaximumCommittedOrbitSpeed(nextRadius, orbitRevolution.timeMultiplier);
-        float nextSpeed = Mathf.Clamp(
-            committedOrbitTangentialSpeed + (speedInput * orbitSpeedAdjustRate * deltaTime),
+        float appliedSpeedTarget = Mathf.Clamp(
+            committedOrbitTargetTangentialSpeed,
             minimumCommittedOrbitSpeed,
             maximumOrbitSpeed);
 
-        if (Mathf.Abs(nextRadius - currentRadius) <= OrbitDistanceEpsilon &&
-            Mathf.Abs(nextSpeed - committedOrbitTangentialSpeed) <= OrbitSpeedEpsilon)
+        float nextSpeed = Mathf.SmoothDamp(
+            currentSpeed,
+            appliedSpeedTarget,
+            ref committedOrbitSpeedAdjustVelocity,
+            orbitSpeedSmoothTime,
+            Mathf.Infinity,
+            deltaTime);
+        nextSpeed = Mathf.Clamp(nextSpeed, minimumCommittedOrbitSpeed, maximumOrbitSpeed);
+        if (Mathf.Abs(nextSpeed - appliedSpeedTarget) <= OrbitSpeedEpsilon)
+        {
+            nextSpeed = appliedSpeedTarget;
+            committedOrbitSpeedAdjustVelocity = 0f;
+        }
+
+        bool isRadiusSettled = Mathf.Abs(nextRadius - currentRadius) <= OrbitDistanceEpsilon;
+        bool isSpeedSettled = Mathf.Abs(nextSpeed - currentSpeed) <= OrbitSpeedEpsilon;
+        if (isRadiusSettled &&
+            isSpeedSettled &&
+            moveInput.sqrMagnitude <= 0.000001f &&
+            Mathf.Abs(committedOrbitRadiusAdjustVelocity) <= OrbitDistanceEpsilon &&
+            Mathf.Abs(committedOrbitSpeedAdjustVelocity) <= OrbitSpeedEpsilon)
         {
             return;
         }
@@ -329,6 +379,58 @@ public class SpaceshipRendezvousController : MonoBehaviour
         committedOrbitTangentialSpeed = Mathf.Max(
             minimumCommittedOrbitSpeed,
             ComputeTangentialSpeedFromRevolution(orbitRevolution, orbitRadius));
+    }
+
+    private void EnsureCommittedOrbitControlTargetsInitialized(
+        OrbitRevolution orbitRevolution,
+        float minimumOrbitRadius,
+        float maximumOrbitRadius)
+    {
+        if (orbitRevolution == null) return;
+
+        float currentRadius = Mathf.Clamp(
+            Mathf.Max(OrbitDistanceEpsilon, orbitRevolution.semiMajorAxis),
+            minimumOrbitRadius,
+            maximumOrbitRadius);
+        float currentSpeed = Mathf.Max(
+            minimumCommittedOrbitSpeed,
+            committedOrbitTangentialSpeed > OrbitSpeedEpsilon
+                ? committedOrbitTangentialSpeed
+                : ComputeTangentialSpeedFromRevolution(orbitRevolution, currentRadius));
+        float maximumOrbitSpeed = ComputeMaximumCommittedOrbitSpeed(currentRadius, orbitRevolution.timeMultiplier);
+
+        if (!hasCommittedOrbitControlTargets)
+        {
+            SetCommittedOrbitControlTargets(currentRadius, currentSpeed, orbitRevolution.timeMultiplier);
+            committedOrbitTargetRadius = Mathf.Clamp(committedOrbitTargetRadius, minimumOrbitRadius, maximumOrbitRadius);
+            committedOrbitTargetTangentialSpeed = Mathf.Clamp(
+                committedOrbitTargetTangentialSpeed,
+                minimumCommittedOrbitSpeed,
+                ComputeMaximumCommittedOrbitSpeed(committedOrbitTargetRadius, orbitRevolution.timeMultiplier));
+            return;
+        }
+
+        committedOrbitTargetRadius = Mathf.Clamp(committedOrbitTargetRadius, minimumOrbitRadius, maximumOrbitRadius);
+        committedOrbitTargetTangentialSpeed = Mathf.Clamp(
+            committedOrbitTargetTangentialSpeed,
+            minimumCommittedOrbitSpeed,
+            ComputeMaximumCommittedOrbitSpeed(committedOrbitTargetRadius, orbitRevolution.timeMultiplier));
+        committedOrbitTangentialSpeed = Mathf.Clamp(
+            currentSpeed,
+            minimumCommittedOrbitSpeed,
+            maximumOrbitSpeed);
+    }
+
+    private void SetCommittedOrbitControlTargets(float orbitRadius, float tangentialSpeed, float timeMultiplier)
+    {
+        committedOrbitTargetRadius = Mathf.Max(OrbitDistanceEpsilon, orbitRadius);
+        committedOrbitTargetTangentialSpeed = Mathf.Clamp(
+            tangentialSpeed,
+            minimumCommittedOrbitSpeed,
+            ComputeMaximumCommittedOrbitSpeed(committedOrbitTargetRadius, timeMultiplier));
+        committedOrbitRadiusAdjustVelocity = 0f;
+        committedOrbitSpeedAdjustVelocity = 0f;
+        hasCommittedOrbitControlTargets = true;
     }
 
     private void ApplyCommittedOrbitState(OrbitRevolution orbitRevolution, float orbitRadius, float tangentialSpeed)
