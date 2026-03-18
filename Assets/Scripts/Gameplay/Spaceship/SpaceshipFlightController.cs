@@ -37,15 +37,18 @@ public class SpaceshipFlightController : MonoBehaviour
 
     private void Update()
     {
-        if (ConsumeAutomatedAccelerationRequest(Time.deltaTime))
+        float deltaTime = Time.deltaTime;
+        if (deltaTime <= 0f) return;
+
+        Vector3 requestedAcceleration = ConsumeAutomatedAccelerationRequest();
+
+        if (CanApplyManualThrust() && TryGetThrustDirection(out Vector3 thrustDirection))
         {
-            return;
+            requestedAcceleration += thrustDirection * thrustAcceleration;
         }
 
-        if (!CanApplyManualThrust()) return;
-        if (!TryGetThrustDirection(out Vector3 thrustDirection)) return;
-
-        TryApplyAcceleration(thrustDirection * thrustAcceleration, Time.deltaTime);
+        if (requestedAcceleration.sqrMagnitude <= MoveInputEpsilonSqr) return;
+        TryApplyAcceleration(requestedAcceleration, deltaTime);
     }
 
     public void RefillFuel()
@@ -162,14 +165,13 @@ public class SpaceshipFlightController : MonoBehaviour
         return CoreRuntimeAccess.TryGetTimeManager(out TimeManager timeManager) && timeManager.IsPaused;
     }
 
-    private bool ConsumeAutomatedAccelerationRequest(float deltaTime)
+    private Vector3 ConsumeAutomatedAccelerationRequest()
     {
-        if (!hasAutomatedAccelerationRequest) return false;
+        if (!hasAutomatedAccelerationRequest) return Vector3.zero;
 
         Vector3 requestedAcceleration = requestedAutomatedAcceleration;
         requestedAutomatedAcceleration = Vector3.zero;
         hasAutomatedAccelerationRequest = false;
-        TryApplyAcceleration(requestedAcceleration, deltaTime);
-        return true;
+        return requestedAcceleration;
     }
 }
