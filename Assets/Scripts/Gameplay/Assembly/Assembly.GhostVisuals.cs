@@ -7,9 +7,10 @@ public partial class Assembly
         ghostRenderers.Clear();
         ghostPropertyBlocks.Clear();
 
-        if (partGhost == null) return;
+        GameObject activeGhostRoot = ResolveActiveGhostRoot();
+        if (activeGhostRoot == null) return;
 
-        Renderer[] renderers = partGhost.GetComponentsInChildren<Renderer>(true);
+        Renderer[] renderers = activeGhostRoot.GetComponentsInChildren<Renderer>(true);
         for (int i = 0; i < renderers.Length; i++)
         {
             if (renderers[i] == null) continue;
@@ -20,7 +21,7 @@ public partial class Assembly
 
     private void SetGhostPlacementVisual(bool isValidPlacement)
     {
-        Color targetColor = isValidPlacement ? GhostValidColor : GhostInvalidColor;
+        Color targetColor = ResolveGhostPlacementColor(isValidPlacement);
 
         for (int i = 0; i < ghostRenderers.Count; i++)
         {
@@ -28,6 +29,11 @@ public partial class Assembly
             if (renderer == null) continue;
             if (renderer.GetComponentInParent<AssemblyPortVisualMarker>() != null) continue;
             if (ShouldKeepGhostRendererOriginalColor(renderer.transform)) continue;
+
+            if (renderer is SpriteRenderer spriteRenderer)
+            {
+                spriteRenderer.color = targetColor;
+            }
 
             Material sharedMaterial = renderer.sharedMaterial;
             if (sharedMaterial == null) continue;
@@ -42,6 +48,23 @@ public partial class Assembly
             if (hasColor) block.SetColor(ColorId, targetColor);
             renderer.SetPropertyBlock(block);
         }
+    }
+
+    private Color ResolveGhostPlacementColor(bool isValidPlacement)
+    {
+        if (HasActiveStructurePlacement() && structure != null)
+        {
+            if (isValidPlacement)
+            {
+                Color iconTint = structure.iconTint;
+                float alpha = Mathf.Max(0.85f, iconTint.a);
+                return new Color(iconTint.r, iconTint.g, iconTint.b, alpha);
+            }
+
+            return new Color(1f, 0.28f, 0.28f, 0.82f);
+        }
+
+        return isValidPlacement ? GhostValidColor : GhostInvalidColor;
     }
 
     private static bool ShouldKeepGhostRendererOriginalColor(Transform target)

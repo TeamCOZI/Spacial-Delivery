@@ -4,7 +4,10 @@ using System.Collections.Generic;
 
 public class PeriodUI : FocusEventSubscriber
 {
+    private const int BackmostSortingOrder = -100;
+
     private VisualElement root;
+    private UIDocument uiDocument;
     private VisualElement rootUI;
     private VisualElement uiContainer;
     private ProgressBar period;
@@ -14,7 +17,11 @@ public class PeriodUI : FocusEventSubscriber
 
     private void Awake()
     {
-        root = GetComponent<UIDocument>().rootVisualElement;
+        uiDocument = GetComponent<UIDocument>();
+        if (uiDocument == null) return;
+
+        uiDocument.sortingOrder = BackmostSortingOrder;
+        root = uiDocument.rootVisualElement;
 
         rootUI = root.Q<VisualElement>("RootUI");
         uiContainer = root.Q<VisualElement>("UI");

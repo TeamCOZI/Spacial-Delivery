@@ -73,7 +73,7 @@
 
 ## Assets/Scripts
 - `Assets/Scripts/**`: 전체 script file map은 `Docs/Scripts-Directory-Guide.md`를 참조.
-- 특히 큰 영향도가 높은 하위 디렉터리는 `Core`, `Gameplay/Assembly`, `Gameplay/Spaceship`, `World/Celestial`, `World/LargeWorld`, `System/SolarSystem`이다.
+- 특히 큰 영향도가 높은 하위 디렉터리는 `Core`, `Gameplay/Assembly`(part/structure/fabricator), `Gameplay/Spaceship`(launcher panel/stock), `World/Celestial`, `World/LargeWorld`, `System/SolarSystem`이다.
 
 ## Assets/Prefabs
 
@@ -123,7 +123,7 @@
 아래 `Part` ScriptableObject들은 `PartDB`가 `Resources.LoadAll<Part>("Parts")`로 로딩한다.
 
 - `Assets/Resources/Parts/Core.asset`: 코어 파트 정의. `partType=Core`, `grid=9x9`, `mass=8100`.
-- `Assets/Resources/Parts/Launcher.asset`: 런처 파트 정의. 발사 시스템이 이름과 part asset을 통해 식별한다.
+- `Assets/Resources/Parts/Launcher.asset`: 런처 파트 정의. 발사 시스템이 이름과 part asset을 통해 식별하고, 실제 발사 가능 수량은 owner satellite의 `LauncherSpaceshipStock`이 별도로 관리한다.
 - `Assets/Resources/Parts/Pipe.asset`: `partType=Pipe`, `grid=1x1`, `mass=50`.
 - `Assets/Resources/Parts/Assembler.asset`: `partType=Processor`, `grid=1x2`, `durability=200`, `inventory=3`, `mass=200`.
 - `Assets/Resources/Parts/Cooler.asset`: `partType=Processor`, `grid=1x1`, `inventory=2`, `mass=100`.
@@ -133,6 +133,11 @@
 - `Assets/Resources/Parts/Molder.asset`: `partType=Processor`, `grid=1x1`, `inventory=2`, `mass=100`.
 - `Assets/Resources/Parts/Processor.asset`: `partType=Processor`, `grid=1x1`, `inventory=2`, `mass=100`.
 - `Assets/Resources/Parts/Refiner.asset`: `partType=Processor`, `grid=1x1`, `inventory=2`, `mass=100`.
+
+### Resources/Structures
+아래 `Structure` ScriptableObject들은 `StructureCatalog`가 `Resources.LoadAll<Structure>("Structures")`로 로딩한다.
+
+- `Assets/Resources/Structures/MergeWorkshop.asset`: `Merge Workshop` structure 정의. `grid=4x4`, `mass=1600`, `durability=1600`, `facilityKind=Fabricator`. core focus의 `Structures` popup에서 선택 가능하며, 설치 후 focus하면 fabricator UI를 연다.
 
 ## Assets/Settings
 
@@ -165,11 +170,12 @@
 - `Assets/Settings/BiomeSettings/Iron Satellite.asset`: 철질 위성 preset.
 
 ## Assets/UI
-- `Assets/UI/Assembly.uxml`: 조립 UI 레이아웃. `OpenParts`, `ToggleSelection`, `RemoveSelected` 버튼과 popup 구조를 정의.
+- `Assets/UI/Assembly.uxml`: 조립 UI 레이아웃. `OpenParts`, `OpenStructures`, `ToggleSelection`, `RemoveSelected` 버튼과 parts popup, structures popup, fabricator popup 구조를 정의한다.
 - `Assets/UI/PartsList.uxml`: 파트 목록 한 칸 템플릿. `PartIcon` + `PartName`.
 - `Assets/UI/Period.uxml`: 주기 progress bar UI 레이아웃.
 - `Assets/UI/Period.uss`: `Period.uxml` progress bar 높이/스타일.
 - `Assets/UI/Period.asset`: `PanelSettings` asset. `Period.uxml` 계열 UI 렌더 설정.
+- launcher panel은 별도 UXML이 아니라 `LauncherSelectionPresenter.cs`가 메인 canvas에 런타임 생성한다.
 
 ## Assets/Materials
 - `Assets/Materials/Grid.shader`: 조립 그리드 시각화용 커스텀 shader.

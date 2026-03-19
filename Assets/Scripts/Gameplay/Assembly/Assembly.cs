@@ -192,7 +192,11 @@ public partial class Assembly : MonoBehaviour
 
         if (Mouse.current.leftButton.wasPressedThisFrame)
         {
-            if (IsPipePart(part))
+            if (HasActiveStructurePlacement())
+            {
+                ApplyStructure();
+            }
+            else if (IsPipePart(part))
             {
                 HandlePipeLeftClick();
             }
@@ -221,6 +225,7 @@ public partial class Assembly : MonoBehaviour
         occupiedCells.Clear();
         int centerIndex = gridSize / 2;
         RegisterCoreOccupiedCells(new Vector2Int(centerIndex, centerIndex));
+        PrepareStructurePlacementContext();
         outputPortTemplate = FindOutputPortTemplate();
         RequestRefreshOutputPorts();
 
@@ -238,6 +243,7 @@ public partial class Assembly : MonoBehaviour
         assemblyPlaneCreated = false;
         DestroyGridPlane();
         occupiedCells.Clear();
+        ResetStructurePlacementSession();
 
         Debug.Log("Assembly deactivated.");
     }
@@ -245,6 +251,7 @@ public partial class Assembly : MonoBehaviour
     public void SelectPart(Part part)
     {
         StopSelectionMode();
+        ClearStructurePlacementSelection();
         DestroyPartGhost(false);
 
         if (part == null || part.ghostPrefab == null)
@@ -277,6 +284,12 @@ public partial class Assembly : MonoBehaviour
 
     private void UpdateGhost()
     {
+        if (HasActiveStructurePlacement())
+        {
+            UpdateStructureGhost();
+            return;
+        }
+
         if (partGhost == null || artificialSatellite == null || !assemblyPlaneCreated) return;
 
         if (!TryEnsureMainCamera()) return;
@@ -558,8 +571,10 @@ public partial class Assembly : MonoBehaviour
         ClearPipePathGhosts();
 
         DestroyPartGhost(true);
+        DestroyStructureGhost(true);
 
         ResetSelectedPartState();
+        ResetSelectedStructureState();
         IsAssembling = false;
         ResetGhostPlacementState();
         ResetPipePathSelectionState();
@@ -2055,5 +2070,3 @@ public partial class Assembly : MonoBehaviour
 
 
 }
-
-

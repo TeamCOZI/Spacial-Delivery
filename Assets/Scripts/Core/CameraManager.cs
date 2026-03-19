@@ -60,9 +60,11 @@ public partial class CameraManager : FocusEventSubscriber
 
     private Camera cameraComponent;
     private SmallScaleOverlayCamera smallScaleOverlayCamera;
+    private float defaultFieldOfView;
 
     private Vector3 currentVelocity;
     private float AV;
+    private float fieldOfViewVelocity;
     private float targetRotationZ;
     private float rotationOffsetZ;
     private float rotationOffsetVelocity;
@@ -71,8 +73,9 @@ public partial class CameraManager : FocusEventSubscriber
     private Transform pendingDraggedFocusTarget;
     private Vector3 pendingDraggedCameraLocalPosition;
     private float focusAutoPromoteMinObservedZoomDistance = float.PositiveInfinity;
-
+    private bool wasOrbitCommittedFocusActive;
     private bool isAssemblyMode = false;
+    private bool isAssemblyOrthographicTransitionPending;
     private Action<float> starScaleHandler;
     private bool worldScaleApplied;
     private bool isUserInputSubscribed;
@@ -132,6 +135,7 @@ public partial class CameraManager : FocusEventSubscriber
 
         if (cameraComponent != null)
         {
+            defaultFieldOfView = cameraComponent.fieldOfView;
             cameraComponent.nearClipPlane = Mathf.Max(0.001f, WorldScale.ScaleLength(cameraComponent.nearClipPlane));
             cameraComponent.farClipPlane = Mathf.Max(cameraComponent.nearClipPlane + 1f, WorldScale.ScaleLength(cameraComponent.farClipPlane));
         }
@@ -179,6 +183,7 @@ public partial class CameraManager : FocusEventSubscriber
     {
         UpdateSpaceshipGravityFieldZoom();
         if (oldFocus != null) target = ResolveFocusFollowPosition(oldFocus);
+        TryBeginCommittedOrbitCameraTransition();
         Vector3 appliedDragOffset = ResolveAppliedDragOffset(oldFocus);
         Vector3 focusAnchorPosition = target;
 
@@ -204,37 +209,32 @@ public partial class CameraManager : FocusEventSubscriber
             );
         }
 
-        Vector3 desiredCameraPosition;
-        if (isAssemblyMode)
+        UpdateProjectionFov();
+
+        Vector3 desiredCameraPosition = target + offset + appliedDragOffset;
+
+        if (ShouldUseAssemblyOrthographicProjection(oldFocus) && TryEnsureCameraComponent() && cameraComponent.orthographic)
         {
-            float targetOrthoSize = Mathf.Max(assemblyMinOrthoSize, -zoomOffset / 10f);
-            bool hasCamera = TryEnsureCameraComponent();
-            if (hasCamera)
+            float targetOrthoSize = ResolveAssemblyTargetOrthoSize();
+            if (forceInstantCameraUpdate)
             {
-                if (forceInstantCameraUpdate)
-                {
-                    cameraComponent.orthographicSize = targetOrthoSize;
-                }
-                else
-                {
-                    cameraComponent.orthographicSize = Mathf.SmoothDamp(
-                        cameraComponent.orthographicSize,
-                        targetOrthoSize,
-                        ref AV,
-                        smoothTime,
-                        Mathf.Infinity,
-                        Time.unscaledDeltaTime
-                    );
-                }
+                cameraComponent.orthographicSize = targetOrthoSize;
             }
-            desiredCameraPosition = target + new Vector3(offset.x, offset.y, zoomOffset) + appliedDragOffset;
-        }
-        else
-        {
-            desiredCameraPosition = target + offset + appliedDragOffset;
+            else
+            {
+                cameraComponent.orthographicSize = Mathf.SmoothDamp(
+                    cameraComponent.orthographicSize,
+                    targetOrthoSize,
+                    ref AV,
+                    smoothTime,
+                    Mathf.Infinity,
+                    Time.unscaledDeltaTime
+                );
+            }
         }
 
         transform.position = ResolveCollisionConstrainedCameraPosition(oldFocus, focusAnchorPosition, desiredCameraPosition);
+        TryCompleteAssemblyOrthographicTransition();
 
         TryPromoteFocusToParentByZoomDistance(oldFocus, focusAnchorPosition, transform.position);
 
@@ -247,7 +247,7 @@ public partial class CameraManager : FocusEventSubscriber
     {
         isAssemblyMode = true;
         bool hasCamera = TryEnsureCameraComponent();
-        if (hasCamera) cameraComponent.orthographic = true;
+        isAssemblyOrthographicTransitionPending = false;
         if (oldFocus != null)
         {
             zoomOffset = -Mathf.Max(assemblyMinDistance, assemblyFocusDistance);
@@ -260,22 +260,23 @@ public partial class CameraManager : FocusEventSubscriber
         AV = 0f;
         if (hasCamera)
         {
-            cameraComponent.orthographicSize = Mathf.Max(assemblyMinOrthoSize, -zoomOffset / 10f);
             cameraComponent.nearClipPlane = Mathf.Max(0.001f, WorldScale.ScaleLength(0.01f));
+            RefreshAssemblyProjectionModeForFocus(oldFocus);
         }
-        forceInstantCameraUpdate = true;
+        forceInstantCameraUpdate = false;
     }
 
     public void ExitAssemblyMode()
     {
         isAssemblyMode = false;
+        isAssemblyOrthographicTransitionPending = false;
         bool hasCamera = TryEnsureCameraComponent();
         if (hasCamera)
         {
             cameraComponent.orthographic = false;
             cameraComponent.nearClipPlane = Mathf.Max(0.001f, WorldScale.ScaleLength(1f));
         }
-        forceInstantCameraUpdate = true;
+        forceInstantCameraUpdate = false;
     }
 
     public float GetDragPlaneZ()
@@ -294,19 +295,173 @@ public partial class CameraManager : FocusEventSubscriber
 
         Vector3 plannedDragOffset = ResolveAppliedDragOffset(oldFocus);
         Vector3 focusAnchorPosition = plannedTarget;
-        Vector3 desiredCameraPosition;
-        if (isAssemblyMode)
-        {
-            desiredCameraPosition = plannedTarget + new Vector3(offset.x, offset.y, zoomOffset) + plannedDragOffset;
-        }
-        else
-        {
-            desiredCameraPosition = plannedTarget + offset + plannedDragOffset;
-        }
+        Vector3 desiredCameraPosition = plannedTarget + offset + plannedDragOffset;
 
         return ResolveCollisionConstrainedCameraPosition(oldFocus, focusAnchorPosition, desiredCameraPosition, false);
     }
 
+    private void TryCompleteAssemblyOrthographicTransition()
+    {
+        if (!isAssemblyMode)
+        {
+            isAssemblyOrthographicTransitionPending = false;
+            return;
+        }
+
+        if (!ShouldUseAssemblyOrthographicProjection(oldFocus))
+        {
+            isAssemblyOrthographicTransitionPending = false;
+            return;
+        }
+
+        if (!TryEnsureCameraComponent())
+        {
+            isAssemblyOrthographicTransitionPending = false;
+            return;
+        }
+
+        if (cameraComponent.orthographic)
+        {
+            isAssemblyOrthographicTransitionPending = false;
+            return;
+        }
+
+        if (!isAssemblyOrthographicTransitionPending)
+        {
+            return;
+        }
+
+        float transitionThreshold = Mathf.Max(assemblyMinDistance * 0.15f, 0.01f);
+        if (Mathf.Abs(offset.z - zoomOffset) > transitionThreshold)
+        {
+            return;
+        }
+
+        float targetFieldOfView = ResolveAssemblyProjectionBlendFieldOfView();
+        if (Mathf.Abs(cameraComponent.fieldOfView - targetFieldOfView) > 0.05f)
+        {
+            return;
+        }
+
+        cameraComponent.fieldOfView = targetFieldOfView;
+        cameraComponent.orthographicSize = ResolveAssemblyTargetOrthoSize();
+        cameraComponent.orthographic = true;
+        AV = 0f;
+        fieldOfViewVelocity = 0f;
+        isAssemblyOrthographicTransitionPending = false;
+    }
+
+    private void UpdateProjectionFov()
+    {
+        if (!TryEnsureCameraComponent())
+        {
+            return;
+        }
+
+        if (defaultFieldOfView <= 0f)
+        {
+            defaultFieldOfView = cameraComponent.fieldOfView;
+        }
+
+        if (cameraComponent.orthographic)
+        {
+            fieldOfViewVelocity = 0f;
+            return;
+        }
+
+        float targetFieldOfView = defaultFieldOfView;
+        if (ShouldUseAssemblyOrthographicProjection(oldFocus) && isAssemblyOrthographicTransitionPending)
+        {
+            targetFieldOfView = ResolveAssemblyProjectionBlendFieldOfView();
+        }
+
+        if (forceInstantCameraUpdate)
+        {
+            cameraComponent.fieldOfView = targetFieldOfView;
+            fieldOfViewVelocity = 0f;
+            return;
+        }
+
+        cameraComponent.fieldOfView = Mathf.SmoothDamp(
+            cameraComponent.fieldOfView,
+            targetFieldOfView,
+            ref fieldOfViewVelocity,
+            smoothTime,
+            Mathf.Infinity,
+            Time.unscaledDeltaTime
+        );
+    }
+
+    private float ResolveAssemblyTargetOrthoSize()
+    {
+        return Mathf.Max(assemblyMinOrthoSize, -zoomOffset / 10f);
+    }
+
+    private float ResolveAssemblyProjectionBlendFieldOfView()
+    {
+        float targetDistance = Mathf.Max(0.001f, -zoomOffset);
+        float targetOrthoSize = ResolveAssemblyTargetOrthoSize();
+        return Mathf.Rad2Deg * 2f * Mathf.Atan2(targetOrthoSize, targetDistance);
+    }
+    private void RefreshAssemblyProjectionModeForFocus(Transform focus)
+    {
+        if (!TryEnsureCameraComponent())
+        {
+            return;
+        }
+
+        if (!isAssemblyMode)
+        {
+            isAssemblyOrthographicTransitionPending = false;
+            return;
+        }
+
+        if (!ShouldUseAssemblyOrthographicProjection(focus))
+        {
+            isAssemblyOrthographicTransitionPending = false;
+            if (cameraComponent.orthographic)
+            {
+                cameraComponent.fieldOfView = ResolveAssemblyPerspectiveResumeFieldOfView();
+                cameraComponent.orthographic = false;
+                fieldOfViewVelocity = 0f;
+            }
+
+            return;
+        }
+
+        if (!cameraComponent.orthographic)
+        {
+            isAssemblyOrthographicTransitionPending = true;
+        }
+    }
+
+    private bool ShouldUseAssemblyOrthographicProjection(Transform focus)
+    {
+        return isAssemblyMode && !IsAssemblyPerspectivePartFocus(focus);
+    }
+
+    private static bool IsAssemblyPerspectivePartFocus(Transform focus)
+    {
+        if (focus == null) return false;
+
+        AssemblyPartFocus partFocus = focus.GetComponent<AssemblyPartFocus>();
+        if (partFocus == null || partFocus.SourcePart == null) return false;
+
+        string partName = partFocus.SourcePart.partName;
+        if (string.IsNullOrWhiteSpace(partName)) return false;
+
+        return string.Equals(partName, "Launcher", StringComparison.OrdinalIgnoreCase)
+            || partName.IndexOf("Drop", StringComparison.OrdinalIgnoreCase) >= 0;
+    }
+
+    private float ResolveAssemblyPerspectiveResumeFieldOfView()
+    {
+        float targetDistance = Mathf.Max(0.001f, -offset.z);
+        float orthoSize = cameraComponent != null && cameraComponent.orthographic
+            ? cameraComponent.orthographicSize
+            : ResolveAssemblyTargetOrthoSize();
+        return Mathf.Rad2Deg * 2f * Mathf.Atan2(orthoSize, targetDistance);
+    }
 
     private Vector3 ResolveAppliedDragOffset(Transform focus)
     {
@@ -379,22 +534,15 @@ public partial class CameraManager : FocusEventSubscriber
             }
         }
 
+        if (cameraComponent != null && defaultFieldOfView <= 0f)
+        {
+            defaultFieldOfView = cameraComponent.fieldOfView;
+        }
+
         return cameraComponent != null;
     }
 
 }
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

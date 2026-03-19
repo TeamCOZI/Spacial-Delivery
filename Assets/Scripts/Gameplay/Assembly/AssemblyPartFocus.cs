@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -5,6 +6,7 @@ public class AssemblyPartFocus : MonoBehaviour, UpdateFocusInfo
 {
     private const int GridSize = 99;
     private const float CellSize = 0.1f;
+    private const string LauncherPartName = "Launcher";
 
     private Part sourcePart;
     private ArtificialSatellite ownerSatellite;
@@ -42,17 +44,24 @@ public class AssemblyPartFocus : MonoBehaviour, UpdateFocusInfo
         string ownerName = OwnerSatellite != null ? OwnerSatellite.name : "N/A";
         string installedCell = GetInstalledCellLabel();
 
-        return new Dictionary<string, string>
+        Dictionary<string, string> focusInfo = new Dictionary<string, string>
         {
             { "Name", partName },
             { "Category", "Part" },
             { "Type", partType },
             { "Durability", durability },
-            { "Inventory", inventory },
-            { "Footprint", footprint },
-            { "Installed Cell", installedCell },
-            { "Owner", ownerName }
+            { "Inventory", inventory }
         };
+
+        if (IsLauncherPart(partName))
+        {
+            focusInfo.Add("Available Spaceships", LauncherSpaceshipStock.GetAvailableSpaceshipCount(OwnerSatellite).ToString());
+        }
+
+        focusInfo.Add("Footprint", footprint);
+        focusInfo.Add("Installed Cell", installedCell);
+        focusInfo.Add("Owner", ownerName);
+        return focusInfo;
     }
 
     public ArtificialSatellite OwnerSatellite
@@ -63,6 +72,7 @@ public class AssemblyPartFocus : MonoBehaviour, UpdateFocusInfo
             return ownerSatellite;
         }
     }
+
     public Part SourcePart => sourcePart;
 
     public bool TryGetOwnerSatellite(out ArtificialSatellite owner)
@@ -105,6 +115,12 @@ public class AssemblyPartFocus : MonoBehaviour, UpdateFocusInfo
     {
         if (!value.HasValue) return "N/A";
         return value.Value.ToString("0.##");
+    }
+
+    private static bool IsLauncherPart(string partName)
+    {
+        return !string.IsNullOrWhiteSpace(partName) &&
+               string.Equals(partName, LauncherPartName, StringComparison.OrdinalIgnoreCase);
     }
 
     private void BindOwnerSatelliteIfMissing()

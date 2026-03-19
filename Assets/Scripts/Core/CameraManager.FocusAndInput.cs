@@ -54,6 +54,8 @@ public partial class CameraManager
 
         focusAutoPromoteMinObservedZoomDistance = float.PositiveInfinity;
         oldFocus = newFocus;
+        RefreshAssemblyProjectionModeForFocus(newFocus);
+        wasOrbitCommittedFocusActive = IsCommittedOrbitFocus(newFocus);
     }
 
     internal void ResetToCurrentFocusView()
@@ -156,7 +158,7 @@ public partial class CameraManager
             return -10000f;
         }
 
-        if (isAssemblyMode)
+        if (isAssemblyMode && FocusPolicy.IsSatelliteRelatedFocus(focus))
         {
             float assemblyZoom = -Mathf.Max(assemblyMinDistance, assemblyFocusDistance);
             return Mathf.Min(assemblyZoom, -assemblyMinDistance);
@@ -301,6 +303,13 @@ public partial class CameraManager
         if (partFocus != null && partFocus.OwnerSatellite != null)
         {
             parentFocus = partFocus.OwnerSatellite.transform;
+            return true;
+        }
+
+        StructureFocus structureFocus = currentFocus.GetComponent<StructureFocus>();
+        if (structureFocus != null && structureFocus.OwnerSatellite != null)
+        {
+            parentFocus = structureFocus.OwnerSatellite.transform;
             return true;
         }
 
@@ -735,6 +744,43 @@ public partial class CameraManager
         transform.rotation = Quaternion.Euler(0f, 0f, finalZ);
     }
 
+    private void TryBeginCommittedOrbitCameraTransition()
+    {
+        bool isCommittedOrbitFocus = IsCommittedOrbitFocus(oldFocus);
+        if (!isCommittedOrbitFocus)
+        {
+            wasOrbitCommittedFocusActive = false;
+            return;
+        }
+
+        if (wasOrbitCommittedFocusActive)
+        {
+            return;
+        }
+
+        Vector3 cameraPosition = cameraComponent != null ? cameraComponent.transform.position : transform.position;
+        bool canFollow = CanFollowFocusRotation(oldFocus);
+        targetRotationZ = canFollow ? FocusPolicy.ResolveTargetRotationZ(oldFocus) : 0f;
+        rotationOffsetZ = Mathf.DeltaAngle(targetRotationZ, transform.eulerAngles.z);
+        rotationOffsetVelocity = 0f;
+
+        Vector3 appliedDragOffset = ResolveAppliedDragOffset(oldFocus);
+        offset = cameraPosition - target - appliedDragOffset;
+        currentVelocity = Vector3.zero;
+        wasOrbitCommittedFocusActive = true;
+    }
+
+    private static bool IsCommittedOrbitFocus(Transform focus)
+    {
+        if (!TryResolveFocusSpaceship(focus, out Spaceship spaceship) || spaceship == null)
+        {
+            return false;
+        }
+
+        SpaceshipRendezvousController rendezvousController = spaceship.GetComponent<SpaceshipRendezvousController>();
+        return rendezvousController != null && rendezvousController.IsOrbitCommitted;
+    }
+
     private bool CanFollowFocusRotation(Transform focus)
     {
         return followFocusZRotation
@@ -742,6 +788,11 @@ public partial class CameraManager
             && (isAssemblyMode || FocusPolicy.IsSatelliteRelatedFocus(focus));
     }
 }
+
+
+
+
+
 
 
 

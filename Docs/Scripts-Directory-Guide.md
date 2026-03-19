@@ -7,8 +7,8 @@
 ## 디렉터리 요약
 - `Core`: 입력, 포커스, 카메라, 월드 원점, 전역 서비스 접근.
 - `Gameplay/Artificial`: 인공위성 루트와 위성 내부 게임플레이 컴포넌트.
-- `Gameplay/Assembly`: 조립 모드 전체(배치, 포트, 파이프, 제거, 선택, UI 연동).
-- `Gameplay/Spaceship`: 우주선 발사, 중력 이동, 타깃 지정, 공전 보조, Orbit commit, HUD.
+- `Gameplay/Assembly`: 조립 모드 전체(배치, 포트, 파이프, 제거, 선택, structure 설치, facility UI 연동).
+- `Gameplay/Spaceship`: 우주선 발사, launcher panel/stock, 중력 이동, 타깃 지정, 공전 보조, Orbit commit, HUD.
 - `Gameplay` 루트: 게임플레이 서비스 접근 헬퍼.
 - `Rendering`: 아이콘, 오버레이 카메라, 레이어 유틸.
 - `Shared`: 범용 유틸, 설정, 스케일, 풀링.
@@ -21,12 +21,12 @@
 
 ## Core
 - `CameraFocusPolicy.cs`: 현재 카메라 포커스 정책 진입점. 실제 계산은 정책 객체에 위임.
-- `CameraManager.cs`: 카메라 기본 상태, 줌/추적 상태, 입력 구독, 전체 이동 루프.
+- `CameraManager.cs`: 카메라 기본 상태, 줌/추적 상태, 입력 구독, assembly orthographic/perspective projection blend, 전체 이동 루프.
 - `CameraManager.Collision.cs`: 카메라-천체/표면 충돌 보정, 최소 거리 확보, collider 기반 클리핑 처리.
-- `CameraManager.FocusAndInput.cs`: 포커스 전환, 드래그/줌, 중력장 줌 전환, 포커스 회전 추적.
+- `CameraManager.FocusAndInput.cs`: 포커스 전환, 드래그/줌, 중력장 줌 전환, structure parent focus 처리, 포커스 회전 추적.
 - `CameraManager.WorldOrigin.cs`: 월드 원점 이동 시 카메라와 포커스 기준점 동기화.
 - `CoreRuntimeAccess.cs`: 핵심 싱글톤/서비스 접근 헬퍼.
-- `DefaultCameraFocusPolicy.cs`: 기본 포커스 회전/줌 판단 규칙. 커밋된 우주선 공전 카메라 회전도 여기서 우선 처리.
+- `DefaultCameraFocusPolicy.cs`: 기본 포커스 회전/줌 판단 규칙. structure focus는 owner satellite 기준 scale/rotation을 사용하고, 커밋된 우주선 공전 카메라 회전도 여기서 우선 처리한다.
 - `FocusEventSubscriber.cs`: 포커스 이벤트 구독 베이스 클래스.
 - `FocusFeatureBootstrap.cs`: 포커스 관련 UI/프리젠터 의존성 부트스트랩.
 - `FocusManager.cs`: 현재 포커스/호버 관리, 포커스 정보 텍스트 업데이트.
@@ -35,7 +35,7 @@
 - `IInputService.cs`: 입력 이벤트 서비스 인터페이스.
 - `UserInput.CameraInput.cs`: 마우스 드래그/휠 입력 처리.
 - `UserInput.cs`: 입력 액션 연결 및 입력 이벤트 발행 루트.
-- `UserInput.FocusInput.cs`: 포커스/호버/타깃 지정/조립 모드 전환 입력 처리. 우주선 포커스 중에는 클릭이 focus 변경이 아니라 target 토글로 들어간다.
+- `UserInput.FocusInput.cs`: 포커스/호버/타깃 지정/조립 모드 전환 입력 처리. structure focus/raycast, satellite 내부 visual hit 판정, launcher panel/assembly popup에 따른 world input 억제까지 포함한다. 우주선 포커스 중에는 클릭이 focus 변경이 아니라 target 토글로 들어간다.
 - `WorldOriginManager.cs`: 월드 시프트 이벤트 발행 및 루트 이동.
 
 ## Gameplay/Artificial
@@ -46,40 +46,49 @@
 - `Inventory.cs`: 인벤토리 상태 컨테이너.
 
 ## Gameplay/Assembly
-- `Assembly.cs`: 조립 세션 핵심. 활성화/비활성화, 파트 선택, 배치, 적용, 취소, 제거, 선택 하이라이트까지 포함.
+- `Assembly.cs`: 조립 세션 핵심. 활성화/비활성화, 파트 선택, structure 선택, 배치, 적용, 취소, 제거, 선택 하이라이트까지 포함.
 - `Assembly.CameraMode.cs`: 조립 모드 카메라 전환 헬퍼.
 - `Assembly.Debugging.cs`: 포트/셀/호버 상태 디버그 로그 유틸.
-- `Assembly.GhostVisuals.cs`: 고스트 비주얼 색상/투명도 처리.
+- `Assembly.GhostVisuals.cs`: part/structure ghost 비주얼 색상/투명도 처리.
 - `Assembly.PipeCorner.cs`: 파이프 코너 생성과 경로 고스트 생성.
 - `Assembly.PlacementAndPath.cs`: 그리드 좌표 변환, 셀 점유, 경로 탐색.
 - `Assembly.PortGraph.cs`: 출력 포트 그래프와 cell+side 캐시를 구축하는 포트 연결성 핵심.
 - `Assembly.RuntimePorts.cs`: 런타임 포트 비주얼/레이아웃 생성. 설치 완료된 파트에서도 포트 비주얼을 유지하도록 수정된 상태.
 - `Assembly.SelectionDrag.cs`: 드래그 사각형 UI와 그리드 기반 다중 선택. 시작 grid와 끝 grid 사이에 1픽셀이라도 닿는 셀의 파트를 선택하는 방식.
+- `Assembly.StructurePlacement.cs`: core surface grid 위 structure ghost, footprint occupancy, 설치, `StructureFocus`/label 생성, source satellite mirror를 처리한다.
 - `AssemblyAttachmentHub.cs`: 위성 하위 조립물 로컬 고정 및 동기화.
 - `AssemblyCorePortLayout.cs`: 코어 출력 포트 레이아웃 정의.
 - `AssemblyGhostMarker.cs`: 고스트 오브젝트 식별 마커.
-- `AssemblyManager.cs`: 조립 모드 오케스트레이션.
+- `AssemblyManager.cs`: 조립 모드 오케스트레이션. focus된 satellite/part/structure에 맞춰 조립 대상과 UI를 자동 전환한다.
 - `AssemblyMathUtility.cs`: 회전/셀/경로 유틸 함수.
 - `AssemblyMeshCombiner.cs`: 결합 메쉬 재생성 로직. 포트 비주얼 예외 처리 포함.
-- `AssemblyPartFocus.cs`: 조립 파트 포커스 정보 제공.
+- `AssemblyPartFocus.cs`: 조립 파트 포커스 정보 제공. launcher part에서는 available spaceship stock도 노출한다.
 - `AssemblyPartPortLayout.cs`: 파트별 포트 레이아웃 데이터.
 - `AssemblyPartPortProfile.cs`: 입력 포트 프로필 데이터.
 - `AssemblyPort.cs`: 포트 타입/점유 상태 런타임 데이터.
 - `AssemblyPortPulse.cs`: 포트 강조 펄스 이펙트.
 - `AssemblyPortVisualMarker.cs`: 포트 비주얼 런타임 마커.
-- `AssemblyUI.cs`: 조립 UI Toolkit 컨트롤러.
+- `AssemblyUI.cs`: 조립 UI Toolkit 컨트롤러. parts popup, structures popup, selection 버튼, fabricator popup visibility를 관리한다.
+- `AssemblyUI.Fabricator.cs`: fabricator facility UI 상태, 필터/수량 버튼, launcher stock 증가 훅을 담당한다.
 - `CoreFocusGridUI.cs`: 코어 포커스 그리드 UI 보조.
+- `CraftRecipe.cs`: structure crafting recipe 데이터 자리. 현재는 빈 직렬화 컨테이너다.
 - `Part.cs`: 파트 정의 ScriptableObject. prefab/grid/mass/durability/inventory를 가진다.
 - `PartDB.cs`: `Resources/Parts` 로딩 및 파트 조회 DB.
+- `Structure.cs`: structure 정의 ScriptableObject. footprint, mass/durability/capacity/power, craftRecipe, facilityKind를 가진다.
+- `StructureCatalog.cs`: `Resources/Structures` 로딩/정렬/조회 catalog.
+- `StructureFacilityKind.cs`: structure facility UI 유형 enum. 현재 `None`과 `Fabricator`를 사용한다.
+- `StructureFocus.cs`: 설치된 structure의 focus info provider. owner satellite 연결과 fabricator facility 판별을 담당한다.
+- `StructureInstance.cs`: 설치된 structure의 source asset과 center cell을 보관한다.
 
 ## Gameplay/Spaceship
 - `CaptureRangeHandler.cs`: 포획 범위 트리거 처리.
 - `GravityAffectedMover.cs`: 중력/충돌/이동 통합 처리. 발사 상태와 Orbit-driven 상태 전환도 여기서 관리.
 - `LauncherDirectionGuide.cs`: 발사 방향 라인/화살표 렌더링.
-- `LauncherLaunchController.cs`: 발사 요청 처리 및 발사 실행.
+- `LauncherLaunchController.cs`: 발사 요청 처리 및 발사 실행. launcher stock consume/refund를 포함한다.
 - `LauncherLaunchFocusHandler.cs`: 발사 성공 시 생성 우주선으로 포커스 이동.
 - `LauncherLaunchUtility.cs`: 런처 앵커/방향 계산 유틸.
-- `LauncherSelectionPresenter.cs`: 런처 선택 프리젠터.
+- `LauncherSelectionPresenter.cs`: launcher focus 시 생성되는 대형 panel. hangar/inventory/fuel 표시, launch gating, pointer-over 시 world input block을 담당한다.
+- `LauncherSpaceshipStock.cs`: owner satellite별 발사 가능 spaceship 수량 상태 컨테이너. fabricator manufacture와 launcher 발사가 이 값을 공유한다.
 - `LauncherSpawner.cs`: 실제 우주선 스폰, 초기 속도 적용, 충돌 무시, 아이콘 설정.
 - `Spaceship.cs`: 우주선 파사드. 상태 전이, 포커스 프리젠테이션, target 보유, focus info 조합.
 - `SpaceshipCommittedOrbitRenderSync.cs`: 커밋된 공전 상태에서 우주선 렌더 위치/회전을 `OrbitRevolution`의 보간값과 정확히 맞추는 렌더 동기화 컴포넌트.
@@ -124,7 +133,7 @@
 - `TimeManager.cs`: 시간 재생/일시정지/배속/되감기 루트 컨트롤러.
 
 ## UI
-- `PeriodUI.cs`: 현재 focus 계층의 공전 주기 정보 UI.
+- `PeriodUI.cs`: 현재 focus 계층의 공전 주기 정보 UI. `UIDocument.sortingOrder`를 낮춰 launcher/fabricator UI 아래에 깔리게 한다.
 - `PeriodVisualizer.cs`: 여러 공전 주기의 LCM 기반 시각화 UI.
 - `SpaceshipFuelPanelFactory.cs`: 우주선 연료 패널 런타임 생성 팩토리.
 - `TimeControllerUI.cs`: 시간 제어 UI 버튼 컨트롤러.

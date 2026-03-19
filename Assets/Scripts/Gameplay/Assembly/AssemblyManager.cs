@@ -49,49 +49,62 @@ public class AssemblyManager : MonoBehaviour
 
     public void StartAssemblyMode(ArtificialSatellite artificialSatellite)
     {
-        if (!CanStartAssemblyMode(artificialSatellite)) return;
+        if (artificialSatellite == null)
+        {
+            Debug.LogError("Satellite is missing.");
+            return;
+        }
 
-        SetAssemblyState(true, artificialSatellite);
+        if (isAssembling && sourceSatellite == artificialSatellite)
+        {
+            return;
+        }
 
-        SetAssemblyUIVisible(true);
-        ActivateAssembly(sourceSatellite);
-        FocusAndLogSourceSatellite(StartPhase);
+        if (isAssembling)
+        {
+            StopAssemblyModeInternal();
+        }
+
+        StartAssemblyModeInternal(artificialSatellite);
     }
 
     public void EndAssemblyMode()
     {
-        if (!CanEndAssemblyMode()) return;
+        if (!isAssembling)
+        {
+            return;
+        }
+
+        StopAssemblyModeInternal();
+    }
+
+    private void StartAssemblyModeInternal(ArtificialSatellite artificialSatellite)
+    {
+        if (artificialSatellite == null)
+        {
+            return;
+        }
+
+        SetAssemblyState(true, artificialSatellite);
+        SetAssemblyUIVisible(true);
+        ActivateAssembly(artificialSatellite);
+        Debug.Log($"{StartPhase} assembly mode : {artificialSatellite.name}");
+    }
+
+    private void StopAssemblyModeInternal()
+    {
+        ArtificialSatellite previousSourceSatellite = sourceSatellite;
 
         SetAssemblyUIVisible(false);
         DeactivateAssembly();
-
-        if (sourceSatellite != null)
-        {
-            FocusAndLogSourceSatellite(EndPhase);
-        }
-
-        ResetAssemblyState();
-    }
-
-    private void ResetAssemblyState()
-    {
         SetAssemblyState(false, null);
 
+        if (previousSourceSatellite != null)
+        {
+            Debug.Log($"{EndPhase} assembly mode : {previousSourceSatellite.name}");
+        }
+
         Debug.Log("Assembly mode cleaned up.");
-    }
-
-    private void FocusSourceSatellite()
-    {
-        if (sourceSatellite == null) return;
-        if (!TryGetFocusManager(out FocusManager focusManager)) return;
-        focusManager.SetFocus(sourceSatellite.transform);
-    }
-
-    private void FocusAndLogSourceSatellite(string phase)
-    {
-        if (sourceSatellite == null) return;
-        FocusSourceSatellite();
-        Debug.Log($"{phase} assembly mode : {sourceSatellite.name}");
     }
 
     private static void SetAssemblyUIVisible(bool visible)
@@ -125,11 +138,6 @@ public class AssemblyManager : MonoBehaviour
         return GameplayRuntimeAccess.TryGetAssembly(out assembly);
     }
 
-    private static bool TryGetFocusManager(out FocusManager focusManager)
-    {
-        return CoreRuntimeAccess.TryGetFocusManager(out focusManager);
-    }
-
     public ArtificialSatellite GetSourceSatelliteFor(ArtificialSatellite assemblyTarget)
     {
         if (assemblyTarget == null) return null;
@@ -142,34 +150,6 @@ public class AssemblyManager : MonoBehaviour
         return false;
     }
 
-    private bool CanStartAssemblyMode(ArtificialSatellite artificialSatellite)
-    {
-        if (isAssembling)
-        {
-            Debug.LogWarning("Already in assembly mode.");
-            return false;
-        }
-
-        if (artificialSatellite == null)
-        {
-            Debug.LogError("Satellite is missing.");
-            return false;
-        }
-
-        return true;
-    }
-
-    private bool CanEndAssemblyMode()
-    {
-        if (!isAssembling)
-        {
-            Debug.LogWarning("Not in assembly mode.");
-            return false;
-        }
-
-        return true;
-    }
-
     private void SetAssemblyState(bool assembling, ArtificialSatellite satellite)
     {
         isAssembling = assembling;
@@ -178,13 +158,51 @@ public class AssemblyManager : MonoBehaviour
 
     private void HandleFocusChanged(Transform focused)
     {
-        if (isAssembling) return;
-        if (focused == null) return;
+        ArtificialSatellite focusedSatellite = ResolveAssemblyFocusSatellite(focused);
+
+        if (!isAssembling)
+        {
+            if (focusedSatellite != null)
+            {
+                StartAssemblyModeInternal(focusedSatellite);
+            }
+
+            return;
+        }
+
+        if (focusedSatellite == sourceSatellite)
+        {
+            return;
+        }
+
+        StopAssemblyModeInternal();
+
+        if (focusedSatellite != null)
+        {
+            StartAssemblyModeInternal(focusedSatellite);
+        }
+    }
+
+    private static ArtificialSatellite ResolveAssemblyFocusSatellite(Transform focused)
+    {
+        if (focused == null) return null;
 
         ArtificialSatellite focusedSatellite = focused.GetComponent<ArtificialSatellite>();
-        if (focusedSatellite == null) return;
+        if (focusedSatellite != null) return focusedSatellite;
 
-        StartAssemblyMode(focusedSatellite);
+        AssemblyPartFocus partFocus = focused.GetComponent<AssemblyPartFocus>();
+        if (partFocus != null)
+        {
+            return partFocus.OwnerSatellite;
+        }
+
+        StructureFocus structureFocus = focused.GetComponent<StructureFocus>();
+        if (structureFocus != null)
+        {
+            return structureFocus.OwnerSatellite;
+        }
+
+        return null;
     }
 
     private void HandleFocusManagerInstanceChanged(FocusManager _)
@@ -224,3 +242,4 @@ public class AssemblyManager : MonoBehaviour
         TrySubscribeFocusEvents();
     }
 }
+

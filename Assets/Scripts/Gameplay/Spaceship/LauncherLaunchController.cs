@@ -74,6 +74,12 @@ public class LauncherLaunchController : MonoBehaviour
         spaceshipPrefab = LauncherSpawner.ResolveSpaceshipPrefab(spaceshipPrefab);
     }
 
+    public GameObject GetConfiguredSpaceshipPrefab()
+    {
+        EnsureSpaceshipPrefab();
+        return spaceshipPrefab;
+    }
+
     private bool TryLaunch(Transform launcher, out LauncherSpawner.LaunchResult launchResult)
     {
         launchResult = default;
@@ -85,12 +91,23 @@ public class LauncherLaunchController : MonoBehaviour
             return false;
         }
 
-        return LauncherSpawner.TryLaunch(
-            launcher,
-            spaceshipPrefab,
-            launchSpeed,
-            out launchResult);
+        LauncherSpaceshipStock shipStock = LauncherSpaceshipStock.ResolveForLauncher(launcher, createIfMissing: false);
+        if (shipStock == null || !shipStock.TryConsumeAvailableSpaceships(1))
+        {
+            Debug.Log("[LauncherLaunch] blocked: no available spaceships in launcher stock.");
+            return false;
+        }
+
+        if (LauncherSpawner.TryLaunch(
+                launcher,
+                spaceshipPrefab,
+                launchSpeed,
+                out launchResult))
+        {
+            return true;
+        }
+
+        shipStock.AddAvailableSpaceships(1);
+        return false;
     }
 }
-
-
