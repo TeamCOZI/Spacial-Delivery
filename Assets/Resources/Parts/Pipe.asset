@@ -17,11 +17,14 @@ MonoBehaviour:
   partType: 1
   partPrefab: {fileID: 4178674282768661370, guid: 2e8b7f9f13b447f19f4b41f6447a6b6c, type: 3}
   ghostPrefab: {fileID: 4178674282768661370, guid: a1d84edc9c5f4b8495b1d757d2259d3a, type: 3}
+  cornerPrefab: {fileID: 4178674282768661370, guid: 59d5634cf3194cc5bc3b948916763ba2, type: 3}
+  cornerGhostPrefab: {fileID: 4178674282768661370, guid: 1099eb4920a145ac878ccf6bdcf3d7f5, type: 3}
+  cornerEndPrefab: {fileID: 0}
+  cornerEndGhostPrefab: {fileID: 0}
+  endPrefab: {fileID: 1000000000000000000, guid: 2441af412b0e4f279b5e05dc621d6490, type: 3}
+  endGhostPrefab: {fileID: 1000000000000000000, guid: c9dc680ca3e4464dbfcf5cc67f925a36, type: 3}
   gridWidth: 1
   gridHeight: 1
   durability: 0
   inventory: 0
   mass: 50
-
-
-

@@ -203,10 +203,11 @@ public class AssemblyMeshCombiner : MonoBehaviour
 
         if (t.GetComponentInParent<AssemblyPortVisualMarker>(true) != null) return true;
 
-        // Keep launcher and drop-port visuals as source renderers so they are always visible.
+        // Keep launcher, drop-port, and pipe visuals as source renderers so they are always visible.
         if (ContainsNameTokenInHierarchy(t, "Launcher")) return true;
         if (ContainsNameTokenInHierarchy(t, "Drop")) return true;
         if (ContainsNameTokenInHierarchy(t, "DropPort")) return true;
+        if (ContainsNameTokenInHierarchy(t, "Pipe")) return true;
         if (ContainsNameTokenInHierarchy(t, "Port")) return true;
         if (ContainsNameTokenInHierarchy(t, "Dock")) return true;
 
@@ -218,7 +219,8 @@ public class AssemblyMeshCombiner : MonoBehaviour
 
         return partName.IndexOf("Launcher", StringComparison.OrdinalIgnoreCase) >= 0
             || partName.IndexOf("Drop", StringComparison.OrdinalIgnoreCase) >= 0
-            || partName.IndexOf("DropPort", StringComparison.OrdinalIgnoreCase) >= 0;
+            || partName.IndexOf("DropPort", StringComparison.OrdinalIgnoreCase) >= 0
+            || partName.IndexOf("Pipe", StringComparison.OrdinalIgnoreCase) >= 0;
     }
 
     private static bool ContainsNameTokenInHierarchy(Transform t, string token)

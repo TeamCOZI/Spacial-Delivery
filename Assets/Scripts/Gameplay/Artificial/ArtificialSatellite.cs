@@ -7,7 +7,6 @@ public class ArtificialSatellite : MonoBehaviour, UpdateFocusInfo
     [Header("Artificial Satellite Settings")]
     public float scale = 0.1f;
     public float altitude = 1f;
-    private const float LocalZScaleFactor = 0.1f;
 
     private OrbitRevolution orbitRevolution;
     private bool partFocusInitialized;
@@ -21,10 +20,6 @@ public class ArtificialSatellite : MonoBehaviour, UpdateFocusInfo
 
     private void Start()
     {
-        Vector3 localScale = transform.localScale;
-        localScale.z *= LocalZScaleFactor;
-        transform.localScale = localScale;
-
         EnsureSatelliteBodyHidden();
         InitializeExistingPartFocuses();
         EnsureCoreFocusGridUIs();
@@ -56,9 +51,9 @@ public class ArtificialSatellite : MonoBehaviour, UpdateFocusInfo
 
         Dictionary<string, string> focusInfo = new Dictionary<string, string>
         {
-            { "이름", artificialSatelliteName },
-            { "공전 모체", artificialSatelliteCenter },
-            { "노선", artificialSatelliteRoute }
+            { "\uC774\uB984", artificialSatelliteName },
+            { "\uACF5\uC804 \uBAA8\uCCB4", artificialSatelliteCenter },
+            { "\uB178\uC120", artificialSatelliteRoute }
         };
 
         return focusInfo;
@@ -107,6 +102,7 @@ public class ArtificialSatellite : MonoBehaviour, UpdateFocusInfo
         string objectName = target.name ?? string.Empty;
         if (objectName.IndexOf("Launcher", System.StringComparison.OrdinalIgnoreCase) >= 0) return true;
         if (objectName.IndexOf("Drop", System.StringComparison.OrdinalIgnoreCase) >= 0) return true;
+        if (objectName.IndexOf("Pipe", System.StringComparison.OrdinalIgnoreCase) >= 0) return true;
 
         AssemblyPartFocus partFocus = target.GetComponent<AssemblyPartFocus>();
         if (partFocus == null || partFocus.SourcePart == null) return false;
@@ -114,6 +110,7 @@ public class ArtificialSatellite : MonoBehaviour, UpdateFocusInfo
         string partName = partFocus.SourcePart.partName ?? string.Empty;
         if (partName.IndexOf("Launcher", System.StringComparison.OrdinalIgnoreCase) >= 0) return true;
         if (partName.IndexOf("Drop", System.StringComparison.OrdinalIgnoreCase) >= 0) return true;
+        if (partName.IndexOf("Pipe", System.StringComparison.OrdinalIgnoreCase) >= 0) return true;
 
         return false;
     }

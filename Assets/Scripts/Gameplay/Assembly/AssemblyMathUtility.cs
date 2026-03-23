@@ -46,9 +46,35 @@ public static class AssemblyMathUtility
         return Quaternion.identity;
     }
 
+    public static Quaternion GetPipeCornerVisualRotation(Vector2Int inputDir, Vector2Int outputDir)
+    {
+        if (!AreAdjacentCardinalDirections(inputDir, outputDir)) return Quaternion.identity;
+
+        if (inputDir == Vector2Int.right) return Quaternion.identity;
+        if (inputDir == Vector2Int.up) return Quaternion.Euler(0f, 0f, 90f);
+        if (inputDir == Vector2Int.left) return Quaternion.Euler(0f, 0f, 180f);
+        if (inputDir == Vector2Int.down) return Quaternion.Euler(0f, 0f, 270f);
+        return Quaternion.identity;
+    }
+
+    public static bool ShouldMirrorPipeCornerVisual(Vector2Int inputDir, Vector2Int outputDir)
+    {
+        if (inputDir == Vector2Int.zero || outputDir == Vector2Int.zero) return false;
+        int cross = inputDir.x * outputDir.y - inputDir.y * outputDir.x;
+        return cross < 0;
+    }
+
     public static int Manhattan(Vector2Int a, Vector2Int b)
     {
         return Mathf.Abs(a.x - b.x) + Mathf.Abs(a.y - b.y);
+    }
+
+    private static bool AreAdjacentCardinalDirections(Vector2Int inputDir, Vector2Int outputDir)
+    {
+        if (inputDir == Vector2Int.zero || outputDir == Vector2Int.zero) return false;
+        if (inputDir == outputDir || inputDir == -outputDir) return false;
+        return Mathf.Abs(inputDir.x) + Mathf.Abs(inputDir.y) == 1
+            && Mathf.Abs(outputDir.x) + Mathf.Abs(outputDir.y) == 1;
     }
 
     public static int QuantizeToCellIndex(float valueInCells)
@@ -74,3 +100,5 @@ public static class AssemblyMathUtility
         path.Reverse();
     }
 }
+
+

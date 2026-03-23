@@ -8,11 +8,13 @@ using UnityEngine;
 [RequireComponent(typeof(SpaceshipHUDPresenter))]
 [RequireComponent(typeof(SpaceshipTargetPresenter))]
 [RequireComponent(typeof(SpaceshipOrbitCommitPresenter))]
+[RequireComponent(typeof(OutputPortSelectionPresenter))]
 public class FocusFeatureBootstrap : MonoBehaviour
 {
     private void Awake()
     {
         _ = ComponentUtility.GetOrAddComponent<SpaceshipTargetPresenter>(gameObject);
         _ = ComponentUtility.GetOrAddComponent<SpaceshipOrbitCommitPresenter>(gameObject);
+        _ = ComponentUtility.GetOrAddComponent<OutputPortSelectionPresenter>(gameObject);
     }
 }

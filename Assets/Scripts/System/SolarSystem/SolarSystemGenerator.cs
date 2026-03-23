@@ -177,7 +177,7 @@ public class SolarSystemGenerator : MonoBehaviour
             return false;
         }
 
-        artificialSatellite.transform.localScale = Vector3.one * WorldScale.ScaleLength(artificialSatelliteComponent.scale * 10f);
+        artificialSatellite.transform.localScale = Vector3.one;
         rigidbodyComponent.mass = 0f;
         DoubleMassIfGravityExists(artificialSatellite, rigidbodyComponent);
         gravityComponent.GravityRadius = Mathf.RoundToInt(WorldScale.ScaleLength(artificialSatelliteComponent.scale * 100f));
@@ -256,3 +256,4 @@ public class SolarSystemGenerator : MonoBehaviour
     }
 
 }
+

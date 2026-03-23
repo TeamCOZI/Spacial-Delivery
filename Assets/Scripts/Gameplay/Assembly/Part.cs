@@ -15,6 +15,12 @@ public class Part : ScriptableObject
 
     public GameObject partPrefab;
     public GameObject ghostPrefab;
+    public GameObject cornerPrefab;
+    public GameObject cornerGhostPrefab;
+    public GameObject cornerEndPrefab;
+    public GameObject cornerEndGhostPrefab;
+    public GameObject endPrefab;
+    public GameObject endGhostPrefab;
 
     [Header("Grid Footprint (Cell Units)")]
     [Min(1)] public int gridWidth = 1;

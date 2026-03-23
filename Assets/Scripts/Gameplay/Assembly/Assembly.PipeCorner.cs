@@ -3,7 +3,7 @@ using UnityEngine;
 
 public partial class Assembly
 {
-    private void BuildPipePathGhosts(List<Vector2Int> path, bool isValid)
+    private void BuildPipePathGhosts(List<Vector2Int> path, bool isValid, Vector2Int terminalDirection)
     {
         ClearPipePathGhosts();
         if (part == null || part.ghostPrefab == null || artificialSatellite == null) return;
@@ -20,15 +20,15 @@ public partial class Assembly
         {
             Vector2Int cell = path[i];
             Vector2Int previousDir = GetPathSegmentPreviousDir(path, i);
-            Vector2Int nextDir = GetPathDirection(path, i, i + 1);
+            Vector2Int nextDir = GetPathSegmentNextDir(path, i, terminalDirection);
             bool isCorner = IsCornerSegment(previousDir, nextDir);
             Quaternion rot = isCorner
-                ? Quaternion.identity
+                ? GetPipeCornerRotation(previousDir, nextDir)
                 : GetPipeSegmentRotation(previousDir, nextDir);
             Vector3 localPos = GridToLocalPosition(cell, snapOffset);
 
             GameObject ghostSegment = isCorner
-                ? CreatePipeCornerObject(part.ghostPrefab, true, previousDir, nextDir)
+                ? CreatePipeCornerObject(GetPipeCornerTemplate(part, true), part.ghostPrefab, true, previousDir, nextDir)
                 : Instantiate(part.ghostPrefab);
 
             ghostSegment.name = isCorner ? "PipeCornerGhost" : "PipeGhost";
@@ -45,9 +45,12 @@ public partial class Assembly
                 isCorner,
                 previousDir,
                 nextDir,
+                rot,
                 showInputPort: i == 0,
                 showOutputPort: i == path.Count - 1);
         }
+
+        RefreshPipePathGhostEnds(ghostColor);
     }
 
     private void ClearPipePathGhosts()
@@ -70,9 +73,14 @@ public partial class Assembly
     {
         if (targetSatellite == null || targetPart == null) return null;
 
-        GameObject cornerRoot = CreatePipeCornerObject(targetPart.partPrefab, false, previousDir, nextDir);
-        Vector3 inputLocal = new Vector3(-previousDir.x, -previousDir.y, 0f) * (cellSize * 0.5f);
-        Vector3 outputLocal = new Vector3(nextDir.x, nextDir.y, 0f) * (cellSize * 0.5f);
+        GameObject cornerRoot = CreatePipeCornerObject(
+            GetPipeCornerTemplate(targetPart, false),
+            targetPart.partPrefab,
+            false,
+            previousDir,
+            nextDir);
+        Vector3 inputLocal = GetPipeCornerPortLocal(localRot, -previousDir);
+        Vector3 outputLocal = GetPipeCornerPortLocal(localRot, nextDir);
         return AddPartObjectToSatellite(
             targetSatellite,
             targetPart,
@@ -84,16 +92,33 @@ public partial class Assembly
             outputLocal);
     }
 
-    private GameObject CreatePipeCornerObject(GameObject templatePrefab, bool isGhost, Vector2Int previousDir, Vector2Int nextDir)
+    private static GameObject GetPipeCornerTemplate(Part targetPart, bool isGhost)
     {
-        if (templatePrefab == null) return new GameObject(isGhost ? "PipeCornerGhostRuntime" : "PipeCornerRuntime");
+        if (targetPart == null) return null;
+        return isGhost ? targetPart.cornerGhostPrefab : targetPart.cornerPrefab;
+    }
+
+    private GameObject CreatePipeCornerObject(
+        GameObject cornerTemplatePrefab,
+        GameObject straightTemplatePrefab,
+        bool isGhost,
+        Vector2Int previousDir,
+        Vector2Int nextDir)
+    {
+        if (cornerTemplatePrefab != null)
+        {
+            GameObject instance = Instantiate(cornerTemplatePrefab);
+            instance.name = isGhost ? "PipeCornerGhostRuntime" : "PipeCornerRuntime";
+            ApplyPipeCornerPrefabChirality(instance.transform, cornerTemplatePrefab != null ? cornerTemplatePrefab.transform : null, previousDir, nextDir);
+            return instance;
+        }
 
         GameObject root = new GameObject(isGhost ? "PipeCornerGhostRuntime" : "PipeCornerRuntime");
-        GameObject armA = Instantiate(templatePrefab, root.transform);
-        GameObject armB = Instantiate(templatePrefab, root.transform);
+        if (straightTemplatePrefab == null) return root;
 
-        // previousDir points from previous cell -> current cell,
-        // so this arm must point back toward the previous cell.
+        GameObject armA = Instantiate(straightTemplatePrefab, root.transform);
+        GameObject armB = Instantiate(straightTemplatePrefab, root.transform);
+
         ConfigureCornerArm(armA.transform, -previousDir);
         ConfigureCornerArm(armB.transform, nextDir);
 
@@ -105,6 +130,62 @@ public partial class Assembly
         return root;
     }
 
+    private void ApplyPipeCornerPrefabChirality(Transform cornerRoot, Transform templateRoot, Vector2Int previousDir, Vector2Int nextDir)
+    {
+        if (cornerRoot == null) return;
+
+        Vector2Int inputDir = -previousDir;
+        Vector2Int outputDir = nextDir;
+        bool shouldMirror = AssemblyMathUtility.ShouldMirrorPipeCornerVisual(inputDir, outputDir);
+        ApplyPipeCornerVisualVariant(cornerRoot, templateRoot, shouldMirror);
+    }
+
+    private static Transform FindPipeCornerPrimaryVisual(Transform cornerRoot)
+    {
+        if (cornerRoot == null) return null;
+
+        for (int i = 0; i < cornerRoot.childCount; i++)
+        {
+            Transform child = cornerRoot.GetChild(i);
+            if (child == null) continue;
+            if (string.Equals(child.name, RuntimePortsRootName, System.StringComparison.Ordinal)) continue;
+            if (string.Equals(child.name, PipeReplacementVisualName, System.StringComparison.Ordinal)) continue;
+            return child;
+        }
+
+        return null;
+    }
+
+
+    private static void ApplyPipeCornerVisualVariant(Transform cornerRoot, Transform templateRoot, bool clockwise)
+    {
+        if (cornerRoot == null) return;
+
+        Transform targetVisual = FindPipeCornerPrimaryVisual(cornerRoot);
+        if (targetVisual == null) return;
+
+        Transform templateVisual = FindPipeCornerPrimaryVisual(templateRoot != null ? templateRoot : cornerRoot);
+        if (templateVisual == null) return;
+
+        targetVisual.localPosition = templateVisual.localPosition;
+        targetVisual.localRotation = templateVisual.localRotation;
+
+        Vector3 baseScale = templateVisual.localScale;
+        float magnitudeY = Mathf.Abs(baseScale.y);
+        if (magnitudeY < 0.0001f) magnitudeY = 1f;
+        baseScale.y = clockwise ? -magnitudeY : magnitudeY;
+        targetVisual.localScale = baseScale;
+
+        if (clockwise)
+        {
+            targetVisual.localRotation = templateVisual.localRotation * Quaternion.Euler(180f, 0f, 0f);
+        }
+    }
+
+    private static bool IsClockwisePipeCornerVisual(Transform targetVisual)
+    {
+        return targetVisual != null && targetVisual.localScale.y < 0f;
+    }
     private void ConfigureCornerArm(Transform arm, Vector2Int dir)
     {
         if (arm == null) return;
@@ -120,11 +201,25 @@ public partial class Assembly
         arm.localScale = new Vector3(length, thickness, 1f);
     }
 
+    private static Quaternion GetPipeCornerRotation(Vector2Int previousDir, Vector2Int nextDir)
+    {
+        Vector2Int inputDir = -previousDir;
+        Vector2Int outputDir = nextDir;
+        return AssemblyMathUtility.GetPipeCornerVisualRotation(inputDir, outputDir);
+    }
+
+    private Vector3 GetPipeCornerPortLocal(Quaternion cornerRotation, Vector2Int desiredSatelliteDirection)
+    {
+        Vector3 desiredLocal = new Vector3(desiredSatelliteDirection.x, desiredSatelliteDirection.y, 0f) * (cellSize * 0.5f);
+        return Quaternion.Inverse(cornerRotation) * desiredLocal;
+    }
+
     private void ConfigurePipeGhostPortsLikePlacedSegment(
         GameObject ghostSegment,
         bool isCorner,
         Vector2Int previousDir,
         Vector2Int nextDir,
+        Quaternion segmentRotation,
         bool showInputPort,
         bool showOutputPort)
     {
@@ -133,8 +228,8 @@ public partial class Assembly
         AssemblyPartPortProfile profile = ComponentUtility.GetOrAddComponent<AssemblyPartPortProfile>(ghostSegment);
         if (isCorner)
         {
-            Vector3 inputLocal = new Vector3(-previousDir.x, -previousDir.y, 0f) * (cellSize * 0.5f);
-            Vector3 outputLocal = new Vector3(nextDir.x, nextDir.y, 0f) * (cellSize * 0.5f);
+            Vector3 inputLocal = GetPipeCornerPortLocal(segmentRotation, -previousDir);
+            Vector3 outputLocal = GetPipeCornerPortLocal(segmentRotation, nextDir);
             ConfigureRuntimePipePorts(
                 ghostSegment,
                 profile,
@@ -158,3 +253,4 @@ public partial class Assembly
         SmallScaleLayerUtility.ApplyRecursively(ghostSegment.transform);
     }
 }
+

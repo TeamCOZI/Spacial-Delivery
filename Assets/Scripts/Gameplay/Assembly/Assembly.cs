@@ -45,6 +45,7 @@ public partial class Assembly : MonoBehaviour
     private readonly List<Vector2Int> pipePreviewPath = new List<Vector2Int>();
     private Vector2Int lastPipeHoverCell;
     private bool hasLastPipeHoverCell = false;
+    private Vector2Int pipePathTerminalDirection;
     private GameObject pipePathGhostRoot;
 
     private Plane assemblyPlane;
@@ -111,7 +112,6 @@ public partial class Assembly : MonoBehaviour
     private static readonly Color InputPortColor = new Color(0.15f, 0.9f, 0.95f, 1f);
     private const float DirectionEpsilonSqr = 0.000001f;
     private const float MinCameraSpaceDepth = 0.01f;
-    private const float MirrorPartMatchPositionEpsilon = 0.0005f;
     private static readonly Vector3 DefaultPortDirection = Vector3.right;
     private static readonly Vector2 ZeroSnapOffset = Vector2.zero;
     private const string RuntimePortsRootName = "__RuntimePorts";
@@ -332,6 +332,11 @@ public partial class Assembly : MonoBehaviour
             canPlace = TryMatchGhostToOutputPort();
         }
         SetGhostPlacementVisual(canPlace);
+
+        if (IsPipePart(part) && !pipePathStartSelected)
+        {
+            RefreshCurrentPipePlacementGhostEnds(canPlace ? GhostValidColor : GhostInvalidColor);
+        }
     }
 
     private void Apply()
@@ -454,7 +459,8 @@ public partial class Assembly : MonoBehaviour
         string partName = targetPart.partName;
         return partName.IndexOf("Launcher", System.StringComparison.OrdinalIgnoreCase) >= 0
             || partName.IndexOf("Drop", System.StringComparison.OrdinalIgnoreCase) >= 0
-            || partName.IndexOf("DropPort", System.StringComparison.OrdinalIgnoreCase) >= 0;
+            || partName.IndexOf("DropPort", System.StringComparison.OrdinalIgnoreCase) >= 0
+            || partName.IndexOf("Pipe", System.StringComparison.OrdinalIgnoreCase) >= 0;
     }
 
     private static bool HasAlwaysVisiblePortVisuals(GameObject root)
@@ -553,14 +559,16 @@ public partial class Assembly : MonoBehaviour
         return sourceSatellite != null && sourceSatellite != assemblyTarget;
     }
 
-    private static void RebuildMeshesForAssemblyTargets(ArtificialSatellite assemblyTarget, ArtificialSatellite sourceSatellite)
+    private void RebuildMeshesForAssemblyTargets(ArtificialSatellite assemblyTarget, ArtificialSatellite sourceSatellite)
     {
         RebuildCombinedMesh(assemblyTarget);
+        RefreshPipeEndVisualsForSatellite(assemblyTarget);
 
         bool isSandboxTarget = IsSandboxTarget(assemblyTarget);
         if (!isSandboxTarget && ShouldMirrorToSourceSatellite(assemblyTarget, sourceSatellite))
         {
             RebuildCombinedMesh(sourceSatellite);
+            RefreshPipeEndVisualsForSatellite(sourceSatellite);
         }
     }
 
@@ -590,6 +598,7 @@ public partial class Assembly : MonoBehaviour
         pipePreviewPath.Clear();
         pipePathStartIncomingDir = Vector2Int.zero;
         hasLastPipeHoverCell = false;
+        pipePathTerminalDirection = Vector2Int.zero;
         ResetPipeDebugState();
     }
 
@@ -762,7 +771,8 @@ public partial class Assembly : MonoBehaviour
     {
         if (removableRoots == null || removableRoots.Count == 0) return false;
 
-        List<(Vector3 localPosition, string partName)> removedPartInfos = new List<(Vector3 localPosition, string partName)>();
+        List<(Vector2Int centerCell, string partName, bool hasCenterCell)> removedPartInfos =
+            new List<(Vector2Int centerCell, string partName, bool hasCenterCell)>();
         bool removedAny = false;
 
         for (int i = 0; i < removableRoots.Count; i++)
@@ -770,7 +780,8 @@ public partial class Assembly : MonoBehaviour
             GameObject removableRoot = removableRoots[i];
             if (!CanSelectPart(removableRoot)) continue;
 
-            removedPartInfos.Add((removableRoot.transform.localPosition, GetPartName(removableRoot)));
+            bool hasCenterCell = TryGetPartCenterCell(removableRoot, out Vector2Int centerCell);
+            removedPartInfos.Add((centerCell, GetPartName(removableRoot), hasCenterCell));
             RemovePartObjectFromSatellite(artificialSatellite, removableRoot);
             removedAny = true;
         }
@@ -783,8 +794,10 @@ public partial class Assembly : MonoBehaviour
             HashSet<GameObject> removedMirroredParts = new HashSet<GameObject>();
             for (int i = 0; i < removedPartInfos.Count; i++)
             {
-                (Vector3 localPosition, string partName) partInfo = removedPartInfos[i];
-                GameObject mirrored = FindMatchingPartOnSatellite(sourceSatellite, partInfo.localPosition, partInfo.partName);
+                (Vector2Int centerCell, string partName, bool hasCenterCell) partInfo = removedPartInfos[i];
+                if (!partInfo.hasCenterCell) continue;
+
+                GameObject mirrored = FindMatchingPartOnSatellite(sourceSatellite, partInfo.centerCell, partInfo.partName);
                 if (mirrored == null) continue;
                 if (!removedMirroredParts.Add(mirrored)) continue;
                 RemovePartObjectFromSatellite(sourceSatellite, mirrored);
@@ -922,15 +935,11 @@ public partial class Assembly : MonoBehaviour
         return false;
     }
 
-    private GameObject FindMatchingPartOnSatellite(ArtificialSatellite satellite, Vector3 localPosition, string partName)
+    private GameObject FindMatchingPartOnSatellite(ArtificialSatellite satellite, Vector2Int centerCell, string partName)
     {
-        if (satellite == null) return null;
+        if (satellite == null || !IsInsideGrid(centerCell)) return null;
 
         AssemblyPartFocus[] parts = satellite.GetComponentsInChildren<AssemblyPartFocus>(true);
-        GameObject best = null;
-        float bestDistanceSq = float.MaxValue;
-        float matchDistanceSq = MirrorPartMatchPositionEpsilon * MirrorPartMatchPositionEpsilon;
-
         for (int i = 0; i < parts.Length; i++)
         {
             AssemblyPartFocus partFocus = parts[i];
@@ -942,15 +951,33 @@ public partial class Assembly : MonoBehaviour
                 continue;
             }
 
-            float distanceSq = (partFocus.transform.localPosition - localPosition).sqrMagnitude;
-            if (distanceSq > matchDistanceSq) continue;
-            if (distanceSq >= bestDistanceSq) continue;
-
-            best = partFocus.gameObject;
-            bestDistanceSq = distanceSq;
+            if (!TryGetPartCenterCell(partFocus.gameObject, out Vector2Int candidateCell)) continue;
+            if (candidateCell != centerCell) continue;
+            return partFocus.gameObject;
         }
 
-        return best;
+        return null;
+    }
+
+    private bool TryGetPartCenterCell(GameObject partRoot, out Vector2Int centerCell)
+    {
+        centerCell = Vector2Int.zero;
+        if (partRoot == null) return false;
+
+        Transform rootTransform = partRoot.transform;
+        AssemblyPartPortLayout layout = partRoot.GetComponent<AssemblyPartPortLayout>();
+        AssemblyPartFocus focus = partRoot.GetComponent<AssemblyPartFocus>();
+        Vector2 snapOffset = GetSnapOffsetFromPartFocus(focus);
+
+        if (layout != null && layout.Ports != null && layout.Ports.Count > 0)
+        {
+            Vector2 pivotOffset = GetPartPivotOffset(layout, rootTransform.localRotation);
+            centerCell = LocalPositionToGrid(rootTransform.localPosition - (Vector3)pivotOffset, snapOffset);
+            return IsInsideGrid(centerCell);
+        }
+
+        centerCell = LocalPositionToGrid(rootTransform.localPosition, snapOffset);
+        return IsInsideGrid(centerCell);
     }
 
     private static string GetPartName(GameObject root)
@@ -1780,10 +1807,12 @@ public partial class Assembly : MonoBehaviour
         for (int i = 0; i < inputCount; i++)
         {
             Vector3 inputLocal = ghostPortProfile.GetInputPortLocalPosition(i);
-            Vector3 inputDirOnSatellite = partGhost.transform.localRotation * inputLocal;
-            CellSideMask inputSide = DirectionToSideMask(inputDirOnSatellite);
-            if (inputSide == CellSideMask.None) continue;
-            inputs.Add((centerCell, inputSide));
+            if (!TryResolveGhostBoundaryFromLocalPosition(inputLocal, out Vector2Int sourceCell, out CellSideMask inputSide))
+            {
+                continue;
+            }
+
+            inputs.Add((sourceCell, inputSide));
         }
 
         return inputs.Count > 0;
@@ -1814,70 +1843,48 @@ public partial class Assembly : MonoBehaviour
             return outputs.Count > 0;
         }
 
-        HashSet<CellSideMask> sides = new HashSet<CellSideMask>();
-        if (artificialSatellite == null) return false;
-
+        HashSet<(Vector2Int cell, CellSideMask side)> uniqueOutputs = new HashSet<(Vector2Int cell, CellSideMask side)>();
         Transform[] all = partGhost.GetComponentsInChildren<Transform>(true);
-        Vector3 centerLocalOnSatellite = partGhost.transform.localPosition;
         for (int i = 0; i < all.Length; i++)
         {
             Transform t = all[i];
             if (t == null || t == partGhost.transform) continue;
             if (!IsOutputPortTransform(t)) continue;
 
-            Vector3 portLocalOnSatellite = artificialSatellite.transform.InverseTransformPoint(t.position);
-            Vector3 direction = portLocalOnSatellite - centerLocalOnSatellite;
-            CellSideMask side = DirectionToSideMask(direction);
-            if (side == CellSideMask.None) continue;
-            sides.Add(side);
+            Vector3 outputLocal = partGhost.transform.InverseTransformPoint(t.position);
+            if (!TryResolveGhostBoundaryFromLocalPosition(outputLocal, out Vector2Int sourceCell, out CellSideMask outputSide))
+            {
+                continue;
+            }
+
+            uniqueOutputs.Add((sourceCell, outputSide));
         }
 
-        foreach (CellSideMask side in sides)
-        {
-            outputs.Add((centerCell, side));
-        }
-
+        outputs.AddRange(uniqueOutputs);
         return outputs.Count > 0;
     }
 
-    private bool TryResolveGhostEntryFromTransform(
-        AssemblyPartPortLayout.PortEntry entry,
-        CellSideMask fallbackSide,
-        Vector2 snapOffset,
+    private bool TryResolveGhostBoundaryFromLocalPosition(
+        Vector3 portLocal,
         out Vector2Int sourceCell,
         out CellSideMask side)
     {
         sourceCell = Vector2Int.zero;
         side = CellSideMask.None;
-        if (entry == null || entry.portTransform == null) return false;
-        if (artificialSatellite == null) return false;
+        if (partGhost == null) return false;
 
-        side = ResolveGhostPortSide(entry.portTransform, fallbackSide);
+        Quaternion ghostRotation = partGhost.transform.localRotation;
+        Vector3 rotatedLocal = ghostRotation * portLocal;
+        side = DirectionToSideMask(rotatedLocal);
         if (side == CellSideMask.None) return false;
 
         Vector2Int sideOffset = SideToCellOffset(side);
         if (sideOffset == Vector2Int.zero) return false;
 
-        Vector3 portLocalOnSatellite = artificialSatellite.transform.InverseTransformPoint(entry.portTransform.position);
+        Vector3 portLocalOnSatellite = partGhost.transform.localPosition + rotatedLocal;
         Vector3 sourceCellCenterLocal = portLocalOnSatellite - new Vector3(sideOffset.x * cellSize * 0.5f, sideOffset.y * cellSize * 0.5f, 0f);
-        sourceCell = LocalPositionToGrid(sourceCellCenterLocal, snapOffset);
+        sourceCell = LocalPositionToGrid(sourceCellCenterLocal, GetCurrentPartSnapOffset());
         return IsInsideGrid(sourceCell);
-    }
-
-    private CellSideMask ResolveGhostPortSide(Transform portTransform, CellSideMask fallbackSide)
-    {
-        if (portTransform == null || artificialSatellite == null) return fallbackSide;
-
-        AssemblyPort port = portTransform.GetComponent<AssemblyPort>();
-        if (port != null && port.LocalDirection.sqrMagnitude > DirectionEpsilonSqr)
-        {
-            Vector3 worldDirection = portTransform.TransformDirection(port.LocalDirection.normalized);
-            Vector3 localDirection = artificialSatellite.transform.InverseTransformDirection(worldDirection);
-            CellSideMask side = DirectionToSideMask(localDirection);
-            if (side != CellSideMask.None) return side;
-        }
-
-        return fallbackSide;
     }
 
     private static bool IsPipeOwnedOutputPort(AssemblyPort outputPort)
@@ -1988,6 +1995,7 @@ public partial class Assembly : MonoBehaviour
             pipePreviewPath.Add(pipePathStartCell);
             pipePathStartIncomingDir = GetPipeStartIncomingDirection();
             hasLastPipeHoverCell = false;
+            pipePathTerminalDirection = Vector2Int.zero;
 
             partGhost.SetActive(false);
             UpdatePipePathPreview();
@@ -2004,22 +2012,31 @@ public partial class Assembly : MonoBehaviour
         if (partGhost == null || part == null || part.partType != PartType.Pipe) return;
 
         Vector2Int hoverCell = GetCurrentGhostCenterCell();
-        if (hasLastPipeHoverCell && hoverCell == lastPipeHoverCell) return;
+        Vector2Int previousHoverCell = lastPipeHoverCell;
+        bool hadPreviousHoverCell = hasLastPipeHoverCell;
+        if (hadPreviousHoverCell && hoverCell == previousHoverCell) return;
         hasLastPipeHoverCell = true;
         lastPipeHoverCell = hoverCell;
 
-        if (!TryFindPipePath(pipePathStartCell, hoverCell, out List<Vector2Int> path))
+        if (!TryResolvePipePreviewPath(
+            hoverCell,
+            hadPreviousHoverCell,
+            previousHoverCell,
+            out List<Vector2Int> path,
+            out Vector2Int terminalDirection))
         {
             pipePreviewPath.Clear();
+            pipePathTerminalDirection = Vector2Int.zero;
             canPlace = false;
-            BuildPipePathGhosts(pipePreviewPath, false);
+            BuildPipePathGhosts(pipePreviewPath, false, pipePathTerminalDirection);
             return;
         }
 
         pipePreviewPath.Clear();
         pipePreviewPath.AddRange(path);
+        pipePathTerminalDirection = terminalDirection;
         canPlace = pipePreviewPath.Count > 0;
-        BuildPipePathGhosts(pipePreviewPath, canPlace);
+        BuildPipePathGhosts(pipePreviewPath, canPlace, pipePathTerminalDirection);
     }
 
     private void ApplyPipePath()
@@ -2033,11 +2050,11 @@ public partial class Assembly : MonoBehaviour
         {
             Vector2Int cell = pipePreviewPath[i];
             Vector2Int previousDir = GetPathSegmentPreviousDir(pipePreviewPath, i);
-            Vector2Int nextDir = GetPathDirection(pipePreviewPath, i, i + 1);
+            Vector2Int nextDir = GetPathSegmentNextDir(pipePreviewPath, i, pipePathTerminalDirection);
             Vector3 localPos = GridToLocalPosition(cell, GetCurrentPartSnapOffset());
             bool isCorner = IsCornerSegment(previousDir, nextDir);
             Quaternion localRot = isCorner
-                ? Quaternion.identity
+                ? GetPipeCornerRotation(previousDir, nextDir)
                 : GetPipeSegmentRotation(previousDir, nextDir);
             GameObject placed = isCorner
                 ? AddPipeCornerToSatellite(artificialSatellite, part, localPos, localRot, previousDir, nextDir)
@@ -2070,3 +2087,6 @@ public partial class Assembly : MonoBehaviour
 
 
 }
+
+
+

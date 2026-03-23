@@ -163,8 +163,12 @@ public partial class UserInput
 
         Transform parentFocus = null;
 
-        AssemblyPartFocus partFocus = currentFocus.GetComponent<AssemblyPartFocus>();
-        if (partFocus != null && partFocus.OwnerSatellite != null)
+        AssemblyOutputPortFocus outputPortFocus = currentFocus.GetComponent<AssemblyOutputPortFocus>();
+        if (outputPortFocus != null)
+        {
+            parentFocus = outputPortFocus.ResolveCloseFocus();
+        }
+        else if (currentFocus.TryGetComponent(out AssemblyPartFocus partFocus) && partFocus.OwnerSatellite != null)
         {
             parentFocus = partFocus.OwnerSatellite.transform;
         }
@@ -220,6 +224,24 @@ public partial class UserInput
         {
             // Icon click in satellite hierarchy should always step to satellite-level focus.
             return ownerSatellite.transform;
+        }
+
+        AssemblyOutputPortFocus outputPortFocus = candidate.GetComponentInParent<AssemblyOutputPortFocus>();
+        if (outputPortFocus != null)
+        {
+            ArtificialSatellite owner = outputPortFocus.OwnerSatellite;
+            if (owner != null)
+            {
+                bool ownerFocused = currentFocus == owner.transform;
+                bool siblingFocused = IsSatelliteSiblingFocus(currentFocus, owner);
+
+                if (!ownerFocused && !siblingFocused)
+                {
+                    return owner.transform;
+                }
+            }
+
+            return outputPortFocus.transform;
         }
 
         StructureFocus structureFocus = candidate.GetComponentInParent<StructureFocus>();
@@ -290,6 +312,12 @@ public partial class UserInput
             return false;
         }
 
+        AssemblyOutputPortFocus currentOutputPortFocus = currentFocus.GetComponent<AssemblyOutputPortFocus>();
+        if (currentOutputPortFocus != null && currentOutputPortFocus.OwnerSatellite == owner)
+        {
+            return true;
+        }
+
         AssemblyPartFocus currentPartFocus = currentFocus.GetComponent<AssemblyPartFocus>();
         if (currentPartFocus != null && currentPartFocus.OwnerSatellite == owner)
         {
@@ -332,6 +360,11 @@ public partial class UserInput
             return true;
         }
 
+        if (OutputPortSelectionPresenter.IsWorldInputBlockedByPanel)
+        {
+            return true;
+        }
+
         if (GameplayRuntimeAccess.TryGetAssemblyUi(out AssemblyUI assemblyUi) &&
             assemblyUi != null &&
             assemblyUi.IsWorldInputBlockedByPopup)
@@ -351,6 +384,9 @@ public partial class UserInput
     {
         if (focus == null) return false;
         if (focus.GetComponent<ArtificialSatellite>() != null) return true;
+
+        AssemblyOutputPortFocus outputPortFocus = focus.GetComponent<AssemblyOutputPortFocus>();
+        if (outputPortFocus != null && outputPortFocus.OwnerSatellite != null) return true;
 
         AssemblyPartFocus partFocus = focus.GetComponent<AssemblyPartFocus>();
         return partFocus != null && partFocus.OwnerSatellite != null;
@@ -716,7 +752,8 @@ public partial class UserInput
                 continue;
             }
 
-            FocusHitResult hit = new FocusHitResult(partFocus.transform, collider, hitPoint, hitNormal, hitDistance);
+            Transform focusTransform = ResolveSatelliteChildFocusTransform(collider.transform, partFocus.transform);
+            FocusHitResult hit = new FocusHitResult(focusTransform, collider, hitPoint, hitNormal, hitDistance);
             if (hit.distance < bestColliderDistance)
             {
                 foundAnyHit = true;
@@ -736,7 +773,8 @@ public partial class UserInput
                 continue;
             }
 
-            FocusHitResult hit = new FocusHitResult(partFocus.transform, null, hitPoint, hitNormal, hitDistance);
+            Transform focusTransform = ResolveSatelliteChildFocusTransform(renderer.transform, partFocus.transform);
+            FocusHitResult hit = new FocusHitResult(focusTransform, null, hitPoint, hitNormal, hitDistance);
             if (hit.distance < bestHelperDistance)
             {
                 foundAnyHit = true;
@@ -769,7 +807,8 @@ public partial class UserInput
                 continue;
             }
 
-            FocusHitResult hit = new FocusHitResult(structureFocus.transform, collider, hitPoint, hitNormal, hitDistance);
+            Transform focusTransform = ResolveSatelliteChildFocusTransform(collider.transform, structureFocus.transform);
+            FocusHitResult hit = new FocusHitResult(focusTransform, collider, hitPoint, hitNormal, hitDistance);
             if (hit.distance < bestColliderDistance)
             {
                 foundAnyHit = true;
@@ -789,7 +828,8 @@ public partial class UserInput
                 continue;
             }
 
-            FocusHitResult hit = new FocusHitResult(structureFocus.transform, null, hitPoint, hitNormal, hitDistance);
+            Transform focusTransform = ResolveSatelliteChildFocusTransform(renderer.transform, structureFocus.transform);
+            FocusHitResult hit = new FocusHitResult(focusTransform, null, hitPoint, hitNormal, hitDistance);
             if (hit.distance < bestHelperDistance)
             {
                 foundAnyHit = true;
@@ -1075,6 +1115,14 @@ public partial class UserInput
         focusedSatellite = currentFocus.GetComponent<ArtificialSatellite>();
         if (focusedSatellite != null) return true;
 
+        AssemblyOutputPortFocus outputPortFocus = currentFocus.GetComponent<AssemblyOutputPortFocus>();
+        if (outputPortFocus != null)
+        {
+            focusedSatellite = outputPortFocus.OwnerSatellite;
+        }
+
+        if (focusedSatellite != null) return true;
+
         AssemblyPartFocus partFocus = currentFocus.GetComponent<AssemblyPartFocus>();
         if (partFocus != null)
         {
@@ -1091,6 +1139,20 @@ public partial class UserInput
         }
 
         return focusedSatellite != null;
+    }
+
+    private static Transform ResolveSatelliteChildFocusTransform(Transform hitTransform, Transform fallbackTransform)
+    {
+        if (hitTransform != null)
+        {
+            AssemblyOutputPortFocus outputPortFocus = hitTransform.GetComponentInParent<AssemblyOutputPortFocus>();
+            if (outputPortFocus != null)
+            {
+                return outputPortFocus.transform;
+            }
+        }
+
+        return fallbackTransform;
     }
 
     private static bool IsHitWithinSatellite(Transform hitTransform, ArtificialSatellite satellite)

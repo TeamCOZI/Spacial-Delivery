@@ -4,7 +4,7 @@ using System.Collections.Generic;
 
 public class PeriodUI : FocusEventSubscriber
 {
-    private const int BackmostSortingOrder = -100;
+    private const int BackmostSortingOrder = -1000;
 
     private VisualElement root;
     private UIDocument uiDocument;
@@ -20,7 +20,6 @@ public class PeriodUI : FocusEventSubscriber
         uiDocument = GetComponent<UIDocument>();
         if (uiDocument == null) return;
 
-        uiDocument.sortingOrder = BackmostSortingOrder;
         root = uiDocument.rootVisualElement;
 
         rootUI = root.Q<VisualElement>("RootUI");
@@ -29,8 +28,47 @@ public class PeriodUI : FocusEventSubscriber
         period = root.Q<ProgressBar>("Period");
         if (period != null) period.value = 0f;
 
+        ApplyBackmostUiState();
+
     }
 
+    protected override void OnEnable()
+    {
+        base.OnEnable();
+        ApplyBackmostUiState();
+    }
+
+    protected override void LateUpdate()
+    {
+        base.LateUpdate();
+        ApplyBackmostUiState();
+    }
+    private void ApplyBackmostUiState()
+    {
+        if (uiDocument == null) return;
+
+        uiDocument.sortingOrder = BackmostSortingOrder;
+
+        if (root != null)
+        {
+            root.pickingMode = PickingMode.Ignore;
+        }
+
+        if (rootUI != null)
+        {
+            rootUI.pickingMode = PickingMode.Ignore;
+        }
+
+        if (uiContainer != null)
+        {
+            uiContainer.pickingMode = PickingMode.Ignore;
+        }
+
+        if (period != null)
+        {
+            period.pickingMode = PickingMode.Ignore;
+        }
+    }
     private void FixedUpdate()
     {
         if (period == null) return;
@@ -92,12 +130,14 @@ public class PeriodUI : FocusEventSubscriber
         if (rootUI == null || uiContainer == null || period == null) return;
 
         var wrapper = new VisualElement();
+        wrapper.pickingMode = PickingMode.Ignore;
         wrapper.style.flexGrow = 1;
         wrapper.style.flexDirection = FlexDirection.Column;
         wrapper.style.alignItems = Align.Center;
         wrapper.style.justifyContent = Justify.Center;
 
         var bar = new ProgressBar();
+        bar.pickingMode = PickingMode.Ignore;
         bar.value = period.value;
 
         foreach (var className in period.GetClasses()) bar.AddToClassList(className);

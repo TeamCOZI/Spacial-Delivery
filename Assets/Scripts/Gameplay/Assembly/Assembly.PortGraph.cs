@@ -56,7 +56,12 @@ public partial class Assembly
                 }
             }
             outputPorts.Add(outputPort);
-
+            ConfigureOutputPortFocusMetadata(
+                outputPort,
+                Vector2Int.zero,
+                Vector2Int.zero,
+                ResolveOutputPortSide(outputPort),
+                false);
             Renderer portRenderer = current.GetComponent<Renderer>();
             AssemblyPortPulse pulse = current.GetComponent<AssemblyPortPulse>();
             if (portRenderer != null)
@@ -80,6 +85,7 @@ public partial class Assembly
 
         RegisterPartLayoutPortMappings();
         RecalculateOutputPortOccupancyFromGrid();
+        RefreshPipeEndVisualsForSatellite(artificialSatellite);
     }
 
     private void BuildCoreLayoutMapping()
@@ -260,6 +266,43 @@ public partial class Assembly
             }
         }
         perSide[mappedSide] = outputPort;
+
+        ConfigureOutputPortFocusMetadata(outputPort, sourceCell, mappedCell, outputSide, true);
+    }
+
+    private void ConfigureOutputPortFocusMetadata(
+        AssemblyPort outputPort,
+        Vector2Int sourceCell,
+        Vector2Int mappedCell,
+        CellSideMask outputSide,
+        bool hasMapping)
+    {
+        if (outputPort == null) return;
+
+        AssemblyOutputPortFocus outputPortFocus = ComponentUtility.GetOrAddComponent<AssemblyOutputPortFocus>(outputPort.gameObject);
+        AssemblyPartFocus ownerPartFocus = outputPort.GetComponentInParent<AssemblyPartFocus>(true);
+        ArtificialSatellite ownerSatellite = outputPort.GetComponentInParent<ArtificialSatellite>(true);
+        outputPortFocus.Initialize(
+            outputPort,
+            ownerSatellite,
+            ownerPartFocus,
+            ResolvePortOwnerName(outputPort.transform),
+            FormatOutputPortSideLabel(outputSide),
+            sourceCell,
+            mappedCell,
+            hasMapping);
+    }
+
+    private static string FormatOutputPortSideLabel(CellSideMask outputSide)
+    {
+        switch (outputSide)
+        {
+            case CellSideMask.Top: return "Top";
+            case CellSideMask.Bottom: return "Bottom";
+            case CellSideMask.Left: return "Left";
+            case CellSideMask.Right: return "Right";
+            default: return string.Empty;
+        }
     }
 
     private void RegisterPartLayoutPortMappings()

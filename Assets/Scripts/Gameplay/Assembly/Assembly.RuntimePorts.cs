@@ -227,33 +227,6 @@ public partial class Assembly
         return marker;
     }
 
-    private Vector3 GetBestOutputPortWorldAnchorForInput(AssemblyPort outputPort, Vector3 inputWorldPoint)
-    {
-        if (outputPort == null) return Vector3.zero;
-
-        Docking[] dockings = outputPort.GetComponentsInChildren<Docking>(true);
-        if (dockings != null && dockings.Length > 0)
-        {
-            float bestDistanceSq = float.MaxValue;
-            Vector3 bestAnchor = outputPort.transform.position;
-
-            for (int i = 0; i < dockings.Length; i++)
-            {
-                Docking docking = dockings[i];
-                if (docking == null) continue;
-
-                float distanceSq = (docking.transform.position - inputWorldPoint).sqrMagnitude;
-                if (distanceSq >= bestDistanceSq) continue;
-
-                bestDistanceSq = distanceSq;
-                bestAnchor = docking.transform.position;
-            }
-
-            return bestAnchor;
-        }
-
-        return outputPort.transform.position;
-    }
 
     private void SetDockingDirection(Transform portRoot, Vector3 localDirectionHint)
     {
@@ -361,4 +334,5 @@ public partial class Assembly
         return target != null && target.name.Contains(OutputPortNameToken);
     }
 }
+
 

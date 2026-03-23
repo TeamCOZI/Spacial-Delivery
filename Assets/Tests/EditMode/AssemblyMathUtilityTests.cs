@@ -27,6 +27,28 @@ public class AssemblyMathUtilityTests
     }
 
     [Test]
+    public void GetPipeCornerVisualRotation_AlignsToInputDirection()
+    {
+        Assert.AreEqual(0f, AssemblyMathUtility.GetPipeCornerVisualRotation(Vector2Int.right, Vector2Int.up).eulerAngles.z, 0.001f);
+        Assert.AreEqual(0f, AssemblyMathUtility.GetPipeCornerVisualRotation(Vector2Int.right, Vector2Int.down).eulerAngles.z, 0.001f);
+        Assert.AreEqual(90f, AssemblyMathUtility.GetPipeCornerVisualRotation(Vector2Int.up, Vector2Int.left).eulerAngles.z, 0.001f);
+        Assert.AreEqual(90f, AssemblyMathUtility.GetPipeCornerVisualRotation(Vector2Int.up, Vector2Int.right).eulerAngles.z, 0.001f);
+        Assert.AreEqual(180f, AssemblyMathUtility.GetPipeCornerVisualRotation(Vector2Int.left, Vector2Int.down).eulerAngles.z, 0.001f);
+        Assert.AreEqual(180f, AssemblyMathUtility.GetPipeCornerVisualRotation(Vector2Int.left, Vector2Int.up).eulerAngles.z, 0.001f);
+        Assert.AreEqual(270f, AssemblyMathUtility.GetPipeCornerVisualRotation(Vector2Int.down, Vector2Int.right).eulerAngles.z, 0.001f);
+        Assert.AreEqual(270f, AssemblyMathUtility.GetPipeCornerVisualRotation(Vector2Int.down, Vector2Int.left).eulerAngles.z, 0.001f);
+    }
+
+    [Test]
+    public void ShouldMirrorPipeCornerVisual_TracksOrderedInputAndOutput()
+    {
+        Assert.IsFalse(AssemblyMathUtility.ShouldMirrorPipeCornerVisual(Vector2Int.right, Vector2Int.up));
+        Assert.IsTrue(AssemblyMathUtility.ShouldMirrorPipeCornerVisual(Vector2Int.up, Vector2Int.right));
+        Assert.IsFalse(AssemblyMathUtility.ShouldMirrorPipeCornerVisual(Vector2Int.up, Vector2Int.left));
+        Assert.IsTrue(AssemblyMathUtility.ShouldMirrorPipeCornerVisual(Vector2Int.left, Vector2Int.up));
+    }
+
+    [Test]
     public void QuantizeToCellIndex_RoundsSymmetricallyAroundZero()
     {
         Assert.AreEqual(2, AssemblyMathUtility.QuantizeToCellIndex(1.6f));
@@ -60,3 +82,5 @@ public class AssemblyMathUtilityTests
     }
 }
 #endif
+
+

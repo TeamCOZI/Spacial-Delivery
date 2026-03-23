@@ -872,6 +872,7 @@ GameObject:
   - component: {fileID: 1566422090}
   - component: {fileID: 1566422096}
   - component: {fileID: 1566422097}
+  - component: {fileID: 1566422098}
   m_Layer: 0
   m_Name: Focus Manager
   m_TagString: Untagged
@@ -1029,6 +1030,18 @@ MonoBehaviour:
   buttonColor: {r: 0.15, g: 0.7, b: 0.38, a: 0.95}
   textColor: {r: 1, g: 1, b: 1, a: 1}
   buttonLabel: Orbit
+--- !u!114 &1566422098
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1566422087}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2db4bc804ddf493e90a585158ffdfab2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::OutputPortSelectionPresenter
 --- !u!1 &1981877679
 GameObject:
   m_ObjectHideFlags: 0
@@ -1153,6 +1166,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 88e9c3799b5bb1744acd44bdd5b87039, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Assembly
+  removeDisconnectedPartsAfterDeletion: 0
   debugPipePlacement: 0
   debugHoverCellPortMapping: 0
   enableInputPortAutoMapping: 0

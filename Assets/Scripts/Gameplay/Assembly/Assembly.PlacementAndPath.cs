@@ -369,6 +369,138 @@ public partial class Assembly
         return GetPathDirection(path, index - 1, index);
     }
 
+    private Vector2Int GetPathSegmentNextDir(List<Vector2Int> path, int index, Vector2Int terminalDirection)
+    {
+        if (path == null || index < 0 || index >= path.Count) return Vector2Int.zero;
+        if (index == path.Count - 1 && terminalDirection != Vector2Int.zero)
+        {
+            return terminalDirection;
+        }
+
+        return GetPathDirection(path, index, index + 1);
+    }
+
+    private bool TryResolvePipePreviewPath(
+        Vector2Int hoverCell,
+        bool hasPreviousHoverCell,
+        Vector2Int previousHoverCell,
+        out List<Vector2Int> path,
+        out Vector2Int terminalDirection)
+    {
+        terminalDirection = Vector2Int.zero;
+        if (TryFindPipePath(pipePathStartCell, hoverCell, out path))
+        {
+            return true;
+        }
+
+        return TryFindPipePathToHoveredInputCell(
+            hoverCell,
+            hasPreviousHoverCell,
+            previousHoverCell,
+            out path,
+            out terminalDirection);
+    }
+
+    private bool TryFindPipePathToHoveredInputCell(
+        Vector2Int hoveredOccupiedCell,
+        bool hasPreviousHoverCell,
+        Vector2Int previousHoverCell,
+        out List<Vector2Int> path,
+        out Vector2Int terminalDirection)
+    {
+        path = new List<Vector2Int>();
+        terminalDirection = Vector2Int.zero;
+        if (!occupiedCells.ContainsKey(hoveredOccupiedCell)) return false;
+
+        if (hasPreviousHoverCell &&
+            TryFindPipePathToSpecificInputApproachCell(
+                hoveredOccupiedCell,
+                previousHoverCell,
+                out path,
+                out terminalDirection))
+        {
+            return true;
+        }
+
+        Vector2Int[] approachDirections =
+        {
+            Vector2Int.right,
+            Vector2Int.left,
+            Vector2Int.up,
+            Vector2Int.down
+        };
+
+        int bestScore = int.MaxValue;
+        List<Vector2Int> bestPath = null;
+        Vector2Int bestTerminalDirection = Vector2Int.zero;
+
+        for (int i = 0; i < approachDirections.Length; i++)
+        {
+            Vector2Int terminalDir = approachDirections[i];
+            Vector2Int approachCell = hoveredOccupiedCell - terminalDir;
+            if (!TryFindPipePathToSpecificInputApproachCell(
+                hoveredOccupiedCell,
+                approachCell,
+                out List<Vector2Int> candidatePath,
+                out Vector2Int candidateTerminalDirection))
+            {
+                continue;
+            }
+
+            int score = candidatePath.Count;
+            if (hasPreviousHoverCell)
+            {
+                score += Manhattan(approachCell, previousHoverCell);
+            }
+
+            if (bestPath != null && score >= bestScore) continue;
+
+            bestScore = score;
+            bestPath = candidatePath;
+            bestTerminalDirection = candidateTerminalDirection;
+        }
+
+        if (bestPath == null) return false;
+
+        path = bestPath;
+        terminalDirection = bestTerminalDirection;
+        return true;
+    }
+
+    private bool TryFindPipePathToSpecificInputApproachCell(
+        Vector2Int hoveredOccupiedCell,
+        Vector2Int approachCell,
+        out List<Vector2Int> path,
+        out Vector2Int terminalDirection)
+    {
+        path = new List<Vector2Int>();
+        terminalDirection = Vector2Int.zero;
+        if (!IsInsideGrid(hoveredOccupiedCell) || !IsInsideGrid(approachCell)) return false;
+
+        Vector2Int direction = hoveredOccupiedCell - approachCell;
+        if (!IsCardinalDirection(direction)) return false;
+        if (!CellHasInputPortFacingDirection(approachCell, direction)) return false;
+        if (approachCell != pipePathStartCell && occupiedCells.ContainsKey(approachCell)) return false;
+        if (!TryFindPipePath(pipePathStartCell, approachCell, out path)) return false;
+
+        terminalDirection = direction;
+        return path.Count > 0;
+    }
+
+    private bool CellHasInputPortFacingDirection(Vector2Int cell, Vector2Int direction)
+    {
+        if (!inputMaskByCell.TryGetValue(cell, out CellSideMask inputMask)) return false;
+
+        CellSideMask side = DirectionToSideMask(new Vector3(direction.x, direction.y, 0f));
+        if (side == CellSideMask.None) return false;
+        return (inputMask & side) != 0;
+    }
+
+    private static bool IsCardinalDirection(Vector2Int direction)
+    {
+        return (Mathf.Abs(direction.x) == 1 && direction.y == 0)
+            || (Mathf.Abs(direction.y) == 1 && direction.x == 0);
+    }
     private Vector2Int GetPipeStartIncomingDirection()
     {
         if (partGhost == null || ghostPortProfile == null) return Vector2Int.zero;
@@ -471,3 +603,6 @@ public partial class Assembly
         return false;
     }
 }
+
+
+
