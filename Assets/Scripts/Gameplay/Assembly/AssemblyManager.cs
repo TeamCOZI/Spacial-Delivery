@@ -190,6 +190,16 @@ public class AssemblyManager : MonoBehaviour
         ArtificialSatellite focusedSatellite = focused.GetComponent<ArtificialSatellite>();
         if (focusedSatellite != null) return focusedSatellite;
 
+        AssemblyOutputPortFocus outputPortFocus = focused.GetComponent<AssemblyOutputPortFocus>();
+        if (outputPortFocus == null)
+        {
+            outputPortFocus = focused.GetComponentInParent<AssemblyOutputPortFocus>();
+        }
+        if (outputPortFocus != null)
+        {
+            return outputPortFocus.OwnerSatellite;
+        }
+
         AssemblyPartFocus partFocus = focused.GetComponent<AssemblyPartFocus>();
         if (partFocus != null)
         {
@@ -242,4 +252,5 @@ public class AssemblyManager : MonoBehaviour
         TrySubscribeFocusEvents();
     }
 }
+
 

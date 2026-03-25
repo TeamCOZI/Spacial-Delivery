@@ -23,20 +23,21 @@ MonoBehaviour:
   Terite:
     crystal: 2
     liquid: 0
-    vapor: 0
+    gas: 0
     plasma: 0
-  Nectar:
+  Aquid:
     crystal: 0
     liquid: 2
-    vapor: 0
+    gas: 0
     plasma: 0
   Nitain:
     crystal: 0
     liquid: 1
-    vapor: 1
+    gas: 1
     plasma: 0
   plasma:
     crystal: 0
     liquid: 0
-    vapor: 0
+    gas: 0
     plasma: 0
+

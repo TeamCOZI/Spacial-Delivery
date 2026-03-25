@@ -10,9 +10,9 @@ public sealed class DefaultCameraFocusPolicy : ICameraFocusPolicy
             return 0f;
         }
 
-        if (TryResolveCommittedSpaceshipCameraRotationZ(focus, out float committedSpaceshipRotationZ))
+        if (TryResolveCommittedSpaceshipCameraRotationZ(focus, out float committedSpaceshipCameraRotationZ))
         {
-            return committedSpaceshipRotationZ;
+            return committedSpaceshipCameraRotationZ;
         }
 
         Transform rotationSource = ResolveFocusRotationSource(focus);
@@ -23,12 +23,7 @@ public sealed class DefaultCameraFocusPolicy : ICameraFocusPolicy
     {
         if (focus == null) return 1f;
 
-        if (TryResolveStructureOwnerSatellite(focus, out ArtificialSatellite structureOwner) && structureOwner != null)
-        {
-            return GetFocusLossyScale(structureOwner.transform);
-        }
-
-        AssemblyPartFocus partFocus = focus.GetComponent<AssemblyPartFocus>();
+        AssemblyPartFocus partFocus = ResolvePartFocus(focus);
         if (partFocus != null &&
             IsLauncherPartFocus(focus) &&
             partFocus.OwnerSatellite != null)
@@ -38,14 +33,18 @@ public sealed class DefaultCameraFocusPolicy : ICameraFocusPolicy
 
         return GetFocusLossyScale(focus);
     }
-
     public bool IsSatelliteRelatedFocus(Transform focus)
     {
         if (focus == null) return false;
 
         if (focus.GetComponent<ArtificialSatellite>() != null) return true;
 
-        AssemblyPartFocus partFocus = focus.GetComponent<AssemblyPartFocus>();
+        if (TryResolveOutputPortOwnerSatellite(focus, out ArtificialSatellite outputPortOwner) && outputPortOwner != null)
+        {
+            return true;
+        }
+
+        AssemblyPartFocus partFocus = ResolvePartFocus(focus);
         if (partFocus != null && partFocus.OwnerSatellite != null)
         {
             return true;
@@ -69,7 +68,7 @@ public sealed class DefaultCameraFocusPolicy : ICameraFocusPolicy
     {
         if (focus == null) return false;
 
-        AssemblyPartFocus partFocus = focus.GetComponent<AssemblyPartFocus>();
+        AssemblyPartFocus partFocus = ResolvePartFocus(focus);
         if (partFocus == null || partFocus.SourcePart == null) return false;
 
         string partName = partFocus.SourcePart.partName;
@@ -92,6 +91,26 @@ public sealed class DefaultCameraFocusPolicy : ICameraFocusPolicy
 
         SpaceshipRendezvousController rendezvousController = spaceship.GetComponent<SpaceshipRendezvousController>();
         return rendezvousController != null && rendezvousController.TryGetCommittedOrbitCameraRotationZ(out rotationZ);
+    }
+
+    private static bool TryResolveOutputPortOwnerSatellite(Transform focus, out ArtificialSatellite ownerSatellite)
+    {
+        ownerSatellite = null;
+        if (focus == null) return false;
+
+        AssemblyOutputPortFocus outputPortFocus = focus.GetComponent<AssemblyOutputPortFocus>();
+        if (outputPortFocus == null)
+        {
+            outputPortFocus = focus.GetComponentInParent<AssemblyOutputPortFocus>();
+        }
+
+        if (outputPortFocus == null)
+        {
+            return false;
+        }
+
+        ownerSatellite = outputPortFocus.OwnerSatellite;
+        return ownerSatellite != null;
     }
 
     private static bool TryResolveStructureOwnerSatellite(Transform focus, out ArtificialSatellite ownerSatellite)
@@ -126,7 +145,12 @@ public sealed class DefaultCameraFocusPolicy : ICameraFocusPolicy
     {
         if (focus == null) return null;
 
-        AssemblyPartFocus partFocus = focus.GetComponent<AssemblyPartFocus>();
+        if (TryResolveOutputPortOwnerSatellite(focus, out ArtificialSatellite outputPortOwner) && outputPortOwner != null)
+        {
+            return outputPortOwner.transform;
+        }
+
+        AssemblyPartFocus partFocus = ResolvePartFocus(focus);
         if (partFocus != null && partFocus.OwnerSatellite != null)
         {
             return partFocus.OwnerSatellite.transform;
@@ -144,4 +168,27 @@ public sealed class DefaultCameraFocusPolicy : ICameraFocusPolicy
 
         return focus;
     }
+
+    private static AssemblyPartFocus ResolvePartFocus(Transform focus)
+    {
+        if (focus == null)
+        {
+            return null;
+        }
+
+        AssemblyPartFocus partFocus = focus.GetComponent<AssemblyPartFocus>();
+        if (partFocus != null)
+        {
+            return partFocus;
+        }
+
+        AssemblyOutputPortFocus outputPortFocus = focus.GetComponent<AssemblyOutputPortFocus>();
+        if (outputPortFocus == null)
+        {
+            outputPortFocus = focus.GetComponentInParent<AssemblyOutputPortFocus>();
+        }
+
+        return outputPortFocus != null ? outputPortFocus.ResolveOwnerModuleFocus() : null;
+    }
 }
+

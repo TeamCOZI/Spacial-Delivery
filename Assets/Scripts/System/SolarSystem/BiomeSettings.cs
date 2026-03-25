@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.Serialization;
 
 public enum BiomeType { Alpine, Antartic, Desert, GasGiant, Glacier, GlacierSatellite, GreenHouse, IceGiant, Iron, IronSatellite, Lava, Ocean, Temperate, Tropics }
 
@@ -6,8 +7,10 @@ public enum BiomeType { Alpine, Antartic, Desert, GasGiant, Glacier, GlacierSate
 public struct resource
 {
     public int crystal;
+    [FormerlySerializedAs("aquid")]
     public int liquid;
-    public int vapor;
+    [FormerlySerializedAs("vapor")]
+    public int gas;
     public int plasma;
 }
 
@@ -30,7 +33,8 @@ public class BiomeSettings : ScriptableObject
 
     [Header("Resource Settings")]
     public resource Terite = new resource();
-    public resource Nectar = new resource();
+    [FormerlySerializedAs("Nectar")]
+    public resource Aquid = new resource();
     public resource Nitain = new resource();
     public resource plasma = new resource();
 }

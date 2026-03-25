@@ -115,6 +115,12 @@ public partial class Assembly
             MatchWorldScale(marker.transform, GetPortVisualWorldScale());
         }
 
+        AssemblyOutputPortFocus clonedOutputPortFocus = marker.GetComponent<AssemblyOutputPortFocus>();
+        if (clonedOutputPortFocus != null)
+        {
+            clonedOutputPortFocus.ResetRuntimeCloneMetadata();
+        }
+
         Collider markerCollider = marker.GetComponent<Collider>();
         if (markerCollider != null)
         {

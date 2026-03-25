@@ -188,6 +188,7 @@ public class AssemblyMeshCombiner : MonoBehaviour
         if (t == null) return true;
         if (t == transform) return true;
         if (t.GetComponent<ArtificialSatellite>() != null) return true;
+        if (t.GetComponentInParent<AssemblyFocusHighlightMarker>(true) != null) return true;
         if (t.GetComponentInParent<AssemblyGhostMarker>(true) != null) return true;
         if (ShouldKeepRendererVisible(t)) return true;
         if (t == transform.Find(combinedObjectName)) return true;
@@ -318,3 +319,4 @@ public class AssemblyMeshCombiner : MonoBehaviour
     }
 
 }
+

@@ -296,8 +296,8 @@ public partial class AssemblyUI : MonoBehaviour
     {
         if (structure == null) return string.Empty;
 
-        return string.Join(
-            Environment.NewLine,
+        List<string> lines = new List<string>
+        {
             $"Name: {structure.structureName}",
             $"Scale: {structure.gridWidth} x {structure.gridHeight}",
             $"Mass: {structure.mass}",
@@ -306,7 +306,24 @@ public partial class AssemblyUI : MonoBehaviour
             $"Power Generation: {structure.powerGeneration:0.###}",
             $"Power Consumption: {structure.powerConsumption:0.###}",
             $"Power Capacity: {structure.powerCapacity:0.###}"
-        );
+        };
+
+        if (structure.craftRecipe != null && !structure.craftRecipe.IsEmpty)
+        {
+            lines.Add("Craft Recipe:");
+            for (int i = 0; i < structure.craftRecipe.ingredients.Count; i++)
+            {
+                CraftRecipe.IngredientEntry ingredient = structure.craftRecipe.ingredients[i];
+                if (ingredient == null || string.IsNullOrWhiteSpace(ingredient.itemName)) continue;
+                lines.Add($"- {ingredient.itemName} x{Mathf.Max(1, ingredient.amount)}");
+            }
+        }
+        else
+        {
+            lines.Add("Craft Recipe: None");
+        }
+
+        return string.Join(Environment.NewLine, lines);
     }
 
     private static Color GetPartRepresentativeColor(Part part)

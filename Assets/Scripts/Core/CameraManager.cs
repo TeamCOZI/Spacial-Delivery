@@ -185,6 +185,7 @@ public partial class CameraManager : FocusEventSubscriber
         if (oldFocus != null) target = ResolveFocusFollowPosition(oldFocus);
         TryBeginCommittedOrbitCameraTransition();
         Vector3 appliedDragOffset = ResolveAppliedDragOffset(oldFocus);
+
         Vector3 focusAnchorPosition = target;
 
         if (forceInstantCameraUpdate)
@@ -445,6 +446,15 @@ public partial class CameraManager : FocusEventSubscriber
         if (focus == null) return false;
 
         AssemblyPartFocus partFocus = focus.GetComponent<AssemblyPartFocus>();
+        if (partFocus == null)
+        {
+            AssemblyOutputPortFocus outputPortFocus = focus.GetComponent<AssemblyOutputPortFocus>();
+            if (outputPortFocus != null)
+            {
+                partFocus = outputPortFocus.ResolveOwnerModuleFocus();
+            }
+        }
+
         if (partFocus == null || partFocus.SourcePart == null) return false;
 
         string partName = partFocus.SourcePart.partName;
@@ -543,6 +553,10 @@ public partial class CameraManager : FocusEventSubscriber
     }
 
 }
+
+
+
+
 
 
 

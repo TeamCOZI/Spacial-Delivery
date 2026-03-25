@@ -24,4 +24,5 @@ public class Structure : ScriptableObject
     public StructureFacilityKind facilityKind = StructureFacilityKind.None;
 
     public bool UsesFabricatorUi => facilityKind == StructureFacilityKind.Fabricator;
+    public bool UsesLogisticsHubUi => facilityKind == StructureFacilityKind.LogisticsHub;
 }

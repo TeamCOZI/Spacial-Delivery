@@ -437,6 +437,8 @@ public partial class Assembly : MonoBehaviour
         AssemblyPartFocus partFocus = ComponentUtility.GetOrAddComponent<AssemblyPartFocus>(gameObject);
         partFocus.Initialize(targetPart, targetSatellite);
 
+        ModulePartInventoryUtility.EnsurePartInventories(gameObject, targetPart);
+
         AssemblyMeshCombiner combiner = targetSatellite.GetComponent<AssemblyMeshCombiner>();
         if (combiner != null && combiner.combinedOnlyMode &&
             !ShouldKeepPartSourceRenderersVisible(targetPart) &&
@@ -1874,7 +1876,8 @@ public partial class Assembly : MonoBehaviour
         if (partGhost == null) return false;
 
         Quaternion ghostRotation = partGhost.transform.localRotation;
-        Vector3 rotatedLocal = ghostRotation * portLocal;
+        Vector3 scaledLocal = Vector3.Scale(portLocal, partGhost.transform.localScale);
+        Vector3 rotatedLocal = ghostRotation * scaledLocal;
         side = DirectionToSideMask(rotatedLocal);
         if (side == CellSideMask.None) return false;
 
@@ -2087,6 +2090,8 @@ public partial class Assembly : MonoBehaviour
 
 
 }
+
+
 
 
 

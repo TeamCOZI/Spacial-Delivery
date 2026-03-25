@@ -291,6 +291,8 @@ public partial class Assembly
             sourceCell,
             mappedCell,
             hasMapping);
+
+        _ = ComponentUtility.GetOrAddComponent<OutputPortProductionState>(outputPort.gameObject);
     }
 
     private static string FormatOutputPortSideLabel(CellSideMask outputSide)
@@ -655,3 +657,4 @@ public partial class Assembly
         }
     }
 }
+

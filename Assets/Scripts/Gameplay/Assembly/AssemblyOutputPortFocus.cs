@@ -111,9 +111,53 @@ public class AssemblyOutputPortFocus : MonoBehaviour, UpdateFocusInfo
         hasCellMapping = mapped;
     }
 
-    public Transform ResolveCloseFocus()
+    public void ResetRuntimeCloneMetadata()
+    {
+        port = GetComponent<AssemblyPort>();
+        ownerSatellite = null;
+        ownerPartFocus = null;
+        ownerLabel = UnknownLabel;
+        sideLabel = UnknownLabel;
+        sourceCell = Vector2Int.zero;
+        mappedCell = Vector2Int.zero;
+        hasCellMapping = false;
+    }
+
+    public AssemblyPartFocus ResolveOwnerModuleFocus()
     {
         AssemblyPartFocus partFocus = OwnerPartFocus;
+        if (partFocus != null)
+        {
+            return partFocus;
+        }
+
+        ArtificialSatellite satellite = OwnerSatellite;
+        if (satellite == null)
+        {
+            return null;
+        }
+
+        AssemblyPartFocus[] partFocuses = satellite.GetComponentsInChildren<AssemblyPartFocus>(true);
+        for (int i = 0; i < partFocuses.Length; i++)
+        {
+            AssemblyPartFocus candidate = partFocuses[i];
+            if (candidate == null || candidate.SourcePart == null)
+            {
+                continue;
+            }
+
+            if (candidate.SourcePart.partType == PartType.Core)
+            {
+                return candidate;
+            }
+        }
+
+        return null;
+    }
+
+    public Transform ResolveCloseFocus()
+    {
+        AssemblyPartFocus partFocus = ResolveOwnerModuleFocus();
         if (partFocus != null)
         {
             return partFocus.transform;
@@ -205,3 +249,4 @@ public class AssemblyOutputPortFocus : MonoBehaviour, UpdateFocusInfo
         return direction.y >= 0f ? "Top" : "Bottom";
     }
 }
+

@@ -19,6 +19,7 @@ public class StructureFocus : MonoBehaviour, UpdateFocusInfo
     }
 
     public bool UsesFabricatorUi => SourceStructure != null && SourceStructure.UsesFabricatorUi;
+    public bool UsesLogisticsHubUi => SourceStructure != null && SourceStructure.UsesLogisticsHubUi;
 
     private void Awake()
     {

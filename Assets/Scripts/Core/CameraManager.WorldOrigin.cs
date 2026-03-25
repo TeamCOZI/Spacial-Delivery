@@ -12,6 +12,12 @@ public partial class CameraManager
     {
         transform.position += shiftDelta;
         target += shiftDelta;
+
+        if (hasPendingDraggedFocusTransition)
+        {
+            pendingDraggedCameraLocalPosition += shiftDelta;
+        }
+
         smallScaleOverlayCamera?.SyncNow();
     }
 
@@ -223,3 +229,4 @@ public partial class CameraManager
         target += originShift;
     }
 }
+

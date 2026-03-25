@@ -92,7 +92,7 @@ public class Satellite : MonoBehaviour, UpdateFocusInfo, CelestialBody
         var resources = new (string name, resource value)[]
         {
             ("Terite", biomeSettings.Terite),
-            ("Nectar", biomeSettings.Nectar),
+            ("Aquid", biomeSettings.Aquid),
             ("Nitain", biomeSettings.Nitain),
             ("Plasma", biomeSettings.plasma)
         };
@@ -100,12 +100,12 @@ public class Satellite : MonoBehaviour, UpdateFocusInfo, CelestialBody
         foreach (var resource in resources)
         {
             var value = resource.value;
-            if (value.crystal == 0 && value.liquid == 0 && value.vapor == 0 && value.plasma == 0) continue;
+            if (value.crystal == 0 && value.liquid == 0 && value.gas == 0 && value.plasma == 0) continue;
 
             satelliteResource += resource.name + " - ";
             if (value.crystal > 0) satelliteResource += "Crystal * " + value.crystal.ToString() + ", ";
             if (value.liquid > 0) satelliteResource += "Liquid * " + value.liquid.ToString() + ", ";
-            if (value.vapor > 0) satelliteResource += "Vapor * " + value.vapor.ToString() + ", ";
+            if (value.gas > 0) satelliteResource += "Gas * " + value.gas.ToString() + ", ";
             if (value.plasma > 0) satelliteResource += "Plasma * " + value.plasma.ToString() + ", ";
         }
 

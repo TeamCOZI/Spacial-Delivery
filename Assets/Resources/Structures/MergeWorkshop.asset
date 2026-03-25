@@ -24,6 +24,11 @@ MonoBehaviour:
   powerConsumption: 0
   powerCapacity: 0
   facilityKind: 1
-  craftRecipe: {}
-
-
+  craftRecipe:
+    ingredients:
+    - itemName: Large Fabricator
+      amount: 1
+    - itemName: Hull
+      amount: 4
+    - itemName: Computer
+      amount: 4

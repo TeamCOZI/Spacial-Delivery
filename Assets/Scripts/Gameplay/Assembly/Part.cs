@@ -30,6 +30,8 @@ public class Part : ScriptableObject
     [Min(0)] public int mass;
     public float durability;
     public float inventory;
+    [Min(0)] public int inputCapacity;
+    [Min(0)] public int outputCapacity;
 
     private void OnValidate()
     {

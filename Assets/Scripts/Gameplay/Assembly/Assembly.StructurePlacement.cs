@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
@@ -151,8 +151,20 @@ public partial class Assembly
 
         StructureInstance structureInstance = ComponentUtility.GetOrAddComponent<StructureInstance>(installedObject);
         structureInstance.Initialize(selectedStructure, centerCell);
+        InitializeInstalledStructureInventory(installedObject, selectedStructure);
         ConfigureInstalledStructureFocus(installedObject);
         return installedObject;
+    }
+
+    private static void InitializeInstalledStructureInventory(GameObject installedObject, Structure selectedStructure)
+    {
+        if (installedObject == null || selectedStructure == null || !selectedStructure.UsesLogisticsHubUi)
+        {
+            return;
+        }
+
+        StructureResourceInventory resourceInventory = ComponentUtility.GetOrAddComponent<StructureResourceInventory>(installedObject);
+        resourceInventory.InitializeForStructure(selectedStructure);
     }
 
     private static void ConfigureInstalledStructureFocus(GameObject installedObject)
@@ -540,6 +552,7 @@ public partial class Assembly
         return partGhost;
     }
 }
+
 
 
 

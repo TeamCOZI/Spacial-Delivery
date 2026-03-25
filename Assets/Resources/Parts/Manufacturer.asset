@@ -21,6 +21,8 @@ MonoBehaviour:
   gridHeight: 3
   durability: 300
   inventory: 4
+  inputCapacity: 100
+  outputCapacity: 100
   mass: 300
 
 
