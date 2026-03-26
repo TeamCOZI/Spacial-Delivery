@@ -32,6 +32,9 @@ public class Part : ScriptableObject
     public float inventory;
     [Min(0)] public int inputCapacity;
     [Min(0)] public int outputCapacity;
+    [Min(0f)] public float powerGeneration;
+    [Min(0f)] public float powerConsumption;
+    [Min(0f)] public float powerCapacity;
 
     private void OnValidate()
     {

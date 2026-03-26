@@ -10,9 +10,9 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 59f19fe2b77c6f844a88f265bd180602, type: 3}
-  m_Name: Cooler
+  m_Name: Chiller
   m_EditorClassIdentifier: Assembly-CSharp::Part
-  partName: Cooler
+  partName: Chiller
   partIcon: {fileID: 10913, guid: 0000000000000000f000000000000000, type: 0}
   partType: 2
   partPrefab: {fileID: 1000000000000000000, guid: c135dc81e8714584b0f4fb2166e1851c, type: 3}

@@ -1,8 +1,8 @@
-﻿# Project File Map
+# Project File Map
 
 ## 범위
 - 이 문서는 `Scripts` 외의 프로젝트 파일을 중심으로 구조를 정리한 인덱스다.
-- `Assets/Scripts`의 file-by-file 역할은 이미 `Docs/Scripts-Directory-Guide.md`에 정리되어 있으므로, 이 문서에서는 그 문서를 companion index로 간주한다.
+- `Assets/Scripts`의 file-by-file 역할은 `Docs/Scripts-Directory-Guide.md`에 정리되어 있으므로, 이 문서에서는 그 문서를 companion index로 간주한다.
 - 목적은 새 세션이 의미 있는 파일부터 열고, 생성/런타임 데이터가 어디에 있는지 빠르게 찾게 만드는 것이다.
 
 ## 의도적으로 축약한 범위
@@ -12,7 +12,7 @@
 - `.codex-dotnet-home/`: Codex 로컬 캐시 성격이므로 생략.
 
 ## 루트 디렉터리
-- `Assets/`: 게임 소스, 씬, prefab, scriptable asset, UI, 테스트.
+- `Assets/`: 게임 소스, 씬, prefab, ScriptableObject, UI, 테스트.
 - `Docs/`: 프로젝트 이해를 위한 문서.
 - `Packages/`: Unity package manifest/lock.
 - `ProjectSettings/`: Unity 프로젝트 설정.
@@ -69,36 +69,44 @@
 
 ## Assets 진입점
 - `Assets/Scenes/SampleScene.unity`: 유일한 플레이 씬. 루트로 `WorldOriginManager`, `SpaceScaleManager`, `Main Camera`, `Solar System Generator`, `Focus Manager`, `Assembly Manager`, `UI`, `TimeManager`, `LauncherLaunchSystem`, `EventSystem`가 배치되어 있다.
-- `Assets/InputSystem_Actions.inputactions`: `Player` / `UI` 액션맵 정의. `Move`, `Look`, `Attack`, `Interact`, `Previous`, `Next`, `FocusParent`, `AssemblyMode` 등이 핵심.
+- `Assets/InputSystem_Actions.inputactions`: `Player` / `UI` 액션맵 정의. `Move`, `Look`, `Attack`, `Interact`, `Previous`, `Next`, `FocusParent`, `AssemblyMode` 등이 핵심이다.
 
 ## Assets/Scripts
 - `Assets/Scripts/**`: 전체 script file map은 `Docs/Scripts-Directory-Guide.md`를 참조.
-- 특히 큰 영향도가 높은 하위 디렉터리는 `Core`, `Gameplay/Assembly`(part/structure/fabricator), `Gameplay/Spaceship`(launcher panel/stock), `World/Celestial`, `World/LargeWorld`, `System/SolarSystem`이다.
+- 특히 영향도가 높은 하위 디렉터리는 `Core`, `Gameplay/Assembly`, `Gameplay/Spaceship`, `World/Celestial`, `World/LargeWorld`, `World/ScaledSpace`, `System/SolarSystem`이다.
 
 ## Assets/Prefabs
 
 ### 천체 / 이동체 / 시스템 대상 prefab
 - `Assets/Prefabs/StarPrefab.prefab`: `Star`, `Gravity`, `GravityField`, `WorldPosition`, `SimulationTierTarget`가 붙은 항성 기본 prefab.
-- `Assets/Prefabs/PlanetPrefab.prefab`: 행성 기본 prefab. `OrbitRevolution`과 `OrbitVisualizer`를 포함.
-- `Assets/Prefabs/SatellitePrefab.prefab`: 자연위성 기본 prefab. 행성과 동일한 large-world/orbit 계열 구성.
-- `Assets/Prefabs/ArtificialSatellitePrefab.prefab`: 조립 가능한 인공위성 루트 prefab. `ArtificialSatellite`, `AssemblyAttachmentHub`, `AssemblyMeshCombiner`, `Gravity`, `OrbitRevolution`, `OrbitVisualizer`, `WorldPosition` 포함.
+- `Assets/Prefabs/PlanetPrefab.prefab`: 행성 기본 prefab. `OrbitRevolution`과 `OrbitVisualizer`를 포함한다.
+- `Assets/Prefabs/SatellitePrefab.prefab`: 자연위성 기본 prefab. 행성과 동일한 large-world/orbit 계열 구성을 따른다.
+- `Assets/Prefabs/ArtificialSatellitePrefab.prefab`: 조립 가능한 인공위성 루트 prefab. `ArtificialSatellite`, `AssemblyAttachmentHub`, `AssemblyMeshCombiner`, `Gravity`, `OrbitRevolution`, `OrbitVisualizer`, `WorldPosition`을 포함한다.
 - `Assets/Prefabs/AsteroidBeltPrefab.prefab`: 소행성 벨트 시각 표현용 prefab.
-- `Assets/Prefabs/SpaceshipPrefab.prefab`: `Spaceship`, `GravityAffectedMover`, `SpaceshipFlightController`, `SpaceshipFuel`, `WorldPosition`, `Icon`을 가진 우주선 prefab.
+- `Assets/Prefabs/SpaceshipPrefab.prefab`: 우주선 본체 prefab. 런타임에서 `SpaceshipFocusProxy`, `SpaceshipRendezvousController`, orbit commit 관련 컴포넌트가 보강된다.
 
 ### 조립 파트 본체 prefab
-- `Assets/Prefabs/CorePrefab.prefab`: 조립 코어 본체. 코어 고정 포트 레이아웃의 기준.
-- `Assets/Prefabs/AssemblerPrefab.prefab`: 세로 1x2 계열 Processor 파트.
-- `Assets/Prefabs/CoolerPrefab.prefab`: 1x1 Processor 파트.
-- `Assets/Prefabs/HeaterPrefab.prefab`: 1x1 Processor 파트.
-- `Assets/Prefabs/ManufacturerPrefab.prefab`: 세로 1x3 Processor 파트.
-- `Assets/Prefabs/MergerPrefab.prefab`: 세로 1x4 Processor 파트.
-- `Assets/Prefabs/MolderPrefab.prefab`: 1x1 Processor 파트.
-- `Assets/Prefabs/PipePrefab.prefab`: 1x1 Pipe 파트.
-- `Assets/Prefabs/ProcessorPrefab.prefab`: 1x1 Processor 파트.
-- `Assets/Prefabs/RefinerPrefab.prefab`: 1x1 Processor 파트.
-- `Assets/Prefabs/LauncherPrefab.prefab`: 런처 파트 본체. 우주선 스폰 기준점이 된다.
-- `Assets/Prefabs/OutputPortPrefab.prefab`: runtime port clone의 시각 템플릿.
-- `Assets/Prefabs/DropPrefab.prefab`: 드롭/부품 결과물 쪽 보조 prefab.
+- `Assets/Prefabs/CorePrefab.prefab`: 조립 코어 본체. core 고정 포트 레이아웃의 기준.
+- `Assets/Prefabs/AssemblerPrefab.prefab`: 세로 `1x2` processor 파트.
+- `Assets/Prefabs/CoolerPrefab.prefab`: `1x1` processor 파트.
+- `Assets/Prefabs/HeaterPrefab.prefab`: `1x1` processor 파트.
+- `Assets/Prefabs/ManufacturerPrefab.prefab`: 세로 `1x3` processor 파트.
+- `Assets/Prefabs/MergerPrefab.prefab`: 세로 `1x4` processor 파트.
+- `Assets/Prefabs/MolderPrefab.prefab`: `1x1` processor 파트.
+- `Assets/Prefabs/ProcessorPrefab.prefab`: `1x1` processor 파트.
+- `Assets/Prefabs/RefinerPrefab.prefab`: `1x1` processor 파트.
+- `Assets/Prefabs/LauncherPrefab.prefab`: launcher 파트 본체. 발사 앵커와 launch panel 문맥의 기준이 된다.
+- `Assets/Prefabs/DropPrefab.prefab`: drop 계열 보조 prefab.
+- `Assets/Prefabs/OutputPortPrefab.prefab`: runtime output-port clone의 시각 템플릿.
+
+### 파이프 관련 prefab
+- `Assets/Prefabs/PipePrefab.prefab`: 직선 pipe 파트 본체.
+- `Assets/Prefabs/PipeGhostPrefab.prefab`: 직선 pipe 고스트.
+- `Assets/Prefabs/PipeCurvedPrefab.prefab`: 곡선 pipe 시각 prefab.
+- `Assets/Prefabs/PipeCurvedGhostPrefab.prefab`: 곡선 pipe 고스트.
+- `Assets/Prefabs/PipeEndPrefab.prefab`: pipe terminal / end-cap 시각 prefab.
+- `Assets/Prefabs/PipeEndGhostPrefab.prefab`: pipe terminal / end-cap 고스트.
+- `Assets/Prefabs/Pipe.prefab`, `Assets/Prefabs/Pipe_Curved.prefab`, `Assets/Prefabs/Pipe_End 1.prefab`: 파이프 메쉬/프리팹 자산이 별도로 함께 존재한다. 파이프 authoring과 prefab 참조를 볼 때 혼동하지 말고 실제 `Part` asset 연결을 같이 확인해야 한다.
 
 ### 조립 고스트 prefab
 - `Assets/Prefabs/AssemblerGhostPrefab.prefab`: Assembler 고스트.
@@ -108,7 +116,6 @@
 - `Assets/Prefabs/ManufacturerGhostPrefab.prefab`: Manufacturer 고스트.
 - `Assets/Prefabs/MergerGhostPrefab.prefab`: Merger 고스트.
 - `Assets/Prefabs/MolderGhostPrefab.prefab`: Molder 고스트.
-- `Assets/Prefabs/PipeGhostPrefab.prefab`: Pipe 고스트.
 - `Assets/Prefabs/ProcessorGhostPrefab.prefab`: Processor 고스트.
 - `Assets/Prefabs/RefinerGhostPrefab.prefab`: Refiner 고스트.
 
@@ -122,27 +129,39 @@
 ### Resources/Parts
 아래 `Part` ScriptableObject들은 `PartDB`가 `Resources.LoadAll<Part>("Parts")`로 로딩한다.
 
-- `Assets/Resources/Parts/Core.asset`: 코어 파트 정의. `partType=Core`, `grid=9x9`, `mass=8100`.
-- `Assets/Resources/Parts/Launcher.asset`: 런처 파트 정의. 발사 시스템이 이름과 part asset을 통해 식별하고, 실제 발사 가능 수량은 owner satellite의 `LauncherSpaceshipStock`이 별도로 관리한다.
-- `Assets/Resources/Parts/Pipe.asset`: `partType=Pipe`, `grid=1x1`, `mass=50`.
-- `Assets/Resources/Parts/Assembler.asset`: `partType=Processor`, `grid=1x2`, `durability=200`, `inventory=3`, `mass=200`.
-- `Assets/Resources/Parts/Cooler.asset`: `partType=Processor`, `grid=1x1`, `inventory=2`, `mass=100`.
-- `Assets/Resources/Parts/Heater.asset`: `partType=Processor`, `grid=1x1`, `inventory=2`, `mass=100`.
-- `Assets/Resources/Parts/Manufacturer.asset`: `partType=Processor`, `grid=1x3`, `inventory=4`, `mass=300`.
-- `Assets/Resources/Parts/Merger.asset`: `partType=Processor`, `grid=1x4`, `inventory=5`, `mass=400`.
-- `Assets/Resources/Parts/Molder.asset`: `partType=Processor`, `grid=1x1`, `inventory=2`, `mass=100`.
-- `Assets/Resources/Parts/Processor.asset`: `partType=Processor`, `grid=1x1`, `inventory=2`, `mass=100`.
-- `Assets/Resources/Parts/Refiner.asset`: `partType=Processor`, `grid=1x1`, `inventory=2`, `mass=100`.
+- `Assets/Resources/Parts/Core.asset`: core 파트 정의. `grid=9x9`, `inventory=100`, `mass=8100`.
+- `Assets/Resources/Parts/Launcher.asset`: launcher 파트 정의. stock은 파트 asset이 아니라 owner satellite의 `LauncherSpaceshipStock`이 관리한다.
+- `Assets/Resources/Parts/Pipe.asset`: `grid=1x1`, `mass=50`. 직선/코너/엔드 prefab 및 ghost prefab 참조를 함께 가진다.
+- `Assets/Resources/Parts/Assembler.asset`: `grid=1x2`, `inventory=3`, `inputCapacity=100`, `outputCapacity=100`, `mass=200`.
+- `Assets/Resources/Parts/Cooler.asset`: `grid=1x1`, `inventory=2`, `inputCapacity=100`, `outputCapacity=100`, `mass=100`.
+- `Assets/Resources/Parts/Heater.asset`: `grid=1x1`, `inventory=2`, `inputCapacity=100`, `outputCapacity=100`, `mass=100`.
+- `Assets/Resources/Parts/Manufacturer.asset`: `grid=1x3`, `inventory=4`, `inputCapacity=100`, `outputCapacity=100`, `mass=300`.
+- `Assets/Resources/Parts/Merger.asset`: `grid=1x4`, `inventory=5`, `inputCapacity=100`, `outputCapacity=100`, `mass=400`.
+- `Assets/Resources/Parts/Molder.asset`: `grid=1x1`, `inventory=2`, `inputCapacity=100`, `outputCapacity=100`, `mass=100`.
+- `Assets/Resources/Parts/Processor.asset`: `grid=1x1`, `inventory=2`, `inputCapacity=100`, `outputCapacity=100`, `mass=100`.
+- `Assets/Resources/Parts/Refiner.asset`: `grid=1x1`, `inventory=2`, `inputCapacity=100`, `outputCapacity=100`, `mass=100`.
+- processor 계열 파트는 기존 `inventory` 외에 `inputCapacity` / `outputCapacity`를 사용하며, 실제 런타임 inventory 분리는 `ModulePartInventoryUtility`가 처리한다.
 
 ### Resources/Structures
 아래 `Structure` ScriptableObject들은 `StructureCatalog`가 `Resources.LoadAll<Structure>("Structures")`로 로딩한다.
 
-- `Assets/Resources/Structures/MergeWorkshop.asset`: `Merge Workshop` structure 정의. `grid=4x4`, `mass=1600`, `durability=1600`, `facilityKind=Fabricator`. core focus의 `Structures` popup에서 선택 가능하며, 설치 후 focus하면 fabricator UI를 연다.
+- `Assets/Resources/Structures/CoreLaboratory.asset`: `Core Laboratory`, `grid=3x3`, `mass=900`, `durability=900`, `facilityKind=None`.
+- `Assets/Resources/Structures/CoreLogisticsHub.asset`: `Core Logistics Hub`, `grid=3x3`, `mass=900`, `durability=900`, `capacity=900`, `facilityKind=LogisticsHub`. logistics inventory seed와 core output-port 공급원 문맥의 중심이다.
+- `Assets/Resources/Structures/CorePowerControl.asset`: `Core Power Control`, `grid=3x3`, `mass=900`, `durability=900`, `powerCapacity=5000`, `facilityKind=None`.
+- `Assets/Resources/Structures/CoreResidentialFacility.asset`: `Core Residential Facility`, `grid=3x3`, `mass=900`, `durability=900`, `facilityKind=None`.
+- `Assets/Resources/Structures/SmallFabricator.asset`: `Small Fabricator`, `grid=1x1`, `mass=100`, `durability=100`, `facilityKind=Fabricator`.
+- `Assets/Resources/Structures/MediumFabricator.asset`: `Medium Fabricator`, `grid=2x2`, `mass=400`, `durability=400`, `facilityKind=Fabricator`.
+- `Assets/Resources/Structures/LargeFabricator.asset`: `Large Fabricator`, `grid=3x3`, `mass=900`, `durability=900`, `facilityKind=Fabricator`.
+- `Assets/Resources/Structures/MergeWorkshop.asset`: `Merge Workshop`, `grid=4x4`, `mass=1600`, `durability=1600`, `facilityKind=Fabricator`.
+
+### Resources/Sprites
+- `Assets/Resources/Sprites/*.png|*.jpg`: `InventoryResourceCatalog`가 resource icon을 런타임에 로드한다.
+- 현재 등록된 icon은 `Aquid_Crystal`, `Aquid_Gas`, `Aquid_Liquid`, `Beam`, `Nitain_Crystal`, `Nitain_Gas`, `Nitain_Ingot`, `Nitain_Liquid`, `Plate`, `Territe_Crystal`, `Territe_Gas`, `Territe_Ingot`, `Territe_Liquid`다.
 
 ## Assets/Settings
 
 ### 생성 / 렌더링 공통 asset
-- `Assets/Settings/SolarSystemSettings.asset`: star/planet/satellite/artificial satellite prefab 참조와 생성 반경, orbit 증가량, biome preset 참조를 보관.
+- `Assets/Settings/SolarSystemSettings.asset`: star/planet/satellite/artificial satellite prefab 참조와 생성 반경, orbit 증가량, biome preset 참조를 보관한다.
 - `Assets/Settings/UniversalRenderPipelineGlobalSettings.asset`: URP 전역 설정.
 - `Assets/Settings/PC_RPAsset.asset`: PC용 URP pipeline asset.
 - `Assets/Settings/PC_Renderer.asset`: PC용 renderer data.
@@ -175,12 +194,12 @@
 - `Assets/UI/Period.uxml`: 주기 progress bar UI 레이아웃.
 - `Assets/UI/Period.uss`: `Period.uxml` progress bar 높이/스타일.
 - `Assets/UI/Period.asset`: `PanelSettings` asset. `Period.uxml` 계열 UI 렌더 설정.
-- launcher panel은 별도 UXML이 아니라 `LauncherSelectionPresenter.cs`가 메인 canvas에 런타임 생성한다.
+- launcher panel, core logistics hub panel, module inventory/processing panel, output-port selector overlay는 별도 UXML이 아니라 presenter 스크립트가 메인 canvas에 런타임 생성한다.
 
 ## Assets/Materials
 - `Assets/Materials/Grid.shader`: 조립 그리드 시각화용 커스텀 shader.
-- `Assets/Materials/Outline.shader`: 아웃라인/선택 강조용 커스텀 shader.
-- `Assets/Materials/OutlineMaterial.mat`: `Outline.shader`를 쓰는 아웃라인 material.
+- `Assets/Materials/Outline.shader`: focused module highlight와 선택 강조에 쓰이는 outline shader.
+- `Assets/Materials/OutlineMaterial.mat`: `Outline.shader`를 쓰는 outline material.
 - `Assets/Materials/GhostMaterial.mat`: 조립 ghost body용 material.
 - `Assets/Materials/InputPortMaterial.mat`: input port 시각 material.
 - `Assets/Materials/OutputPortMaterial.mat`: output port 시각 material.
@@ -197,6 +216,7 @@
 - `Assets/Sprites/Launcher.fbx`: 런처 모델 리소스.
 - `Assets/Sprites/Device_Test.fbx`: 테스트용 디바이스 모델.
 - `Assets/Sprites/Untitled.fbx`: 임시/실험 모델로 보이는 FBX 자산.
+- 실제 resource inventory icon은 이 경로가 아니라 `Assets/Resources/Sprites` 아래에 있다.
 
 ## Unity 기본 import 디렉터리
 

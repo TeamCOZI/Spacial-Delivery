@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using UnityEngine;
 
 public static class ModulePartInventoryUtility
@@ -35,6 +35,12 @@ public static class ModulePartInventoryUtility
         }
 
         _ = GetOrCreateInventory(ownerObject, part, StructureResourceInventoryKind.Input);
+        if (PowerGeneratorRecipeCatalog.IsGeneratorPart(part))
+        {
+            _ = ComponentUtility.GetOrAddComponent<PowerGeneratorState>(ownerObject);
+            return;
+        }
+
         _ = GetOrCreateInventory(ownerObject, part, StructureResourceInventoryKind.Output);
         _ = ComponentUtility.GetOrAddComponent<ModuleProcessingState>(ownerObject);
     }
@@ -117,6 +123,18 @@ public static class ModulePartInventoryUtility
                 return false;
             }
 
+            if (PowerGeneratorRecipeCatalog.IsGeneratorPart(sourcePart))
+            {
+                if (kind != StructureResourceInventoryKind.Input)
+                {
+                    return false;
+                }
+
+                _ = ComponentUtility.GetOrAddComponent<PowerGeneratorState>(partFocus.gameObject);
+                inventory = GetOrCreateInventory(partFocus.gameObject, sourcePart, StructureResourceInventoryKind.Input);
+                return inventory != null;
+            }
+
             _ = ComponentUtility.GetOrAddComponent<ModuleProcessingState>(partFocus.gameObject);
             inventory = GetOrCreateInventory(partFocus.gameObject, sourcePart, kind);
             return inventory != null;
@@ -159,4 +177,3 @@ public static class ModulePartInventoryUtility
         return inventory;
     }
 }
-

@@ -13,6 +13,7 @@ public class ModuleProcessingPresenter : FocusEventSubscriber
     {
         public Image background;
         public Image icon;
+        public TextMeshProUGUI nameLabel;
         public TextMeshProUGUI countLabel;
     }
 
@@ -69,8 +70,10 @@ public class ModuleProcessingPresenter : FocusEventSubscriber
     private readonly List<ResourceSlotView> inputSlotViews = new List<ResourceSlotView>();
     private readonly List<ResourceSlotView> outputSlotViews = new List<ResourceSlotView>();
     private Image previewInputIcon;
+    private TextMeshProUGUI previewInputFallbackLabel;
     private TextMeshProUGUI previewInputCountLabel;
     private Image previewOutputIcon;
+    private TextMeshProUGUI previewOutputFallbackLabel;
     private TextMeshProUGUI previewOutputCountLabel;
     private TextMeshProUGUI processTimeLabel;
     private TextMeshProUGUI previewProcessTimeLabel;
@@ -223,6 +226,8 @@ public class ModuleProcessingPresenter : FocusEventSubscriber
 
         RectTransform inputCard = CreateSection(previewRect, "ModuleProcessPreviewInputCard", new Vector2(0.08f, 0.18f), new Vector2(0.34f, 0.82f), PreviewAccentColor);
         previewInputIcon = CreateIconImage(inputCard, "ModuleProcessPreviewInputIcon", new Vector2(0.18f, 0.36f), new Vector2(0.82f, 0.88f));
+        previewInputFallbackLabel = CreateLabel(inputCard, "ModuleProcessPreviewInputFallback", string.Empty, new Vector2(0.12f, 0.34f), new Vector2(0.88f, 0.86f), 11f, FontStyles.Bold, TextAlignmentOptions.Center, DarkText);
+        previewInputFallbackLabel.gameObject.SetActive(false);
         previewInputCountLabel = CreateLabel(inputCard, "ModuleProcessPreviewInputCount", string.Empty, new Vector2(0.12f, 0.06f), new Vector2(0.88f, 0.28f), 12f, FontStyles.Bold, TextAlignmentOptions.Center, DarkText);
 
         _ = CreateLabel(previewRect, "ModuleProcessPreviewArrow", ">>>", new Vector2(0.38f, 0.40f), new Vector2(0.62f, 0.66f), 22f, FontStyles.Bold, TextAlignmentOptions.Center, new Color(0.48f, 0.48f, 0.48f, 1f));
@@ -230,6 +235,8 @@ public class ModuleProcessingPresenter : FocusEventSubscriber
 
         RectTransform outputCard = CreateSection(previewRect, "ModuleProcessPreviewOutputCard", new Vector2(0.66f, 0.18f), new Vector2(0.92f, 0.82f), PreviewAccentColor);
         previewOutputIcon = CreateIconImage(outputCard, "ModuleProcessPreviewOutputIcon", new Vector2(0.18f, 0.36f), new Vector2(0.82f, 0.88f));
+        previewOutputFallbackLabel = CreateLabel(outputCard, "ModuleProcessPreviewOutputFallback", string.Empty, new Vector2(0.12f, 0.34f), new Vector2(0.88f, 0.86f), 11f, FontStyles.Bold, TextAlignmentOptions.Center, DarkText);
+        previewOutputFallbackLabel.gameObject.SetActive(false);
         previewOutputCountLabel = CreateLabel(outputCard, "ModuleProcessPreviewOutputCount", string.Empty, new Vector2(0.12f, 0.06f), new Vector2(0.88f, 0.28f), 12f, FontStyles.Bold, TextAlignmentOptions.Center, DarkText);
 
         GameObject buttonRowObject = CreateUiObject("ModuleProcessRecipeButtons", recipeSectionRect, typeof(RectTransform));
@@ -352,8 +359,15 @@ public class ModuleProcessingPresenter : FocusEventSubscriber
             }
 
             StructureResourceInventory.ResourceAmount resourceAmount = resources[i];
-            view.icon.sprite = InventoryResourceCatalog.GetSlotSprite(resourceAmount.resourceType);
-            view.icon.enabled = view.icon.sprite != null;
+            Sprite resourceSprite = InventoryResourceCatalog.GetSlotSprite(resourceAmount.resourceType);
+            view.icon.sprite = resourceSprite;
+            view.icon.enabled = resourceSprite != null;
+            if (view.nameLabel != null)
+            {
+                bool showFallbackLabel = resourceSprite == null;
+                view.nameLabel.gameObject.SetActive(showFallbackLabel);
+                view.nameLabel.SetText(showFallbackLabel ? InventoryResourceCatalog.GetCompactLabel(resourceAmount.resourceType) : string.Empty);
+            }
             view.background.color = ResolveResourceSlotColor(resourceAmount.resourceType);
             view.countLabel.SetText($"x{Mathf.Max(0, resourceAmount.amount)}");
         }
@@ -401,11 +415,14 @@ public class ModuleProcessingPresenter : FocusEventSubscriber
         ApplyOutline(slotObject, new Color(1f, 1f, 1f, 0.18f), Vector2.zero);
 
         Image icon = CreateIconImage(slotObject.transform, name + "Icon", new Vector2(0.16f, 0.30f), new Vector2(0.84f, 0.84f));
+        TextMeshProUGUI nameLabel = CreateLabel(slotObject.transform, name + "Name", string.Empty, new Vector2(0.08f, 0.30f), new Vector2(0.92f, 0.84f), 10f, FontStyles.Bold, TextAlignmentOptions.Center, WhiteText);
+        nameLabel.gameObject.SetActive(false);
         TextMeshProUGUI countLabel = CreateLabel(slotObject.transform, name + "Count", string.Empty, new Vector2(0.08f, 0.04f), new Vector2(0.92f, 0.26f), 11f, FontStyles.Bold, TextAlignmentOptions.Center, WhiteText);
         return new ResourceSlotView
         {
             background = slotBackground,
             icon = icon,
+            nameLabel = nameLabel,
             countLabel = countLabel
         };
     }
@@ -430,6 +447,16 @@ public class ModuleProcessingPresenter : FocusEventSubscriber
         {
             previewInputIcon.enabled = false;
             previewOutputIcon.enabled = false;
+            if (previewInputFallbackLabel != null)
+            {
+                previewInputFallbackLabel.gameObject.SetActive(false);
+                previewInputFallbackLabel.SetText(string.Empty);
+            }
+            if (previewOutputFallbackLabel != null)
+            {
+                previewOutputFallbackLabel.gameObject.SetActive(false);
+                previewOutputFallbackLabel.SetText(string.Empty);
+            }
             previewInputCountLabel.SetText(string.Empty);
             previewOutputCountLabel.SetText(string.Empty);
             previewProcessTimeLabel.SetText(string.Empty);
@@ -440,13 +467,73 @@ public class ModuleProcessingPresenter : FocusEventSubscriber
         }
 
         previewPlaceholderLabel.gameObject.SetActive(false);
-        previewInputIcon.sprite = InventoryResourceCatalog.GetSlotSprite(recipe.inputResourceType);
-        previewInputIcon.enabled = previewInputIcon.sprite != null;
-        previewOutputIcon.sprite = InventoryResourceCatalog.GetSlotSprite(recipe.outputResourceType);
-        previewOutputIcon.enabled = previewOutputIcon.sprite != null;
-        previewInputCountLabel.SetText($"x{recipe.inputAmount}");
-        previewOutputCountLabel.SetText($"x{recipe.outputAmount}");
+
+        bool usesCombinedInputPreview = recipe.HasSecondaryInput || recipe.HasTertiaryInput || recipe.HasQuaternaryInput;
+        Sprite inputSprite = usesCombinedInputPreview ? null : InventoryResourceCatalog.GetSlotSprite(recipe.inputResourceType);
+        previewInputIcon.sprite = inputSprite;
+        previewInputIcon.enabled = inputSprite != null;
+        if (previewInputFallbackLabel != null)
+        {
+            bool showInputFallback = usesCombinedInputPreview || inputSprite == null;
+            previewInputFallbackLabel.gameObject.SetActive(showInputFallback);
+            previewInputFallbackLabel.SetText(showInputFallback ? FormatPreviewInputLabel(recipe) : string.Empty);
+        }
+
+        Sprite outputSprite = InventoryResourceCatalog.GetSlotSprite(recipe.outputResourceType);
+        previewOutputIcon.sprite = outputSprite;
+        previewOutputIcon.enabled = outputSprite != null;
+        if (previewOutputFallbackLabel != null)
+        {
+            bool showOutputFallback = outputSprite == null;
+            previewOutputFallbackLabel.gameObject.SetActive(showOutputFallback);
+            previewOutputFallbackLabel.SetText(showOutputFallback ? InventoryResourceCatalog.GetCompactLabel(recipe.outputResourceType) : string.Empty);
+        }
+
+        previewInputCountLabel.SetText(FormatPreviewInputCount(recipe));
+        previewOutputCountLabel.SetText($"x{Mathf.Max(0, recipe.outputAmount)}");
         previewProcessTimeLabel.SetText($"{Mathf.Max(0.01f, recipe.processSeconds):0.#}s");
+    }
+
+    private static string FormatPreviewInputLabel(ModuleRecipeDefinition recipe)
+    {
+        string label = InventoryResourceCatalog.GetCompactLabel(recipe.inputResourceType);
+        if (recipe.HasSecondaryInput)
+        {
+            label += $"\n+\n{InventoryResourceCatalog.GetCompactLabel(recipe.secondaryInputResourceType)}";
+        }
+
+        if (recipe.HasTertiaryInput)
+        {
+            label += $"\n+\n{InventoryResourceCatalog.GetCompactLabel(recipe.tertiaryInputResourceType)}";
+        }
+
+        if (recipe.HasQuaternaryInput)
+        {
+            label += $"\n+\n{InventoryResourceCatalog.GetCompactLabel(recipe.quaternaryInputResourceType)}";
+        }
+
+        return label;
+    }
+
+    private static string FormatPreviewInputCount(ModuleRecipeDefinition recipe)
+    {
+        string countLabel = $"x{Mathf.Max(0, recipe.inputAmount)}";
+        if (recipe.HasSecondaryInput)
+        {
+            countLabel += $" + x{Mathf.Max(0, recipe.secondaryInputAmount)}";
+        }
+
+        if (recipe.HasTertiaryInput)
+        {
+            countLabel += $" + x{Mathf.Max(0, recipe.tertiaryInputAmount)}";
+        }
+
+        if (recipe.HasQuaternaryInput)
+        {
+            countLabel += $" + x{Mathf.Max(0, recipe.quaternaryInputAmount)}";
+        }
+
+        return countLabel;
     }
 
     private void RefreshRecipeButtons(ModuleProcessingState processingState)
@@ -587,6 +674,12 @@ public class ModuleProcessingPresenter : FocusEventSubscriber
         }
 
         if (partFocus.SourcePart.partType == PartType.Core || partFocus.SourcePart.partType == PartType.Pipe)
+        {
+            partFocus = null;
+            return false;
+        }
+
+        if (PowerGeneratorRecipeCatalog.IsGeneratorPart(partFocus.SourcePart))
         {
             partFocus = null;
             return false;

@@ -1,0 +1,35 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 59f19fe2b77c6f844a88f265bd180602, type: 3}
+  m_Name: Precise Manufacturer
+  m_EditorClassIdentifier: Assembly-CSharp::Part
+  partName: Precise Manufacturer
+  partIcon: {fileID: 10913, guid: 0000000000000000f000000000000000, type: 0}
+  partType: 2
+  partPrefab: {fileID: 1000000000000000000, guid: a8f320e77aca4e69bc02b8434efbc4ab, type: 3}
+  ghostPrefab: {fileID: 1000000000000000000, guid: a3025899c69d494599a9888bd0ea9ab4, type: 3}
+  cornerPrefab: {fileID: 0}
+  cornerGhostPrefab: {fileID: 0}
+  cornerEndPrefab: {fileID: 0}
+  cornerEndGhostPrefab: {fileID: 0}
+  endPrefab: {fileID: 0}
+  endGhostPrefab: {fileID: 0}
+  gridWidth: 1
+  gridHeight: 3
+  durability: 300
+  inventory: 4
+  inputCapacity: 100
+  outputCapacity: 100
+  powerGeneration: 0
+  powerConsumption: 0
+  powerCapacity: 0
+  mass: 300

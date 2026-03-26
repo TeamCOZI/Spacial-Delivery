@@ -501,6 +501,11 @@ public partial class UserInput
             return true;
         }
 
+        if (PowerGeneratorPresenter.IsWorldInputBlockedByPanel)
+        {
+            return true;
+        }
+
         if (ModuleOutputPortSelectorPresenter.IsWorldInputBlockedByPanel)
         {
             return true;

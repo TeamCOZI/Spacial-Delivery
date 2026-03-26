@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -113,6 +113,12 @@ public static class OutputPortTransferUtility
         }
 
         results.Clear();
+        if (IsCoreOutputPort(outputPort))
+        {
+            BuildCoreLogisticsResourceAmounts(outputPort != null ? outputPort.OwnerSatellite : null, results, out totalCapacity);
+            return;
+        }
+
         if (!TryResolveSenderOutputInventory(outputPort, out StructureResourceInventory outputInventory) || outputInventory == null)
         {
             return;
@@ -134,6 +140,11 @@ public static class OutputPortTransferUtility
 
     public static int GetOutputResourceAmount(AssemblyOutputPortFocus outputPort, InventoryResourceType resourceType)
     {
+        if (IsCoreOutputPort(outputPort))
+        {
+            return GetCoreLogisticsResourceAmount(outputPort != null ? outputPort.OwnerSatellite : null, resourceType);
+        }
+
         if (!TryResolveSenderOutputInventory(outputPort, out StructureResourceInventory outputInventory) || outputInventory == null)
         {
             return 0;
@@ -144,6 +155,11 @@ public static class OutputPortTransferUtility
 
     public static bool TryConsumeOutputResource(AssemblyOutputPortFocus outputPort, InventoryResourceType resourceType, int amount)
     {
+        if (IsCoreOutputPort(outputPort))
+        {
+            return TryConsumeCoreLogisticsResource(outputPort != null ? outputPort.OwnerSatellite : null, resourceType, amount);
+        }
+
         if (!TryResolveSenderOutputInventory(outputPort, out StructureResourceInventory outputInventory) || outputInventory == null)
         {
             return false;
@@ -176,7 +192,8 @@ public static class OutputPortTransferUtility
 
         ArtificialSatellite ownerSatellite = outputPort.OwnerSatellite;
         HashSet<Vector2Int> pipeCells = new HashSet<Vector2Int>();
-        CollectPipeCells(ownerSatellite, pipeCells);
+        Dictionary<Vector2Int, List<Vector2Int>> pipeAdjacency = new Dictionary<Vector2Int, List<Vector2Int>>();
+        PipeConnectivityUtility.BuildConnectedPipeAdjacency(ownerSatellite, pipeAdjacency, pipeCells);
 
         Vector2Int senderCell = outputPort.MappedCell;
         if (!pipeCells.Contains(senderCell))
@@ -193,10 +210,15 @@ public static class OutputPortTransferUtility
         while (open.Count > 0)
         {
             Vector2Int current = open.Dequeue();
-            for (int i = 0; i < CardinalDirections.Length; i++)
+            if (!pipeAdjacency.TryGetValue(current, out List<Vector2Int> neighbors))
             {
-                Vector2Int neighbor = current + CardinalDirections[i];
-                if (!pipeCells.Contains(neighbor) || distances.ContainsKey(neighbor))
+                continue;
+            }
+
+            for (int i = 0; i < neighbors.Count; i++)
+            {
+                Vector2Int neighbor = neighbors[i];
+                if (distances.ContainsKey(neighbor))
                 {
                     continue;
                 }
@@ -453,9 +475,28 @@ public static class OutputPortTransferUtility
     private static bool TryResolveCoreLogisticsInventory(ArtificialSatellite ownerSatellite, out StructureResourceInventory inventory)
     {
         inventory = null;
-        if (ownerSatellite == null)
+        List<StructureResourceInventory> inventories = new List<StructureResourceInventory>();
+        CollectCoreLogisticsInventories(ownerSatellite, inventories);
+        if (inventories.Count <= 0)
         {
             return false;
+        }
+
+        inventory = inventories[0];
+        return inventory != null;
+    }
+
+    private static void CollectCoreLogisticsInventories(ArtificialSatellite ownerSatellite, List<StructureResourceInventory> inventories)
+    {
+        if (inventories == null)
+        {
+            return;
+        }
+
+        inventories.Clear();
+        if (ownerSatellite == null)
+        {
+            return;
         }
 
         StructureInstance[] instances = ownerSatellite.GetComponentsInChildren<StructureInstance>(true);
@@ -467,17 +508,157 @@ public static class OutputPortTransferUtility
                 continue;
             }
 
-            inventory = instance.GetComponent<StructureResourceInventory>();
+            StructureResourceInventory inventory = instance.GetComponent<StructureResourceInventory>();
             if (inventory == null)
             {
                 inventory = ComponentUtility.GetOrAddComponent<StructureResourceInventory>(instance.gameObject);
                 inventory.InitializeForStructure(instance.SourceStructure);
             }
 
-            return inventory != null;
+            if (inventory != null)
+            {
+                inventories.Add(inventory);
+            }
+        }
+    }
+
+    private static void BuildCoreLogisticsResourceAmounts(
+        ArtificialSatellite ownerSatellite,
+        List<StructureResourceInventory.ResourceAmount> results,
+        out int totalCapacity)
+    {
+        totalCapacity = 0;
+        if (results == null)
+        {
+            return;
         }
 
-        return false;
+        results.Clear();
+        List<StructureResourceInventory> inventories = new List<StructureResourceInventory>();
+        CollectCoreLogisticsInventories(ownerSatellite, inventories);
+        if (inventories.Count <= 0)
+        {
+            return;
+        }
+
+        Dictionary<InventoryResourceType, int> mergedAmounts = new Dictionary<InventoryResourceType, int>();
+        for (int i = 0; i < inventories.Count; i++)
+        {
+            StructureResourceInventory inventory = inventories[i];
+            if (inventory == null)
+            {
+                continue;
+            }
+
+            totalCapacity += inventory.Capacity;
+            IReadOnlyList<StructureResourceInventory.ResourceAmount> resources = inventory.Resources;
+            for (int resourceIndex = 0; resourceIndex < resources.Count; resourceIndex++)
+            {
+                StructureResourceInventory.ResourceAmount resourceAmount = resources[resourceIndex];
+                int sanitizedAmount = Mathf.Max(0, resourceAmount.amount);
+                if (sanitizedAmount <= 0)
+                {
+                    continue;
+                }
+
+                if (mergedAmounts.TryGetValue(resourceAmount.resourceType, out int currentAmount))
+                {
+                    mergedAmounts[resourceAmount.resourceType] = currentAmount + sanitizedAmount;
+                }
+                else
+                {
+                    mergedAmounts.Add(resourceAmount.resourceType, sanitizedAmount);
+                }
+            }
+        }
+
+        InventoryResourceType[] resourceTypes = InventoryResourceCatalog.All;
+        for (int i = 0; i < resourceTypes.Length; i++)
+        {
+            InventoryResourceType resourceType = resourceTypes[i];
+            if (!mergedAmounts.TryGetValue(resourceType, out int amount) || amount <= 0)
+            {
+                continue;
+            }
+
+            results.Add(new StructureResourceInventory.ResourceAmount(resourceType, amount));
+        }
+    }
+
+    private static int GetCoreLogisticsResourceAmount(ArtificialSatellite ownerSatellite, InventoryResourceType resourceType)
+    {
+        List<StructureResourceInventory> inventories = new List<StructureResourceInventory>();
+        CollectCoreLogisticsInventories(ownerSatellite, inventories);
+
+        int totalAmount = 0;
+        for (int i = 0; i < inventories.Count; i++)
+        {
+            StructureResourceInventory inventory = inventories[i];
+            if (inventory == null)
+            {
+                continue;
+            }
+
+            totalAmount += inventory.GetAmount(resourceType);
+        }
+
+        return totalAmount;
+    }
+
+    private static bool TryConsumeCoreLogisticsResource(ArtificialSatellite ownerSatellite, InventoryResourceType resourceType, int amount)
+    {
+        int remaining = Mathf.Max(0, amount);
+        if (remaining <= 0)
+        {
+            return true;
+        }
+
+        List<StructureResourceInventory> inventories = new List<StructureResourceInventory>();
+        CollectCoreLogisticsInventories(ownerSatellite, inventories);
+        if (inventories.Count <= 0)
+        {
+            return false;
+        }
+
+        int totalAvailable = 0;
+        for (int i = 0; i < inventories.Count; i++)
+        {
+            StructureResourceInventory inventory = inventories[i];
+            if (inventory == null)
+            {
+                continue;
+            }
+
+            totalAvailable += inventory.GetAmount(resourceType);
+        }
+
+        if (totalAvailable < remaining)
+        {
+            return false;
+        }
+
+        for (int i = 0; i < inventories.Count && remaining > 0; i++)
+        {
+            StructureResourceInventory inventory = inventories[i];
+            if (inventory == null)
+            {
+                continue;
+            }
+
+            int available = inventory.GetAmount(resourceType);
+            int removeAmount = Mathf.Min(remaining, available);
+            if (removeAmount <= 0)
+            {
+                continue;
+            }
+
+            if (inventory.TryRemove(resourceType, removeAmount))
+            {
+                remaining -= removeAmount;
+            }
+        }
+
+        return remaining <= 0;
     }
 
     private static AssemblyPartFocus ResolveOwnerPartFocus(AssemblyOutputPortFocus outputPort)

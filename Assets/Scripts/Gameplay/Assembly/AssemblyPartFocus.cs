@@ -40,6 +40,9 @@ public class AssemblyPartFocus : MonoBehaviour, UpdateFocusInfo
         string partType = sourcePart != null ? sourcePart.partType.ToString() : "Unknown";
         string durability = FormatPartNumericValue(sourcePart != null ? sourcePart.durability : (float?)null);
         string inventory = FormatPartNumericValue(sourcePart != null ? sourcePart.inventory : (float?)null);
+        string powerGeneration = FormatPartNumericValue(sourcePart != null ? sourcePart.powerGeneration : (float?)null);
+        string powerConsumption = FormatPartNumericValue(sourcePart != null ? sourcePart.powerConsumption : (float?)null);
+        string powerCapacity = FormatPartNumericValue(sourcePart != null ? sourcePart.powerCapacity : (float?)null);
         string footprint = GetFootprintLabel();
         string ownerName = OwnerSatellite != null ? OwnerSatellite.name : "N/A";
         string installedCell = GetInstalledCellLabel();
@@ -50,7 +53,10 @@ public class AssemblyPartFocus : MonoBehaviour, UpdateFocusInfo
             { "Category", "Part" },
             { "Type", partType },
             { "Durability", durability },
-            { "Inventory", inventory }
+            { "Inventory", inventory },
+            { "Power Generation", powerGeneration },
+            { "Power Consumption", powerConsumption },
+            { "Power Capacity", powerCapacity }
         };
 
         if (IsLauncherPart(partName))

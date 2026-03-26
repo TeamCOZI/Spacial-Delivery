@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 
 [DefaultExecutionOrder(33980)]
 [DisallowMultipleComponent]
@@ -11,6 +11,7 @@
 [RequireComponent(typeof(CoreLogisticsHubPresenter))]
 [RequireComponent(typeof(ModuleInventoryPresenter))]
 [RequireComponent(typeof(ModuleProcessingPresenter))]
+[RequireComponent(typeof(PowerGeneratorPresenter))]
 [RequireComponent(typeof(ModuleOutputPortSelectorPresenter))]
 [RequireComponent(typeof(AssemblyFocusedPartHighlightPresenter))]
 public class FocusFeatureBootstrap : MonoBehaviour
@@ -22,6 +23,7 @@ public class FocusFeatureBootstrap : MonoBehaviour
         _ = ComponentUtility.GetOrAddComponent<CoreLogisticsHubPresenter>(gameObject);
         _ = ComponentUtility.GetOrAddComponent<ModuleInventoryPresenter>(gameObject);
         _ = ComponentUtility.GetOrAddComponent<ModuleProcessingPresenter>(gameObject);
+        _ = ComponentUtility.GetOrAddComponent<PowerGeneratorPresenter>(gameObject);
         _ = ComponentUtility.GetOrAddComponent<ModuleOutputPortSelectorPresenter>(gameObject);
         _ = ComponentUtility.GetOrAddComponent<AssemblyFocusedPartHighlightPresenter>(gameObject);
 
@@ -39,4 +41,3 @@ public class FocusFeatureBootstrap : MonoBehaviour
         }
     }
 }
-

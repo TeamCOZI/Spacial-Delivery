@@ -1,0 +1,35 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 59f19fe2b77c6f844a88f265bd180602, type: 3}
+  m_Name: Nitain Power Generator
+  m_EditorClassIdentifier: Assembly-CSharp::Part
+  partName: Nitain Power Generator
+  partIcon: {fileID: 10913, guid: 0000000000000000f000000000000000, type: 0}
+  partType: 2
+  partPrefab: {fileID: 1000000000000000000, guid: 98f2be7d0d8a4d78aaa498136a232e7d, type: 3}
+  ghostPrefab: {fileID: 1000000000000000000, guid: 09a4724ea194418dab0f7e1bda3e66fe, type: 3}
+  cornerPrefab: {fileID: 0}
+  cornerGhostPrefab: {fileID: 0}
+  cornerEndPrefab: {fileID: 0}
+  cornerEndGhostPrefab: {fileID: 0}
+  endPrefab: {fileID: 0}
+  endGhostPrefab: {fileID: 0}
+  gridWidth: 2
+  gridHeight: 2
+  durability: 400
+  inventory: 4
+  inputCapacity: 100
+  outputCapacity: 0
+  powerGeneration: 0
+  powerConsumption: 0
+  powerCapacity: 100
+  mass: 400

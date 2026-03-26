@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -300,25 +300,14 @@ public static class OutputPortProductionUtility
         }
 
         HashSet<Vector2Int> pipeCells = new HashSet<Vector2Int>();
-        AssemblyPartFocus[] partFocuses = outputPort.OwnerSatellite.GetComponentsInChildren<AssemblyPartFocus>(true);
-        for (int i = 0; i < partFocuses.Length; i++)
-        {
-            AssemblyPartFocus partFocus = partFocuses[i];
-            if (partFocus == null || partFocus.SourcePart == null || partFocus.SourcePart.partType != PartType.Pipe)
-            {
-                continue;
-            }
-
-            pipeCells.Add(LocalPositionToGrid(partFocus.transform.localPosition));
-        }
+        Dictionary<Vector2Int, List<Vector2Int>> adjacency = new Dictionary<Vector2Int, List<Vector2Int>>();
+        PipeConnectivityUtility.BuildConnectedPipeAdjacency(outputPort.OwnerSatellite, adjacency, pipeCells);
 
         Vector2Int destinationCell = outputPort.MappedCell;
         if (!pipeCells.Contains(destinationCell))
         {
             return false;
         }
-
-        Dictionary<Vector2Int, List<Vector2Int>> adjacency = BuildPipeAdjacency(pipeCells);
         Dictionary<Vector2Int, int> distances = new Dictionary<Vector2Int, int>();
         Dictionary<Vector2Int, Vector2Int> parents = new Dictionary<Vector2Int, Vector2Int>();
         Queue<Vector2Int> open = new Queue<Vector2Int>();
@@ -439,10 +428,12 @@ public static class OutputPortProductionUtility
         switch (moduleName)
         {
             case "Cooler":
+            case "Chiller":
                 phaseIndex = Mathf.Max(0, phaseIndex - 1);
                 break;
 
             case "Heater":
+            case "Furnace":
                 phaseIndex = Mathf.Min(PhaseNames.Length - 1, phaseIndex + 1);
                 break;
 

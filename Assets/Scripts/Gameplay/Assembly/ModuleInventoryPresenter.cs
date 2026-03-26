@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
@@ -433,7 +433,7 @@ public class ModuleInventoryPresenter : FocusEventSubscriber
         moduleIconFallbackLabel.gameObject.SetActive(!hasIcon);
         if (!hasIcon)
         {
-            moduleIconFallbackLabel.SetText(focusedOutputPort != null ? OutputIconText : EmptyIconText);
+            moduleIconFallbackLabel.SetText(ResolveDisplayFallbackText(productionState));
         }
 
         SetMetricText(capacityValueLabel, capacity.ToString());
@@ -797,6 +797,26 @@ public class ModuleInventoryPresenter : FocusEventSubscriber
         }
 
         return ResolveModuleIcon();
+    }
+
+    private string ResolveDisplayFallbackText(OutputPortProductionState productionState)
+    {
+        if (focusedOutputPort != null)
+        {
+            if (TryResolveSelectedResource(out InventoryResourceType selectedResourceType, out _))
+            {
+                return InventoryResourceCatalog.GetCompactLabel(selectedResourceType);
+            }
+
+            if (productionState != null && productionState.HasProducedResource)
+            {
+                return InventoryResourceCatalog.GetCompactLabel(productionState.ProducedResourceType);
+            }
+
+            return OutputIconText;
+        }
+
+        return EmptyIconText;
     }
 
     private Sprite ResolveModuleIcon()

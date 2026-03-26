@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 
 [DisallowMultipleComponent]
 public class ModuleProcessingState : MonoBehaviour
@@ -166,9 +166,49 @@ public class ModuleProcessingState : MonoBehaviour
             return false;
         }
 
+        bool removedSecondaryInput = false;
+        bool removedTertiaryInput = false;
+        bool removedQuaternaryInput = false;
+
+        if (recipe.HasSecondaryInput)
+        {
+            if (!inputInventory.TryRemove(recipe.secondaryInputResourceType, recipe.secondaryInputAmount))
+            {
+                _ = inputInventory.TryAdd(recipe.inputResourceType, recipe.inputAmount);
+                statusLabel = NoInputStatus;
+                return false;
+            }
+
+            removedSecondaryInput = true;
+        }
+
+        if (recipe.HasTertiaryInput)
+        {
+            if (!inputInventory.TryRemove(recipe.tertiaryInputResourceType, recipe.tertiaryInputAmount))
+            {
+                RestoreInputs(inputInventory, recipe, removedSecondaryInput, removedTertiaryInput, removedQuaternaryInput);
+                statusLabel = NoInputStatus;
+                return false;
+            }
+
+            removedTertiaryInput = true;
+        }
+
+        if (recipe.HasQuaternaryInput)
+        {
+            if (!inputInventory.TryRemove(recipe.quaternaryInputResourceType, recipe.quaternaryInputAmount))
+            {
+                RestoreInputs(inputInventory, recipe, removedSecondaryInput, removedTertiaryInput, removedQuaternaryInput);
+                statusLabel = NoInputStatus;
+                return false;
+            }
+
+            removedQuaternaryInput = true;
+        }
+
         if (!outputInventory.TryAdd(recipe.outputResourceType, recipe.outputAmount))
         {
-            _ = inputInventory.TryAdd(recipe.inputResourceType, recipe.inputAmount);
+            RestoreInputs(inputInventory, recipe, removedSecondaryInput, removedTertiaryInput, removedQuaternaryInput);
             statusLabel = OutputFullStatus;
             return false;
         }
@@ -176,7 +216,7 @@ public class ModuleProcessingState : MonoBehaviour
         hasLastProcessedResource = true;
         lastInputResourceType = recipe.inputResourceType;
         lastOutputResourceType = recipe.outputResourceType;
-        statusLabel = $"{RunningStatus} / {InventoryResourceCatalog.GetDisplayName(recipe.inputResourceType)} x{recipe.inputAmount} -> {InventoryResourceCatalog.GetDisplayName(recipe.outputResourceType)} x{recipe.outputAmount}";
+        statusLabel = BuildRunningStatus(recipe);
         return true;
     }
 
@@ -212,7 +252,7 @@ public class ModuleProcessingState : MonoBehaviour
             return false;
         }
 
-        if (inputInventory.GetAmount(recipe.inputResourceType) < recipe.inputAmount)
+        if (!HasRequiredInputs(inputInventory, recipe))
         {
             failureReason = NoInputStatus;
             return false;
@@ -255,5 +295,85 @@ public class ModuleProcessingState : MonoBehaviour
             selectedRecipeIndex = 0;
         }
     }
-}
 
+    private static bool HasRequiredInputs(StructureResourceInventory inputInventory, ModuleRecipeDefinition recipe)
+    {
+        if (inputInventory == null)
+        {
+            return false;
+        }
+
+        if (inputInventory.GetAmount(recipe.inputResourceType) < recipe.inputAmount)
+        {
+            return false;
+        }
+
+        if (recipe.HasSecondaryInput && inputInventory.GetAmount(recipe.secondaryInputResourceType) < recipe.secondaryInputAmount)
+        {
+            return false;
+        }
+
+        if (recipe.HasTertiaryInput && inputInventory.GetAmount(recipe.tertiaryInputResourceType) < recipe.tertiaryInputAmount)
+        {
+            return false;
+        }
+
+        return !recipe.HasQuaternaryInput || inputInventory.GetAmount(recipe.quaternaryInputResourceType) >= recipe.quaternaryInputAmount;
+    }
+
+    private static void RestoreInputs(
+        StructureResourceInventory inputInventory,
+        ModuleRecipeDefinition recipe,
+        bool removedSecondaryInput,
+        bool removedTertiaryInput,
+        bool removedQuaternaryInput)
+    {
+        if (removedQuaternaryInput)
+        {
+            _ = inputInventory.TryAdd(recipe.quaternaryInputResourceType, recipe.quaternaryInputAmount);
+        }
+
+        if (removedTertiaryInput)
+        {
+            _ = inputInventory.TryAdd(recipe.tertiaryInputResourceType, recipe.tertiaryInputAmount);
+        }
+
+        if (removedSecondaryInput)
+        {
+            _ = inputInventory.TryAdd(recipe.secondaryInputResourceType, recipe.secondaryInputAmount);
+        }
+
+        _ = inputInventory.TryAdd(recipe.inputResourceType, recipe.inputAmount);
+    }
+
+    private static string BuildRunningStatus(ModuleRecipeDefinition recipe)
+    {
+        return $"{RunningStatus} / {FormatInputLabel(recipe)} -> {FormatResourceLabel(recipe.outputResourceType)} x{recipe.outputAmount}";
+    }
+
+    private static string FormatInputLabel(ModuleRecipeDefinition recipe)
+    {
+        string label = $"{FormatResourceLabel(recipe.inputResourceType)} x{recipe.inputAmount}";
+        if (recipe.HasSecondaryInput)
+        {
+            label += $" + {FormatResourceLabel(recipe.secondaryInputResourceType)} x{recipe.secondaryInputAmount}";
+        }
+
+        if (recipe.HasTertiaryInput)
+        {
+            label += $" + {FormatResourceLabel(recipe.tertiaryInputResourceType)} x{recipe.tertiaryInputAmount}";
+        }
+
+        if (recipe.HasQuaternaryInput)
+        {
+            label += $" + {FormatResourceLabel(recipe.quaternaryInputResourceType)} x{recipe.quaternaryInputAmount}";
+        }
+
+        return label;
+    }
+
+    private static string FormatResourceLabel(InventoryResourceType resourceType)
+    {
+        return InventoryResourceCatalog.GetDisplayName(resourceType).Replace("_", " ");
+    }
+}

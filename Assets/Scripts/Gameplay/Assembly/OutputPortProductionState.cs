@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using UnityEngine;
 
 [DisallowMultipleComponent]
@@ -337,7 +337,7 @@ public class OutputPortProductionState : MonoBehaviour
             return false;
         }
 
-        int senderAmount = senderOutputInventory.GetAmount(transferResource);
+        int senderAmount = ResolveSenderStockAmount(transferResource, senderOutputInventory);
         if (senderAmount <= 0)
         {
             failureReason = NoMaterialStatus;
@@ -583,7 +583,7 @@ public class OutputPortProductionState : MonoBehaviour
     {
         string senderLabel = ResolveModuleLabel();
         string receiverLabel = ResolvePartLabel(receiverPartFocus);
-        int senderAmount = senderOutputInventory != null ? senderOutputInventory.GetAmount(transferResource) : 0;
+        int senderAmount = ResolveSenderStockAmount(transferResource, senderOutputInventory);
         int reserved = CountReservedPackets(receiverInputInventory);
         int receiverFreeSpace = receiverInputInventory != null
             ? Mathf.Max(0, receiverInputInventory.Capacity - (receiverInputInventory.TotalAmount + reserved))
@@ -648,7 +648,7 @@ public class OutputPortProductionState : MonoBehaviour
 
     private string BuildNoMaterialDescription(StructureResourceInventory senderOutputInventory, InventoryResourceType transferResource)
     {
-        int senderAmount = senderOutputInventory != null ? senderOutputInventory.GetAmount(transferResource) : 0;
+        int senderAmount = ResolveSenderStockAmount(transferResource, senderOutputInventory);
         return $"Selected resource {FormatResourceName(transferResource)} is not available in {ResolveSenderInventoryLabel()}. Sender stock: {senderAmount}.";
     }
 
@@ -694,6 +694,16 @@ public class OutputPortProductionState : MonoBehaviour
         return UsesCoreLogisticsSender()
             ? "Core Logistics Hub capacity"
             : $"{ResolveModuleLabel()} output capacity";
+    }
+
+    private int ResolveSenderStockAmount(InventoryResourceType transferResource, StructureResourceInventory senderOutputInventory)
+    {
+        if (UsesCoreLogisticsSender())
+        {
+            return OutputPortTransferUtility.GetOutputResourceAmount(outputPortFocus, transferResource);
+        }
+
+        return senderOutputInventory != null ? senderOutputInventory.GetAmount(transferResource) : 0;
     }
 
     private static string ResolvePartLabel(AssemblyPartFocus partFocus)
