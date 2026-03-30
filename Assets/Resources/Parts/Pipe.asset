@@ -25,6 +25,17 @@ MonoBehaviour:
   endGhostPrefab: {fileID: 1000000000000000000, guid: c9dc680ca3e4464dbfcf5cc67f925a36, type: 3}
   gridWidth: 1
   gridHeight: 1
-  durability: 0
+  durability: 50
   inventory: 0
+  inputCapacity: 0
+  outputCapacity: 0
+  powerGeneration: 0
+  powerConsumption: 1
+  powerCapacity: 0
+  transmitTime: 1
+  partColor: {r: 0.78039217, g: 0.69803923, b: 0.6, a: 1}
+  lightPowerRatio: 0
+  windPowerRatio: 0
+  generationTime: 0
+  autoCalculateMass: 0
   mass: 50

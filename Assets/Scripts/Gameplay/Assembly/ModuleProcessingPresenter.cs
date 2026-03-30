@@ -679,7 +679,7 @@ public class ModuleProcessingPresenter : FocusEventSubscriber
             return false;
         }
 
-        if (PowerGeneratorRecipeCatalog.IsGeneratorPart(partFocus.SourcePart))
+        if (PowerGeneratorRecipeCatalog.IsGeneratorPart(partFocus.SourcePart) || SolarPanelUtility.IsSolarPanelPart(partFocus.SourcePart) || SolarTurbineUtility.IsSolarTurbinePart(partFocus.SourcePart))
         {
             partFocus = null;
             return false;

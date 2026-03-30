@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -464,6 +464,11 @@ public partial class UserInput
         return TryGetAssemblyManager(out AssemblyManager assemblyManager) && assemblyManager.IsAssembling;
     }
 
+    public static bool IsWorldInputBlockedByUiPanels()
+    {
+        return IsPointerOverBlockingUi();
+    }
+
     private static bool ShouldSuppressFocusHover()
     {
         if (IsPointerOverBlockingUi())
@@ -500,8 +505,32 @@ public partial class UserInput
         {
             return true;
         }
-
         if (PowerGeneratorPresenter.IsWorldInputBlockedByPanel)
+        {
+            return true;
+        }
+
+        if (SolarPanelPresenter.IsWorldInputBlockedByPanel)
+        {
+            return true;
+        }
+
+        if (SolarTurbinePresenter.IsWorldInputBlockedByPanel)
+        {
+            return true;
+        }
+
+        if (PipePresenter.IsWorldInputBlockedByPanel)
+        {
+            return true;
+        }
+
+        if (SplitPipePresenter.IsWorldInputBlockedByPanel)
+        {
+            return true;
+        }
+
+        if (MergePipePresenter.IsWorldInputBlockedByPanel)
         {
             return true;
         }
@@ -513,7 +542,7 @@ public partial class UserInput
 
         if (GameplayRuntimeAccess.TryGetAssemblyUi(out AssemblyUI assemblyUi) &&
             assemblyUi != null &&
-            assemblyUi.IsWorldInputBlockedByPopup)
+            assemblyUi.IsWorldInputBlockedByUi)
         {
             return true;
         }
@@ -1305,10 +1334,6 @@ public partial class UserInput
         return hitTransform == satellite.transform || hitTransform.IsChildOf(satellite.transform);
     }
 }
-
-
-
-
 
 
 

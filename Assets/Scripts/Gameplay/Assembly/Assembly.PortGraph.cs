@@ -45,7 +45,10 @@ public partial class Assembly
             if (!IsOutputPortTransform(current)) continue;
 
             AssemblyPort outputPort = ComponentUtility.GetOrAddComponent<AssemblyPort>(current.gameObject);
-            outputPort.PortType = AssemblyPortType.Output;
+            if (outputPort.GetComponentInParent<AssemblyPartPortLayout>(true) == null)
+            {
+                outputPort.PortType = AssemblyPortType.Output;
+            }
             if (outputPort.GetComponentInParent<AssemblyPartFocus>(true) == null)
             {
                 // Core/output prefab ports: infer side once and cache as a direction vector.
@@ -325,7 +328,7 @@ public partial class Assembly
             {
                 AssemblyPartPortLayout.PortEntry entry = entries[j];
                 if (entry == null) continue;
-                if (entry.portType != AssemblyPortType.Input && entry.portType != AssemblyPortType.Output) continue;
+                if (!AssemblyPortTypeUtility.IsInputCompatible(entry.portType) && !AssemblyPortTypeUtility.IsOutputCompatible(entry.portType)) continue;
 
                 if (!TryGetPartLayoutEntryMapping(layout, entry, out Vector2Int sourceCell, out CellSideMask portSide))
                 {
@@ -362,9 +365,16 @@ public partial class Assembly
             portTypesByCellAndSide[mappedCell] = perSide;
         }
 
-        CellPortTypeMask nextTypeMask = portType == AssemblyPortType.Input
-            ? CellPortTypeMask.Input
-            : CellPortTypeMask.Output;
+        CellPortTypeMask nextTypeMask = CellPortTypeMask.None;
+        if (AssemblyPortTypeUtility.IsInputCompatible(portType))
+        {
+            nextTypeMask |= CellPortTypeMask.Input;
+        }
+
+        if (AssemblyPortTypeUtility.IsOutputCompatible(portType))
+        {
+            nextTypeMask |= CellPortTypeMask.Output;
+        }
 
         if (perSide.TryGetValue(mappedSide, out CellPortTypeMask currentTypeMask))
         {
@@ -393,7 +403,7 @@ public partial class Assembly
             ownerBySide[mappedSide] = nextOwnerLabel;
         }
 
-        if (portType == AssemblyPortType.Input)
+        if (AssemblyPortTypeUtility.IsInputCompatible(portType))
         {
             if (inputMaskByCell.TryGetValue(mappedCell, out CellSideMask currentMask))
             {
@@ -408,7 +418,7 @@ public partial class Assembly
 
     private static string BuildPortOwnerLabel(AssemblyPortType portType, string ownerPartName)
     {
-        string typeName = portType == AssemblyPortType.Input ? "Input" : "Output";
+        string typeName = AssemblyPortTypeUtility.GetDisplayName(portType);
         string owner = string.IsNullOrWhiteSpace(ownerPartName) ? "Unknown" : ownerPartName;
         return $"{typeName} ({owner})";
     }
@@ -461,7 +471,7 @@ public partial class Assembly
         AssemblyPartPortLayout layout = port.GetComponentInParent<AssemblyPartPortLayout>(true);
         if (layout == null) return false;
         if (!layout.TryGetPortEntry(port, out AssemblyPartPortLayout.PortEntry entry)) return false;
-        if (entry == null || entry.portType != AssemblyPortType.Output) return false;
+        if (entry == null || !AssemblyPortTypeUtility.IsOutputCompatible(entry.portType)) return false;
 
         return TryGetPartLayoutEntryMapping(layout, entry, out sourceCell, out outputSide);
     }
@@ -546,10 +556,11 @@ public partial class Assembly
         return GetOutputPortSideMask(outputPort);
     }
 
-    private bool TryGetAvailableOutputPort(Vector2Int cell, CellSideMask side, out AssemblyPort port)
+    private bool TryGetAvailableOutputPort(Vector2Int cell, CellSideMask side, out AssemblyPort port, bool ignoreOccupied = false)
     {
         if (!TryGetMappedOutputPort(cell, side, out port)) return false;
-        if (port == null || port.IsOccupied) return false;
+        if (port == null) return false;
+        if (!ignoreOccupied && port.IsOccupied) return false;
         return true;
     }
 
@@ -657,4 +668,3 @@ public partial class Assembly
         }
     }
 }
-

@@ -1,16 +1,16 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 public enum AssemblyPortType
 {
     Input,
-    Output
+    Output,
+    Neutral
 }
 
 public class AssemblyPort : MonoBehaviour
 {
     [SerializeField] private AssemblyPortType portType = AssemblyPortType.Output;
     [SerializeField] private Vector3 localDirection = Vector3.up;
-
     [SerializeField] private bool isOccupied = false;
 
     public AssemblyPortType PortType

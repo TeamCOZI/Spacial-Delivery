@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 [DefaultExecutionOrder(33980)]
 [DisallowMultipleComponent]
@@ -12,6 +12,11 @@ using UnityEngine;
 [RequireComponent(typeof(ModuleInventoryPresenter))]
 [RequireComponent(typeof(ModuleProcessingPresenter))]
 [RequireComponent(typeof(PowerGeneratorPresenter))]
+[RequireComponent(typeof(SolarPanelPresenter))]
+[RequireComponent(typeof(SolarTurbinePresenter))]
+[RequireComponent(typeof(PipePresenter))]
+[RequireComponent(typeof(SplitPipePresenter))]
+[RequireComponent(typeof(MergePipePresenter))]
 [RequireComponent(typeof(ModuleOutputPortSelectorPresenter))]
 [RequireComponent(typeof(AssemblyFocusedPartHighlightPresenter))]
 public class FocusFeatureBootstrap : MonoBehaviour
@@ -24,6 +29,11 @@ public class FocusFeatureBootstrap : MonoBehaviour
         _ = ComponentUtility.GetOrAddComponent<ModuleInventoryPresenter>(gameObject);
         _ = ComponentUtility.GetOrAddComponent<ModuleProcessingPresenter>(gameObject);
         _ = ComponentUtility.GetOrAddComponent<PowerGeneratorPresenter>(gameObject);
+        _ = ComponentUtility.GetOrAddComponent<SolarPanelPresenter>(gameObject);
+        _ = ComponentUtility.GetOrAddComponent<SolarTurbinePresenter>(gameObject);
+        _ = ComponentUtility.GetOrAddComponent<PipePresenter>(gameObject);
+        _ = ComponentUtility.GetOrAddComponent<SplitPipePresenter>(gameObject);
+        _ = ComponentUtility.GetOrAddComponent<MergePipePresenter>(gameObject);
         _ = ComponentUtility.GetOrAddComponent<ModuleOutputPortSelectorPresenter>(gameObject);
         _ = ComponentUtility.GetOrAddComponent<AssemblyFocusedPartHighlightPresenter>(gameObject);
 
@@ -41,3 +51,6 @@ public class FocusFeatureBootstrap : MonoBehaviour
         }
     }
 }
+
+
+

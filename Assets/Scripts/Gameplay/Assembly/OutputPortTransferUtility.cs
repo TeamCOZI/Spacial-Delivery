@@ -23,7 +23,56 @@ public static class OutputPortTransferUtility
         public StructureResourceInventory inputInventory;
         public Transform portTransform;
         public Vector2Int mappedCell;
-        public int distance;
+        public Vector2Int receiverTerminalDirection;
+    }
+
+    public struct TransferRouteSelection
+    {
+        private struct SplitCommit
+        {
+            public SplitPipeState state;
+            public AssemblyPartPortLayout.PortSide outputSide;
+        }
+
+        private List<SplitCommit> splitCommits;
+
+        public bool HasSplitSelection => splitCommits != null && splitCommits.Count > 0;
+
+        public void Add(SplitPipeState splitPipeState, AssemblyPartPortLayout.PortSide splitOutputSide)
+        {
+            if (splitPipeState == null)
+            {
+                return;
+            }
+
+            if (splitCommits == null)
+            {
+                splitCommits = new List<SplitCommit>();
+            }
+
+            splitCommits.Add(new SplitCommit
+            {
+                state = splitPipeState,
+                outputSide = splitOutputSide
+            });
+        }
+
+        public void Commit()
+        {
+            if (splitCommits == null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < splitCommits.Count; i++)
+            {
+                SplitCommit splitCommit = splitCommits[i];
+                if (splitCommit.state != null)
+                {
+                    splitCommit.state.CommitSelectedOutputSide(splitCommit.outputSide);
+                }
+            }
+        }
     }
 
     public static bool SupportsTransfer(AssemblyOutputPortFocus outputPort)
@@ -51,6 +100,11 @@ public static class OutputPortTransferUtility
         }
 
         if (string.Equals(sourcePart.partName, LauncherPartName, StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        if (PowerGeneratorRecipeCatalog.IsGeneratorPart(sourcePart) || SolarPanelUtility.IsSolarPanelPart(sourcePart) || SolarTurbineUtility.IsSolarTurbinePart(sourcePart))
         {
             return false;
         }
@@ -99,6 +153,72 @@ public static class OutputPortTransferUtility
     public static bool TryResolveReceiverInputInventory(AssemblyPartFocus partFocus, out StructureResourceInventory inputInventory)
     {
         return ModulePartInventoryUtility.TryResolveInputInventory(partFocus, out inputInventory);
+    }
+
+    public static bool IsReceiverInputAttachedToPipeCell(
+        ArtificialSatellite ownerSatellite,
+        AssemblyPartFocus receiverPartFocus,
+        Transform receiverPortTransform,
+        Vector2Int pipeCell,
+        Vector2Int receiverTerminalDirection)
+    {
+        if (ownerSatellite == null || receiverPartFocus == null || receiverPortTransform == null || receiverTerminalDirection == Vector2Int.zero)
+        {
+            return false;
+        }
+
+        Dictionary<Vector2Int, HashSet<Vector2Int>> outputDirectionsByCell = new Dictionary<Vector2Int, HashSet<Vector2Int>>();
+        HashSet<Vector2Int> pipeCells = new HashSet<Vector2Int>();
+        PipeConnectivityUtility.BuildPipePortMaps(ownerSatellite, null, outputDirectionsByCell, null, pipeCells);
+        if (!pipeCells.Contains(pipeCell) || !HasDirection(outputDirectionsByCell, pipeCell, receiverTerminalDirection))
+        {
+            return false;
+        }
+
+        AssemblyPartPortLayout[] layouts = ownerSatellite.GetComponentsInChildren<AssemblyPartPortLayout>(true);
+        for (int i = 0; i < layouts.Length; i++)
+        {
+            AssemblyPartPortLayout layout = layouts[i];
+            if (layout == null)
+            {
+                continue;
+            }
+
+            AssemblyPartFocus partFocus = layout.GetComponent<AssemblyPartFocus>();
+            if (partFocus == null)
+            {
+                partFocus = layout.GetComponentInParent<AssemblyPartFocus>();
+            }
+
+            if (partFocus != receiverPartFocus)
+            {
+                continue;
+            }
+
+            List<AssemblyPartPortLayout.PortEntry> entries = layout.Ports;
+            if (entries == null)
+            {
+                continue;
+            }
+
+            for (int entryIndex = 0; entryIndex < entries.Count; entryIndex++)
+            {
+                AssemblyPartPortLayout.PortEntry entry = entries[entryIndex];
+                if (entry == null || entry.portTransform != receiverPortTransform || !AssemblyPortTypeUtility.IsInputCompatible(entry.portType))
+                {
+                    continue;
+                }
+
+                if (!TryGetMappedCellForInputEntry(receiverPartFocus, layout, entry, out Vector2Int mappedCell, out Vector2Int resolvedTerminalDirection))
+                {
+                    continue;
+                }
+
+                return mappedCell == pipeCell && resolvedTerminalDirection == receiverTerminalDirection;
+            }
+        }
+
+        return false;
     }
 
     public static void BuildOutputResourceAmounts(
@@ -175,9 +295,42 @@ public static class OutputPortTransferUtility
         out StructureResourceInventory receiverInputInventory,
         out AssemblyPartFocus receiverPartFocus)
     {
+        return TryResolveTransferRouteDetailed(
+            outputPort,
+            localPoints,
+            out pipeCellCount,
+            out receiverInputInventory,
+            out receiverPartFocus,
+            out _,
+            out _,
+            out _,
+            out _,
+            out _,
+            out _);
+    }
+
+    public static bool TryResolveTransferRouteDetailed(
+        AssemblyOutputPortFocus outputPort,
+        List<Vector3> localPoints,
+        out int pipeCellCount,
+        out StructureResourceInventory receiverInputInventory,
+        out AssemblyPartFocus receiverPartFocus,
+        out TransferRouteSelection routeSelection,
+        out int firstPipePointIndex,
+        out int lastPipePointIndex,
+        out Transform receiverPortTransform,
+        out Vector2Int receiverTerminalDirection,
+        out List<Vector2Int> pipeCellPath)
+    {
         pipeCellCount = 0;
         receiverInputInventory = null;
         receiverPartFocus = null;
+        routeSelection = default;
+        firstPipePointIndex = -1;
+        lastPipePointIndex = -1;
+        receiverPortTransform = null;
+        receiverTerminalDirection = Vector2Int.zero;
+        pipeCellPath = null;
 
         if (localPoints == null)
         {
@@ -191,9 +344,12 @@ public static class OutputPortTransferUtility
         }
 
         ArtificialSatellite ownerSatellite = outputPort.OwnerSatellite;
+        Dictionary<Vector2Int, HashSet<Vector2Int>> inputDirectionsByCell = new Dictionary<Vector2Int, HashSet<Vector2Int>>();
+        Dictionary<Vector2Int, HashSet<Vector2Int>> outputDirectionsByCell = new Dictionary<Vector2Int, HashSet<Vector2Int>>();
+        Dictionary<Vector2Int, SplitPipeState> splitStatesByCell = new Dictionary<Vector2Int, SplitPipeState>();
         HashSet<Vector2Int> pipeCells = new HashSet<Vector2Int>();
-        Dictionary<Vector2Int, List<Vector2Int>> pipeAdjacency = new Dictionary<Vector2Int, List<Vector2Int>>();
-        PipeConnectivityUtility.BuildConnectedPipeAdjacency(ownerSatellite, pipeAdjacency, pipeCells);
+        Dictionary<Vector2Int, List<Vector2Int>> activeAdjacency = new Dictionary<Vector2Int, List<Vector2Int>>();
+        PipeConnectivityUtility.BuildActivePipeAdjacency(ownerSatellite, activeAdjacency, pipeCells, inputDirectionsByCell, outputDirectionsByCell, splitStatesByCell);
 
         Vector2Int senderCell = outputPort.MappedCell;
         if (!pipeCells.Contains(senderCell))
@@ -202,34 +358,9 @@ public static class OutputPortTransferUtility
         }
 
         Dictionary<Vector2Int, Vector2Int> cameFrom = new Dictionary<Vector2Int, Vector2Int>();
-        Dictionary<Vector2Int, int> distances = new Dictionary<Vector2Int, int>();
-        Queue<Vector2Int> open = new Queue<Vector2Int>();
-        open.Enqueue(senderCell);
-        distances[senderCell] = 0;
-
-        while (open.Count > 0)
-        {
-            Vector2Int current = open.Dequeue();
-            if (!pipeAdjacency.TryGetValue(current, out List<Vector2Int> neighbors))
-            {
-                continue;
-            }
-
-            for (int i = 0; i < neighbors.Count; i++)
-            {
-                Vector2Int neighbor = neighbors[i];
-                if (distances.ContainsKey(neighbor))
-                {
-                    continue;
-                }
-
-                distances[neighbor] = distances[current] + 1;
-                cameFrom[neighbor] = current;
-                open.Enqueue(neighbor);
-            }
-        }
-
-        if (!TrySelectReceiverCandidate(outputPort, ownerSatellite, distances, out InputPortCandidate candidate))
+        HashSet<Vector2Int> reachableCells = new HashSet<Vector2Int>();
+        CollectReachability(senderCell, activeAdjacency, reachableCells, cameFrom);
+        if (!TrySelectReceiverCandidate(outputPort, ownerSatellite, reachableCells, splitStatesByCell, out InputPortCandidate candidate))
         {
             return false;
         }
@@ -242,6 +373,8 @@ public static class OutputPortTransferUtility
         }
 
         pipeCellCount = cellPath.Count;
+        pipeCellPath = new List<Vector2Int>(cellPath);
+        routeSelection = BuildRouteSelectionForPath(cellPath, candidate, outputDirectionsByCell, splitStatesByCell);
 
         Vector3 senderPortLocalPoint = ownerSatellite.transform.InverseTransformPoint(outputPort.transform.position);
         senderPortLocalPoint.z = PipeTokenLocalZ;
@@ -250,6 +383,13 @@ public static class OutputPortTransferUtility
         for (int i = 0; i < cellPath.Count; i++)
         {
             AppendPointIfDistinct(localPoints, GridToLocalPosition(cellPath[i], PipeTokenLocalZ));
+            int appendedPointIndex = Mathf.Max(0, localPoints.Count - 1);
+            if (firstPipePointIndex < 0)
+            {
+                firstPipePointIndex = appendedPointIndex;
+            }
+
+            lastPipePointIndex = appendedPointIndex;
         }
 
         Vector3 receiverPortLocalPoint = ownerSatellite.transform.InverseTransformPoint(candidate.portTransform.position);
@@ -258,19 +398,26 @@ public static class OutputPortTransferUtility
 
         receiverInputInventory = candidate.inputInventory;
         receiverPartFocus = candidate.partFocus;
-        return localPoints.Count >= 2;
+        receiverPortTransform = candidate.portTransform;
+        receiverTerminalDirection = candidate.receiverTerminalDirection;
+        return firstPipePointIndex >= 0 && lastPipePointIndex >= firstPipePointIndex && localPoints.Count >= 1;
     }
 
     private static bool TrySelectReceiverCandidate(
         AssemblyOutputPortFocus outputPort,
         ArtificialSatellite ownerSatellite,
-        Dictionary<Vector2Int, int> distances,
+        HashSet<Vector2Int> reachableCells,
+        Dictionary<Vector2Int, SplitPipeState> splitStatesByCell,
         out InputPortCandidate candidate)
     {
         candidate = default;
-        bool found = false;
         AssemblyPartFocus senderPartFocus = ResolveOwnerPartFocus(outputPort);
-
+        Dictionary<Vector2Int, HashSet<Vector2Int>> inputDirectionsByCell = new Dictionary<Vector2Int, HashSet<Vector2Int>>();
+        Dictionary<Vector2Int, HashSet<Vector2Int>> outputDirectionsByCell = new Dictionary<Vector2Int, HashSet<Vector2Int>>();
+        HashSet<Vector2Int> pipeCells = new HashSet<Vector2Int>();
+        Dictionary<Vector2Int, HashSet<Vector2Int>> receiverTerminalDirectionsByCell = new Dictionary<Vector2Int, HashSet<Vector2Int>>();
+        PipeConnectivityUtility.BuildPipePortMaps(ownerSatellite, inputDirectionsByCell, outputDirectionsByCell, splitStatesByCell, pipeCells);
+        CollectReachableReceiverTerminalDirections(outputPort, ownerSatellite, reachableCells, pipeCells, outputDirectionsByCell, receiverTerminalDirectionsByCell);
         AssemblyPartPortLayout[] layouts = ownerSatellite.GetComponentsInChildren<AssemblyPartPortLayout>(true);
         for (int i = 0; i < layouts.Length; i++)
         {
@@ -279,70 +426,422 @@ public static class OutputPortTransferUtility
             {
                 continue;
             }
-
             AssemblyPartFocus partFocus = layout.GetComponent<AssemblyPartFocus>();
             if (partFocus == null)
             {
                 partFocus = layout.GetComponentInParent<AssemblyPartFocus>();
             }
-
             if (partFocus == null || partFocus == senderPartFocus || partFocus.SourcePart == null)
             {
                 continue;
             }
-
             if (!ModulePartInventoryUtility.UsesSplitInventories(partFocus.SourcePart) ||
                 !TryResolveReceiverInputInventory(partFocus, out StructureResourceInventory inputInventory) ||
                 inputInventory == null)
             {
                 continue;
             }
-
             List<AssemblyPartPortLayout.PortEntry> entries = layout.Ports;
             if (entries == null)
             {
                 continue;
             }
-
             for (int entryIndex = 0; entryIndex < entries.Count; entryIndex++)
             {
                 AssemblyPartPortLayout.PortEntry entry = entries[entryIndex];
-                if (entry == null || entry.portType != AssemblyPortType.Input || entry.portTransform == null)
+                if (entry == null || !AssemblyPortTypeUtility.IsInputCompatible(entry.portType) || entry.portTransform == null)
                 {
                     continue;
                 }
-
-                if (!TryGetMappedCellForInputEntry(partFocus, layout, entry, out Vector2Int mappedCell) ||
-                    !distances.TryGetValue(mappedCell, out int distance))
+                if (!TryResolveReceiverAttachmentCell(partFocus, layout, entry, pipeCells, outputDirectionsByCell, out Vector2Int attachmentCell, out Vector2Int receiverTerminalDirection) ||
+                    reachableCells == null || !reachableCells.Contains(attachmentCell))
                 {
                     continue;
                 }
-
-                if (!found || distance < candidate.distance)
+                if (!IsReceiverInputAttachedToPipeCell(ownerSatellite, partFocus, entry.portTransform, attachmentCell, receiverTerminalDirection))
                 {
-                    candidate = new InputPortCandidate
-                    {
-                        partFocus = partFocus,
-                        inputInventory = inputInventory,
-                        portTransform = entry.portTransform,
-                        mappedCell = mappedCell,
-                        distance = distance
-                    };
-                    found = true;
+                    continue;
+                }
+                if (!IsReceiverCandidateReachable(attachmentCell, receiverTerminalDirection, inputDirectionsByCell, outputDirectionsByCell, pipeCells, splitStatesByCell, receiverTerminalDirectionsByCell))
+                {
+                    continue;
+                }
+                candidate = new InputPortCandidate
+                {
+                    partFocus = partFocus,
+                    inputInventory = inputInventory,
+                    portTransform = entry.portTransform,
+                    mappedCell = attachmentCell,
+                    receiverTerminalDirection = receiverTerminalDirection
+                };
+                return true;
+            }
+        }
+        return false;
+    }
+    private static bool TryResolveReceiverAttachmentCell(
+        AssemblyPartFocus partFocus,
+        AssemblyPartPortLayout layout,
+        AssemblyPartPortLayout.PortEntry entry,
+        HashSet<Vector2Int> pipeCells,
+        Dictionary<Vector2Int, HashSet<Vector2Int>> outputDirectionsByCell,
+        out Vector2Int attachmentCell,
+        out Vector2Int receiverTerminalDirection)
+    {
+        attachmentCell = Vector2Int.zero;
+        receiverTerminalDirection = Vector2Int.zero;
+        if (!TryGetMappedCellForInputEntry(partFocus, layout, entry, out Vector2Int mappedCell, out receiverTerminalDirection) ||
+            receiverTerminalDirection == Vector2Int.zero ||
+            pipeCells == null)
+        {
+            return false;
+        }
+        if (pipeCells.Contains(mappedCell) && HasDirection(outputDirectionsByCell, mappedCell, receiverTerminalDirection))
+        {
+            attachmentCell = mappedCell;
+            return true;
+        }
+        Vector2Int fallbackCell = mappedCell - receiverTerminalDirection;
+        if (pipeCells.Contains(fallbackCell) && HasDirection(outputDirectionsByCell, fallbackCell, receiverTerminalDirection))
+        {
+            attachmentCell = fallbackCell;
+            return true;
+        }
+        return false;
+    }
+    private static bool IsReceiverCandidateReachable(
+        Vector2Int mappedCell,
+        Vector2Int receiverTerminalDirection,
+        Dictionary<Vector2Int, HashSet<Vector2Int>> inputDirectionsByCell,
+        Dictionary<Vector2Int, HashSet<Vector2Int>> outputDirectionsByCell,
+        HashSet<Vector2Int> pipeCells,
+        Dictionary<Vector2Int, SplitPipeState> splitStatesByCell,
+        Dictionary<Vector2Int, HashSet<Vector2Int>> receiverTerminalDirectionsByCell)
+    {
+        if (splitStatesByCell == null || !splitStatesByCell.TryGetValue(mappedCell, out SplitPipeState splitPipeState) || splitPipeState == null)
+        {
+            return true;
+        }
+        List<Vector2Int> availableDirections = new List<Vector2Int>(4);
+        if (outputDirectionsByCell != null && outputDirectionsByCell.TryGetValue(mappedCell, out HashSet<Vector2Int> outputDirections) && outputDirections != null)
+        {
+            foreach (Vector2Int outputDirection in outputDirections)
+            {
+                Vector2Int neighborCell = mappedCell + outputDirection;
+                if (!CanTraversePipeDirection(mappedCell, outputDirection, neighborCell, inputDirectionsByCell, outputDirectionsByCell, pipeCells))
+                {
+                    continue;
+                }
+                if (!availableDirections.Contains(outputDirection))
+                {
+                    availableDirections.Add(outputDirection);
                 }
             }
         }
+        if (receiverTerminalDirectionsByCell != null && receiverTerminalDirectionsByCell.TryGetValue(mappedCell, out HashSet<Vector2Int> receiverDirections) && receiverDirections != null)
+        {
+            foreach (Vector2Int receiverDirection in receiverDirections)
+            {
+                if (receiverDirection == Vector2Int.zero || availableDirections.Contains(receiverDirection))
+                {
+                    continue;
+                }
+                availableDirections.Add(receiverDirection);
+            }
+        }
+        if (!splitPipeState.TrySelectPreviewOutputDirection(availableDirections, out Vector2Int selectedDirection))
+        {
+            return false;
+        }
+        return receiverTerminalDirection != Vector2Int.zero && selectedDirection == receiverTerminalDirection;
+    }
+    private static void CollectReachableReceiverTerminalDirections(
+        AssemblyOutputPortFocus outputPort,
+        ArtificialSatellite ownerSatellite,
+        HashSet<Vector2Int> reachableCells,
+        HashSet<Vector2Int> pipeCells,
+        Dictionary<Vector2Int, HashSet<Vector2Int>> outputDirectionsByCell,
+        Dictionary<Vector2Int, HashSet<Vector2Int>> receiverTerminalDirectionsByCell)
+    {
+        receiverTerminalDirectionsByCell?.Clear();
+        if (ownerSatellite == null || reachableCells == null || receiverTerminalDirectionsByCell == null)
+        {
+            return;
+        }
+        AssemblyPartFocus senderPartFocus = ResolveOwnerPartFocus(outputPort);
+        AssemblyPartPortLayout[] layouts = ownerSatellite.GetComponentsInChildren<AssemblyPartPortLayout>(true);
+        for (int i = 0; i < layouts.Length; i++)
+        {
+            AssemblyPartPortLayout layout = layouts[i];
+            if (layout == null)
+            {
+                continue;
+            }
+            AssemblyPartFocus partFocus = layout.GetComponent<AssemblyPartFocus>();
+            if (partFocus == null)
+            {
+                partFocus = layout.GetComponentInParent<AssemblyPartFocus>();
+            }
+            if (partFocus == null || partFocus == senderPartFocus || partFocus.SourcePart == null)
+            {
+                continue;
+            }
+            if (!ModulePartInventoryUtility.UsesSplitInventories(partFocus.SourcePart))
+            {
+                continue;
+            }
+            List<AssemblyPartPortLayout.PortEntry> entries = layout.Ports;
+            if (entries == null)
+            {
+                continue;
+            }
+            for (int entryIndex = 0; entryIndex < entries.Count; entryIndex++)
+            {
+                AssemblyPartPortLayout.PortEntry entry = entries[entryIndex];
+                if (entry == null || !AssemblyPortTypeUtility.IsInputCompatible(entry.portType))
+                {
+                    continue;
+                }
+                if (!TryResolveReceiverAttachmentCell(partFocus, layout, entry, pipeCells, outputDirectionsByCell, out Vector2Int attachmentCell, out Vector2Int receiverTerminalDirection) ||
+                    !reachableCells.Contains(attachmentCell))
+                {
+                    continue;
+                }
+                if (receiverTerminalDirection == Vector2Int.zero)
+                {
+                    continue;
+                }
+                AddReceiverTerminalDirection(receiverTerminalDirectionsByCell, attachmentCell, receiverTerminalDirection);
+            }
+        }
+    }
+    private static void AddReceiverTerminalDirection(
+        Dictionary<Vector2Int, HashSet<Vector2Int>> receiverTerminalDirectionsByCell,
+        Vector2Int mappedCell,
+        Vector2Int receiverDirection)
+    {
+        if (receiverTerminalDirectionsByCell == null || receiverDirection == Vector2Int.zero)
+        {
+            return;
+        }
 
-        return found;
+        if (!receiverTerminalDirectionsByCell.TryGetValue(mappedCell, out HashSet<Vector2Int> directions))
+        {
+            directions = new HashSet<Vector2Int>();
+            receiverTerminalDirectionsByCell[mappedCell] = directions;
+        }
+
+        directions.Add(receiverDirection);
+    }
+
+    private static bool CanTraversePipeDirection(
+        Vector2Int currentCell,
+        Vector2Int outputDirection,
+        Vector2Int neighborCell,
+        Dictionary<Vector2Int, HashSet<Vector2Int>> inputDirectionsByCell,
+        Dictionary<Vector2Int, HashSet<Vector2Int>> outputDirectionsByCell,
+        HashSet<Vector2Int> pipeCells)
+    {
+        if (outputDirection == Vector2Int.zero || pipeCells == null || !pipeCells.Contains(neighborCell))
+        {
+            return false;
+        }
+
+        return HasDirection(outputDirectionsByCell, currentCell, outputDirection)
+            && HasDirection(inputDirectionsByCell, neighborCell, -outputDirection);
+    }
+
+    private static void CollectReachability(
+        Vector2Int senderCell,
+        Dictionary<Vector2Int, List<Vector2Int>> adjacency,
+        HashSet<Vector2Int> reachableCells,
+        Dictionary<Vector2Int, Vector2Int> cameFrom)
+    {
+        reachableCells?.Clear();
+        cameFrom.Clear();
+
+        Queue<Vector2Int> open = new Queue<Vector2Int>();
+        open.Enqueue(senderCell);
+        reachableCells?.Add(senderCell);
+
+        while (open.Count > 0)
+        {
+            Vector2Int current = open.Dequeue();
+            if (adjacency == null || !adjacency.TryGetValue(current, out List<Vector2Int> nextCells) || nextCells == null)
+            {
+                continue;
+            }
+
+            for (int i = 0; i < nextCells.Count; i++)
+            {
+                Vector2Int nextCell = nextCells[i];
+                if (reachableCells != null && reachableCells.Contains(nextCell))
+                {
+                    continue;
+                }
+
+                reachableCells?.Add(nextCell);
+                cameFrom[nextCell] = current;
+                open.Enqueue(nextCell);
+            }
+        }
+    }
+
+    private static TransferRouteSelection BuildRouteSelectionForPath(
+        List<Vector2Int> cellPath,
+        InputPortCandidate candidate,
+        Dictionary<Vector2Int, HashSet<Vector2Int>> outputDirectionsByCell,
+        Dictionary<Vector2Int, SplitPipeState> splitStatesByCell)
+    {
+        TransferRouteSelection selection = default;
+        if (cellPath == null || cellPath.Count <= 0 || splitStatesByCell == null || splitStatesByCell.Count == 0)
+        {
+            return selection;
+        }
+
+        HashSet<SplitPipeState> committedStates = new HashSet<SplitPipeState>();
+        for (int i = 0; i < cellPath.Count - 1; i++)
+        {
+            Vector2Int currentCell = cellPath[i];
+            Vector2Int nextCell = cellPath[i + 1];
+            if (!splitStatesByCell.TryGetValue(currentCell, out SplitPipeState splitPipeState) || splitPipeState == null || !committedStates.Add(splitPipeState))
+            {
+                continue;
+            }
+
+            Vector2Int selectedDirection = nextCell - currentCell;
+            if (selectedDirection == Vector2Int.zero || !HasDirection(outputDirectionsByCell, currentCell, selectedDirection))
+            {
+                continue;
+            }
+
+            selection.Add(splitPipeState, ConvertDirectionToSide(selectedDirection));
+        }
+
+        Vector2Int terminalCell = cellPath[cellPath.Count - 1];
+        if (splitStatesByCell.TryGetValue(terminalCell, out SplitPipeState terminalSplitState) && terminalSplitState != null && committedStates.Add(terminalSplitState))
+        {
+            Vector2Int terminalDirection = candidate.receiverTerminalDirection;
+            if (terminalDirection != Vector2Int.zero && HasDirection(outputDirectionsByCell, terminalCell, terminalDirection))
+            {
+                selection.Add(terminalSplitState, ConvertDirectionToSide(terminalDirection));
+            }
+        }
+
+        return selection;
+    }
+
+    private static bool TryResolvePartCenterCell(AssemblyPartFocus partFocus, AssemblyPartPortLayout layout, out Vector2Int centerCell)
+    {
+        centerCell = Vector2Int.zero;
+        if (partFocus == null || partFocus.SourcePart == null || layout == null)
+        {
+            return false;
+        }
+
+        Vector2 snapOffset = GetSnapOffset(partFocus, layout);
+        Vector2 pivotOffset = GetPartPivotOffset(layout, layout.transform.localRotation);
+        centerCell = LocalPositionToGrid(layout.transform.localPosition - (Vector3)pivotOffset, snapOffset);
+        return true;
+    }
+
+    private static bool TryGetPipePortMapping(
+        AssemblyPartPortLayout layout,
+        AssemblyPartFocus partFocus,
+        AssemblyPartPortLayout.PortEntry entry,
+        out Vector2Int sourceCell,
+        out Vector2Int sideDirection)
+    {
+        sourceCell = Vector2Int.zero;
+        sideDirection = Vector2Int.zero;
+        if (layout == null || partFocus == null || partFocus.SourcePart == null || entry == null)
+        {
+            return false;
+        }
+
+        Vector2 snapOffset = GetSnapOffset(partFocus, layout);
+        Vector2 pivotOffset = GetPartPivotOffset(layout, layout.transform.localRotation);
+        Vector2Int partCenterCell = LocalPositionToGrid(layout.transform.localPosition - (Vector3)pivotOffset, snapOffset);
+        int quarterTurns = AssemblyMathUtility.GetQuarterTurns(layout.transform.localRotation);
+        Vector2Int rotatedRelativeCell = AssemblyMathUtility.RotateCellOffset(entry.relativeSourceCell, quarterTurns);
+        Vector2Int rotatedSideDirection = RotateSideToCellOffset(entry.side, quarterTurns);
+        if (rotatedSideDirection == Vector2Int.zero)
+        {
+            return false;
+        }
+
+        sourceCell = partCenterCell + rotatedRelativeCell;
+        sideDirection = rotatedSideDirection;
+        return true;
+    }
+
+    private static bool HasDirection(Dictionary<Vector2Int, HashSet<Vector2Int>> map, Vector2Int cell, Vector2Int direction)
+    {
+        return map != null && map.TryGetValue(cell, out HashSet<Vector2Int> directions) && directions != null && directions.Contains(direction);
+    }
+
+    private static void AddDirection(Dictionary<Vector2Int, HashSet<Vector2Int>> map, Vector2Int cell, Vector2Int direction)
+    {
+        if (map == null || direction == Vector2Int.zero)
+        {
+            return;
+        }
+
+        if (!map.TryGetValue(cell, out HashSet<Vector2Int> directions))
+        {
+            directions = new HashSet<Vector2Int>();
+            map[cell] = directions;
+        }
+
+        directions.Add(direction);
+    }
+
+    private static AssemblyPartPortLayout.PortSide ConvertDirectionToSide(Vector2Int direction)
+    {
+        if (direction == Vector2Int.up)
+        {
+            return AssemblyPartPortLayout.PortSide.Top;
+        }
+
+        if (direction == Vector2Int.down)
+        {
+            return AssemblyPartPortLayout.PortSide.Bottom;
+        }
+
+        if (direction == Vector2Int.left)
+        {
+            return AssemblyPartPortLayout.PortSide.Left;
+        }
+
+        return AssemblyPartPortLayout.PortSide.Right;
+    }
+
+    private static Vector2Int ConvertSideToDirection(AssemblyPartPortLayout.PortSide side)
+    {
+        switch (side)
+        {
+            case AssemblyPartPortLayout.PortSide.Top:
+                return Vector2Int.up;
+            case AssemblyPartPortLayout.PortSide.Bottom:
+                return Vector2Int.down;
+            case AssemblyPartPortLayout.PortSide.Left:
+                return Vector2Int.left;
+            case AssemblyPartPortLayout.PortSide.Right:
+                return Vector2Int.right;
+            default:
+                return Vector2Int.zero;
+        }
     }
 
     private static bool TryGetMappedCellForInputEntry(
         AssemblyPartFocus partFocus,
         AssemblyPartPortLayout layout,
         AssemblyPartPortLayout.PortEntry entry,
-        out Vector2Int mappedCell)
+        out Vector2Int mappedCell,
+        out Vector2Int receiverTerminalDirection)
     {
         mappedCell = Vector2Int.zero;
+        receiverTerminalDirection = Vector2Int.zero;
         if (partFocus == null || layout == null || entry == null)
         {
             return false;
@@ -361,9 +860,9 @@ public static class OutputPortTransferUtility
 
         Vector2Int sourceCell = partCenterCell + rotatedRelativeCell;
         mappedCell = sourceCell + sideOffset;
+        receiverTerminalDirection = -sideOffset;
         return true;
     }
-
     private static Vector2 GetSnapOffset(AssemblyPartFocus partFocus, AssemblyPartPortLayout layout)
     {
         if (partFocus == null || partFocus.SourcePart == null)
@@ -745,3 +1244,7 @@ public static class OutputPortTransferUtility
         localPoints.Add(point);
     }
 }
+
+
+
+

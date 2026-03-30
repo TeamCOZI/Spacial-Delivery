@@ -655,6 +655,11 @@ public class ModuleOutputPortSelectorPresenter : FocusEventSubscriber
             return true;
         }
 
+        if (SolarTurbineUtility.IsSolarTurbinePart(partFocus.SourcePart))
+        {
+            return true;
+        }
+
         return string.Equals(partFocus.SourcePart.partName, LauncherPartName, StringComparison.OrdinalIgnoreCase);
     }
 

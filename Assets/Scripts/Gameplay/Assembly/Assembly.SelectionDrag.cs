@@ -32,6 +32,11 @@ public partial class Assembly
 
         Vector2 mouseScreen = Mouse.current.position.ReadValue();
 
+        if (UserInput.IsWorldInputBlockedByUiPanels() && !isSelectionPointerDown)
+        {
+            return;
+        }
+
         if (Mouse.current.leftButton.wasPressedThisFrame)
         {
             TryEnsureSelectionDragVisual();

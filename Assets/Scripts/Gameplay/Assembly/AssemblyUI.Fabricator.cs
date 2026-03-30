@@ -244,7 +244,7 @@ public partial class AssemblyUI
     private void UpdateFabricatorCountLabel()
     {
         if (fabricatorCountLabel == null) return;
-        fabricatorCountLabel.text = $"제작할 개수 : {requestedFabricatorCount}";
+        fabricatorCountLabel.text = $"\uC81C\uC791\uD560 \uAC1C\uC218 : {requestedFabricatorCount}";
     }
 
     private void SetFabricatorPlaceholderTexts()
@@ -260,22 +260,22 @@ public partial class AssemblyUI
 
         if (fabricatorResultsEmptyLabel != null)
         {
-            fabricatorResultsEmptyLabel.text = "결과물 목록";
+            fabricatorResultsEmptyLabel.text = "\uACB0\uACFC\uBB3C \uBAA9\uB85D";
         }
 
         if (fabricatorCraftTimeLabel != null)
         {
-            fabricatorCraftTimeLabel.text = "제작 시간";
+            fabricatorCraftTimeLabel.text = "\uC81C\uC791 \uC2DC\uAC04";
         }
 
         if (fabricatorProcessLabel != null)
         {
-            fabricatorProcessLabel.text = "제작 프로세스";
+            fabricatorProcessLabel.text = "\uC81C\uC791 \uD504\uB85C\uC138\uC2A4";
         }
 
         if (fabricatorResultLabel != null)
         {
-            fabricatorResultLabel.text = "결과물";
+            fabricatorResultLabel.text = "\uACB0\uACFC\uBB3C";
         }
 
         if (fabricatorResultsList != null)

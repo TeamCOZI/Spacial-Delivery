@@ -23,6 +23,12 @@ public partial class Assembly
         // Keep prefab-authored profile so auto-orientation can use real input direction.
         if (targetPart.partType != PartType.Pipe) return;
 
+        if (PipePartUtility.UsesFixedPipePorts(targetPart))
+        {
+            ConfigureRuntimeFixedPipePorts(root, targetPart, profile, isGhost);
+            return;
+        }
+
         float widthWorld = Mathf.Max(cellSize, targetPart.gridWidth * cellSize);
         float halfWidthWorld = widthWorld * 0.5f;
         float rootScaleX = Mathf.Max(0.0001f, Mathf.Abs(root.transform.localScale.x));
@@ -38,6 +44,79 @@ public partial class Assembly
             outputLocal,
             createInputPort,
             createOutputPort);
+    }
+
+    private void ConfigureRuntimeFixedPipePorts(
+        GameObject root,
+        Part targetPart,
+        AssemblyPartPortProfile profile,
+        bool isGhost)
+    {
+        if (root == null || targetPart == null || profile == null) return;
+
+        Transform runtimePortsRoot = root.transform.Find(RuntimePortsRootName);
+        if (runtimePortsRoot != null)
+        {
+            Destroy(runtimePortsRoot.gameObject);
+        }
+
+        float widthWorld = Mathf.Max(cellSize, targetPart.gridWidth * cellSize);
+        float heightWorld = Mathf.Max(cellSize, targetPart.gridHeight * cellSize);
+        float halfWidthWorld = widthWorld * 0.5f;
+        float halfHeightWorld = heightWorld * 0.5f;
+        float rootScaleX = Mathf.Max(0.0001f, Mathf.Abs(root.transform.localScale.x));
+        float rootScaleY = Mathf.Max(0.0001f, Mathf.Abs(root.transform.localScale.y));
+        float halfWidthLocal = halfWidthWorld / rootScaleX;
+        float halfHeightLocal = halfHeightWorld / rootScaleY;
+
+        List<Vector3> inputPositions = new List<Vector3>(4);
+        List<AssemblyPartPortLayout.PortEntry> entries = new List<AssemblyPartPortLayout.PortEntry>(4);
+        GameObject portsRootObject = new GameObject(RuntimePortsRootName);
+        portsRootObject.transform.SetParent(root.transform, false);
+
+        AddFixedPipePort(entries, inputPositions, portsRootObject.transform, targetPart.leftPortType, AssemblyPartPortLayout.PortSide.Left, new Vector3(-halfWidthLocal, 0f, 0f), isGhost);
+        AddFixedPipePort(entries, inputPositions, portsRootObject.transform, targetPart.topPortType, AssemblyPartPortLayout.PortSide.Top, new Vector3(0f, halfHeightLocal, 0f), isGhost);
+        AddFixedPipePort(entries, inputPositions, portsRootObject.transform, targetPart.rightPortType, AssemblyPartPortLayout.PortSide.Right, new Vector3(halfWidthLocal, 0f, 0f), isGhost);
+        AddFixedPipePort(entries, inputPositions, portsRootObject.transform, targetPart.bottomPortType, AssemblyPartPortLayout.PortSide.Bottom, new Vector3(0f, -halfHeightLocal, 0f), isGhost);
+
+        profile.SetInputPortLocalPositions(inputPositions.ToArray());
+        ApplyRuntimePartPortLayout(root, entries);
+    }
+
+    private void AddFixedPipePort(
+        List<AssemblyPartPortLayout.PortEntry> entries,
+        List<Vector3> inputPositions,
+        Transform parent,
+        AssemblyPortType portType,
+        AssemblyPartPortLayout.PortSide side,
+        Vector3 localPosition,
+        bool isGhost)
+    {
+        if (entries == null || parent == null)
+        {
+            return;
+        }
+
+        AssemblyPort port = CreateRuntimePortMarker(
+            parent,
+            AssemblyPortTypeUtility.GetDisplayName(portType) + "Port_" + side,
+            portType,
+            localPosition,
+            isGhost,
+            createVisualMarker: true);
+
+        entries.Add(new AssemblyPartPortLayout.PortEntry
+        {
+            portTransform = port != null ? port.transform : null,
+            relativeSourceCell = Vector2Int.zero,
+            side = side,
+            portType = portType
+        });
+
+        if (AssemblyPortTypeUtility.IsInputCompatible(portType))
+        {
+            inputPositions?.Add(localPosition);
+        }
     }
 
     private void ConfigureRuntimePipePorts(
@@ -94,7 +173,6 @@ public partial class Assembly
 
         ConfigureRuntimePartPortLayout(root, inputPort, outputPort, inputLocal, outputLocal);
     }
-
     private AssemblyPort CreateRuntimePortMarker(
         Transform parent,
         string name,
@@ -167,9 +245,6 @@ public partial class Assembly
     {
         if (root == null) return;
 
-        AssemblyPartPortLayout layout = root.GetComponent<AssemblyPartPortLayout>();
-        if (layout == null) layout = root.AddComponent<AssemblyPartPortLayout>();
-
         List<AssemblyPartPortLayout.PortEntry> entries = new List<AssemblyPartPortLayout.PortEntry>(2);
         if (inputPort != null)
         {
@@ -193,7 +268,16 @@ public partial class Assembly
             });
         }
 
-        layout.SetPorts(entries);
+        ApplyRuntimePartPortLayout(root, entries);
+    }
+
+    private void ApplyRuntimePartPortLayout(GameObject root, List<AssemblyPartPortLayout.PortEntry> entries)
+    {
+        if (root == null) return;
+
+        AssemblyPartPortLayout layout = root.GetComponent<AssemblyPartPortLayout>();
+        if (layout == null) layout = root.AddComponent<AssemblyPartPortLayout>();
+        layout.SetPorts(entries ?? new List<AssemblyPartPortLayout.PortEntry>());
     }
     private GameObject CreatePortVisualClone()
     {
@@ -337,8 +421,18 @@ public partial class Assembly
 
     private static bool IsOutputPortTransform(Transform target)
     {
-        return target != null && target.name.Contains(OutputPortNameToken);
+        if (target == null)
+        {
+            return false;
+        }
+
+        if (target.name.Contains(OutputPortNameToken))
+        {
+            return true;
+        }
+
+        AssemblyPort assemblyPort = target.GetComponent<AssemblyPort>();
+        return assemblyPort != null && AssemblyPortTypeUtility.IsOutputCompatible(assemblyPort.PortType);
     }
 }
-
 

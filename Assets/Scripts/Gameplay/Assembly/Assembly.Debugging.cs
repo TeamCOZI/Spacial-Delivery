@@ -6,7 +6,17 @@ public partial class Assembly
 {
     private static bool IsPipePart(Part targetPart)
     {
-        return targetPart != null && targetPart.partType == PartType.Pipe;
+        return PipePartUtility.IsPipePart(targetPart);
+    }
+
+    private static bool UsesPipePathPlacement(Part targetPart)
+    {
+        return PipePartUtility.UsesPathPlacement(targetPart);
+    }
+
+    private static bool CanReplaceInstalledPipe(Part targetPart)
+    {
+        return PipePartUtility.CanReplaceInstalledPipe(targetPart);
     }
 
     private static bool TryGetAssemblyManager(out AssemblyManager manager)
@@ -403,5 +413,165 @@ public partial class Assembly
         Vector3 worldPoint = mainCamera.ScreenToWorldPoint(new Vector3(mousePos.x, mousePos.y, cameraSpaceDepth));
         localPoint = artificialSatellite.transform.InverseTransformPoint(worldPoint);
         return true;
+    }
+
+    private void DrawDebugConnectionGraph()
+    {
+        if (!debugConnectionGraph || artificialSatellite == null)
+        {
+            return;
+        }
+
+        if (!debugHoverCellPortMapping)
+        {
+            RefreshOutputPortsNow();
+        }
+
+        DrawConnectedPortLinkGraph();
+        DrawPipeGraphOverlays();
+    }
+
+    private void DrawConnectedPortLinkGraph()
+    {
+        BuildSourcePortOwnerMaps(
+            out Dictionary<(Vector2Int cell, CellSideMask side), HashSet<GameObject>> inputOwnersByKey,
+            out Dictionary<(Vector2Int cell, CellSideMask side), HashSet<GameObject>> outputOwnersByKey,
+            out HashSet<(Vector2Int cell, CellSideMask side)> coreOutputKeys);
+
+        Vector2Int[] directions = { Vector2Int.right, Vector2Int.up };
+        foreach (KeyValuePair<Vector2Int, GameObject> pair in occupiedCells)
+        {
+            Vector2Int cell = pair.Key;
+            for (int dirIndex = 0; dirIndex < directions.Length; dirIndex++)
+            {
+                Vector2Int neighborCell = cell + directions[dirIndex];
+                if (!occupiedCells.ContainsKey(neighborCell))
+                {
+                    continue;
+                }
+
+                if (!IsCoreOrPipeCell(cell) && !IsCoreOrPipeCell(neighborCell))
+                {
+                    continue;
+                }
+
+                if (!AreAdjacentCellsConnectedByOppositePorts(cell, neighborCell, inputOwnersByKey, outputOwnersByKey, coreOutputKeys))
+                {
+                    continue;
+                }
+
+                DrawDebugCellLink(cell, neighborCell, ResolveConnectionGraphColor(cell, neighborCell), 0.004f);
+            }
+        }
+    }
+
+    private void DrawPipeGraphOverlays()
+    {
+        Dictionary<Vector2Int, List<Vector2Int>> physicalAdjacency = new Dictionary<Vector2Int, List<Vector2Int>>();
+        HashSet<Vector2Int> physicalPipeCells = new HashSet<Vector2Int>();
+        PipeConnectivityUtility.BuildConnectedPipeAdjacency(artificialSatellite, physicalAdjacency, physicalPipeCells);
+        DrawPipeAdjacency(physicalAdjacency, physicalPipeCells, new Color(1f, 0.78f, 0.16f, 1f), 0.006f);
+
+        if (!debugActiveSplitGraph)
+        {
+            return;
+        }
+
+        Dictionary<Vector2Int, List<Vector2Int>> activeAdjacency = new Dictionary<Vector2Int, List<Vector2Int>>();
+        HashSet<Vector2Int> activePipeCells = new HashSet<Vector2Int>();
+        Dictionary<Vector2Int, HashSet<Vector2Int>> inputDirectionsByCell = new Dictionary<Vector2Int, HashSet<Vector2Int>>();
+        Dictionary<Vector2Int, HashSet<Vector2Int>> outputDirectionsByCell = new Dictionary<Vector2Int, HashSet<Vector2Int>>();
+        Dictionary<Vector2Int, SplitPipeState> splitStatesByCell = new Dictionary<Vector2Int, SplitPipeState>();
+        PipeConnectivityUtility.BuildActivePipeAdjacency(artificialSatellite, activeAdjacency, activePipeCells, inputDirectionsByCell, outputDirectionsByCell, splitStatesByCell);
+        DrawPipeAdjacency(activeAdjacency, activePipeCells, new Color(1f, 0.15f, 0.85f, 1f), 0.009f);
+    }
+
+    private void DrawPipeAdjacency(
+        Dictionary<Vector2Int, List<Vector2Int>> adjacency,
+        HashSet<Vector2Int> pipeCells,
+        Color color,
+        float localZOffset)
+    {
+        if (adjacency == null || pipeCells == null)
+        {
+            return;
+        }
+
+        foreach (Vector2Int cell in pipeCells)
+        {
+            DrawDebugCellMarker(cell, color, localZOffset);
+            if (!adjacency.TryGetValue(cell, out List<Vector2Int> neighbors) || neighbors == null)
+            {
+                continue;
+            }
+
+            for (int i = 0; i < neighbors.Count; i++)
+            {
+                DrawDebugCellLink(cell, neighbors[i], color, localZOffset);
+            }
+        }
+    }
+
+    private bool IsCoreOrPipeCell(Vector2Int cell)
+    {
+        if (!occupiedCells.TryGetValue(cell, out GameObject rawOwner) || rawOwner == null)
+        {
+            return false;
+        }
+
+        if (rawOwner == artificialSatellite.gameObject)
+        {
+            return true;
+        }
+
+        return TryGetPipeOwnerForCell(cell, out _);
+    }
+
+    private Color ResolveConnectionGraphColor(Vector2Int cellA, Vector2Int cellB)
+    {
+        bool aCore = occupiedCells.TryGetValue(cellA, out GameObject ownerA) && ownerA == artificialSatellite.gameObject;
+        bool bCore = occupiedCells.TryGetValue(cellB, out GameObject ownerB) && ownerB == artificialSatellite.gameObject;
+        bool aPipe = TryGetPipeOwnerForCell(cellA, out _);
+        bool bPipe = TryGetPipeOwnerForCell(cellB, out _);
+
+        if (aCore || bCore)
+        {
+            return new Color(0.2f, 0.9f, 1f, 1f);
+        }
+
+        if (aPipe && bPipe)
+        {
+            return new Color(1f, 0.82f, 0.12f, 1f);
+        }
+
+        if (aPipe || bPipe)
+        {
+            return new Color(0.35f, 1f, 0.45f, 1f);
+        }
+
+        return new Color(0.8f, 0.8f, 0.8f, 1f);
+    }
+
+    private void DrawDebugCellLink(Vector2Int startCell, Vector2Int endCell, Color color, float localZOffset)
+    {
+        Vector3 startWorld = GetDebugCellWorldPoint(startCell, localZOffset);
+        Vector3 endWorld = GetDebugCellWorldPoint(endCell, localZOffset);
+        Debug.DrawLine(startWorld, endWorld, color, 0f, false);
+    }
+
+    private void DrawDebugCellMarker(Vector2Int cell, Color color, float localZOffset)
+    {
+        Vector3 center = GetDebugCellWorldPoint(cell, localZOffset);
+        Vector3 right = artificialSatellite.transform.TransformDirection(Vector3.right) * (cellSize * 0.12f);
+        Vector3 up = artificialSatellite.transform.TransformDirection(Vector3.up) * (cellSize * 0.12f);
+        Debug.DrawLine(center - right, center + right, color, 0f, false);
+        Debug.DrawLine(center - up, center + up, color, 0f, false);
+    }
+
+    private Vector3 GetDebugCellWorldPoint(Vector2Int cell, float localZOffset)
+    {
+        Vector3 localPoint = GridToLocalPosition(cell, ZeroSnapOffset);
+        localPoint.z += localZOffset;
+        return artificialSatellite.transform.TransformPoint(localPoint);
     }
 }

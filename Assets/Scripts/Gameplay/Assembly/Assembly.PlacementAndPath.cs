@@ -214,6 +214,49 @@ public partial class Assembly
         return IsAreaFree(center, partGhost.transform.localRotation);
     }
 
+    private bool TryCollectPipeReplacementRoots(
+        Vector2Int centerCell,
+        Quaternion rotation,
+        out List<GameObject> replacementRoots)
+    {
+        replacementRoots = new List<GameObject>();
+        if (!CanReplaceInstalledPipe(part))
+        {
+            return false;
+        }
+
+        if (!TryGetCurrentPartFootprintCells(centerCell, rotation, out List<Vector2Int> occupiedFootprint))
+        {
+            return false;
+        }
+
+        HashSet<GameObject> uniqueRoots = new HashSet<GameObject>();
+        for (int i = 0; i < occupiedFootprint.Count; i++)
+        {
+            Vector2Int cell = occupiedFootprint[i];
+            if (!occupiedCells.TryGetValue(cell, out GameObject owner) || owner == null)
+            {
+                continue;
+            }
+
+            GameObject existingRoot = ResolveRemovablePartRoot(owner);
+            if (existingRoot == null || !uniqueRoots.Add(existingRoot))
+            {
+                continue;
+            }
+
+            if (!CanReplacePipeRoot(existingRoot, centerCell, rotation))
+            {
+                replacementRoots.Clear();
+                return false;
+            }
+
+            replacementRoots.Add(existingRoot);
+        }
+
+        return replacementRoots.Count > 0;
+    }
+
     private Vector2Int GetCurrentGhostCenterCell()
     {
         Vector2 snapOffset = GetCurrentPartSnapOffset();
@@ -229,7 +272,7 @@ public partial class Assembly
             {
                 Vector2Int cell = occupiedFootprint[i];
                 if (!IsInsideGrid(cell)) return false;
-                if (occupiedCells.ContainsKey(cell)) return false;
+                if (occupiedCells.ContainsKey(cell) && !CanReplaceGhostFootprintAtCell(cell, centerCell, rotation)) return false;
             }
 
             return occupiedFootprint.Count > 0;
@@ -237,6 +280,140 @@ public partial class Assembly
 
         Vector2Int span = GetCellSpanForRotation(rotation);
         return IsAreaFree(centerCell, span);
+    }
+
+    private bool CanReplaceGhostFootprintAtCell(Vector2Int occupiedCell, Vector2Int ghostCenterCell, Quaternion ghostRotation)
+    {
+        if (!CanReplaceInstalledPipe(part))
+        {
+            return false;
+        }
+
+        if (!occupiedCells.TryGetValue(occupiedCell, out GameObject owner) || owner == null)
+        {
+            return true;
+        }
+
+        GameObject existingRoot = ResolveRemovablePartRoot(owner);
+        return existingRoot != null && CanReplacePipeRoot(existingRoot, ghostCenterCell, ghostRotation);
+    }
+
+    private bool CanReplacePipeRoot(GameObject existingRoot, Vector2Int ghostCenterCell, Quaternion ghostRotation)
+    {
+        if (existingRoot == null)
+        {
+            return false;
+        }
+
+        AssemblyPartFocus existingFocus = existingRoot.GetComponent<AssemblyPartFocus>();
+        if (existingFocus == null || existingFocus.SourcePart == null || !PipePartUtility.IsStandardPipePart(existingFocus.SourcePart))
+        {
+            return false;
+        }
+
+        if (!TryBuildPortRequirementMapForPart(existingRoot, out Dictionary<(Vector2Int cell, CellSideMask side), AssemblyPortType> existingPorts) || existingPorts.Count == 0)
+        {
+            return false;
+        }
+
+        if (!TryBuildGhostPortRequirementMap(ghostCenterCell, ghostRotation, out Dictionary<(Vector2Int cell, CellSideMask side), AssemblyPortType> ghostPorts) || ghostPorts.Count == 0)
+        {
+            return false;
+        }
+
+        foreach (KeyValuePair<(Vector2Int cell, CellSideMask side), AssemblyPortType> pair in existingPorts)
+        {
+            if (!ghostPorts.TryGetValue(pair.Key, out AssemblyPortType ghostPortType))
+            {
+                return false;
+            }
+
+            if (AssemblyPortTypeUtility.IsInputCompatible(pair.Value) && !AssemblyPortTypeUtility.IsInputCompatible(ghostPortType))
+            {
+                return false;
+            }
+
+            if (AssemblyPortTypeUtility.IsOutputCompatible(pair.Value) && !AssemblyPortTypeUtility.IsOutputCompatible(ghostPortType))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private bool TryBuildPortRequirementMapForPart(
+        GameObject partRoot,
+        out Dictionary<(Vector2Int cell, CellSideMask side), AssemblyPortType> portMap)
+    {
+        portMap = new Dictionary<(Vector2Int cell, CellSideMask side), AssemblyPortType>();
+        if (partRoot == null)
+        {
+            return false;
+        }
+
+        AssemblyPartPortLayout layout = partRoot.GetComponent<AssemblyPartPortLayout>();
+        if (layout == null || layout.Ports == null || layout.Ports.Count == 0)
+        {
+            return false;
+        }
+
+        for (int i = 0; i < layout.Ports.Count; i++)
+        {
+            AssemblyPartPortLayout.PortEntry entry = layout.Ports[i];
+            if (entry == null || (!AssemblyPortTypeUtility.IsInputCompatible(entry.portType) && !AssemblyPortTypeUtility.IsOutputCompatible(entry.portType)))
+            {
+                continue;
+            }
+
+            if (!TryGetPartLayoutEntryMapping(layout, entry, out Vector2Int sourceCell, out CellSideMask portSide) || portSide == CellSideMask.None)
+            {
+                continue;
+            }
+
+            portMap[(sourceCell, portSide)] = entry.portType;
+        }
+
+        return portMap.Count > 0;
+    }
+
+    private bool TryBuildGhostPortRequirementMap(
+        Vector2Int centerCell,
+        Quaternion rotation,
+        out Dictionary<(Vector2Int cell, CellSideMask side), AssemblyPortType> portMap)
+    {
+        portMap = new Dictionary<(Vector2Int cell, CellSideMask side), AssemblyPortType>();
+        if (partGhost == null)
+        {
+            return false;
+        }
+
+        AssemblyPartPortLayout layout = partGhost.GetComponent<AssemblyPartPortLayout>();
+        if (layout == null || layout.Ports == null || layout.Ports.Count == 0)
+        {
+            return false;
+        }
+
+        int quarterTurns = GetQuarterTurns(rotation);
+        for (int i = 0; i < layout.Ports.Count; i++)
+        {
+            AssemblyPartPortLayout.PortEntry entry = layout.Ports[i];
+            if (entry == null || (!AssemblyPortTypeUtility.IsInputCompatible(entry.portType) && !AssemblyPortTypeUtility.IsOutputCompatible(entry.portType)))
+            {
+                continue;
+            }
+
+            Vector2Int rotatedCell = RotateCellOffset(entry.relativeSourceCell, quarterTurns);
+            CellSideMask rotatedSide = RotateSide(ConvertPartLayoutSide(entry.side), quarterTurns);
+            if (rotatedSide == CellSideMask.None)
+            {
+                continue;
+            }
+
+            portMap[(centerCell + rotatedCell, rotatedSide)] = entry.portType;
+        }
+
+        return portMap.Count > 0;
     }
 
     private bool TryGetCurrentPartFootprintCells(
@@ -603,6 +780,4 @@ public partial class Assembly
         return false;
     }
 }
-
-
 

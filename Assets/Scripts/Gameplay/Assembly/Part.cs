@@ -28,17 +28,33 @@ public class Part : ScriptableObject
 
     [Header("Part Settings")]
     [Min(0)] public int mass;
-    public float durability;
-    public float inventory;
+    [Min(0f)] public float durability;
+    [Min(0f)] public float inventory;
     [Min(0)] public int inputCapacity;
     [Min(0)] public int outputCapacity;
     [Min(0f)] public float powerGeneration;
     [Min(0f)] public float powerConsumption;
     [Min(0f)] public float powerCapacity;
+    [Min(0f)] public float transmitTime = 1f;
+    public Color partColor = Color.white;
+    public bool usesFixedPipePorts;
+    public AssemblyPortType topPortType = AssemblyPortType.Neutral;
+    public AssemblyPortType bottomPortType = AssemblyPortType.Neutral;
+    public AssemblyPortType leftPortType = AssemblyPortType.Neutral;
+    public AssemblyPortType rightPortType = AssemblyPortType.Neutral;
+    [Min(0f)] public float lightPowerRatio;
+    [Min(0f)] public float windPowerRatio;
+    [Min(0f)] public float generationTime;
+    public bool autoCalculateMass;
 
     private void OnValidate()
     {
-        mass = CalculateMassFromScaleOrGrid();
+        if (autoCalculateMass || mass <= 0)
+        {
+            mass = CalculateMassFromScaleOrGrid();
+        }
+
+        transmitTime = Mathf.Max(0f, transmitTime);
     }
 
     private int CalculateMassFromScaleOrGrid()

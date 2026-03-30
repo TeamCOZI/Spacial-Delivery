@@ -874,6 +874,14 @@ GameObject:
   - component: {fileID: 1566422097}
   - component: {fileID: 1566422098}
   - component: {fileID: 1566422099}
+  - component: {fileID: 1566422105}
+  - component: {fileID: 1566422104}
+  - component: {fileID: 1566422103}
+  - component: {fileID: 1566422102}
+  - component: {fileID: 1566422101}
+  - component: {fileID: 1566422100}
+  - component: {fileID: 1566422106}
+  - component: {fileID: 1566422107}
   m_Layer: 0
   m_Name: Focus Manager
   m_TagString: Untagged
@@ -1055,6 +1063,104 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0eeb773722d39d5468eb50ce69fe79cd, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CoreLogisticsHubPresenter
+--- !u!114 &1566422100
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1566422087}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d45b7d4f3cf54dc8bb2a9f22f4f5a2a1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AssemblyFocusedPartHighlightPresenter
+  outlineColor: {r: 1, g: 0.78, b: 0.22, a: 1}
+  outlineThickness: 0.05
+--- !u!114 &1566422101
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1566422087}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4b9602a4690d6fc4ca0b1fd76699acdc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ModuleOutputPortSelectorPresenter
+--- !u!114 &1566422102
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1566422087}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: be3f3eeb1a7f3f840ac2ce7bb0c921bc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SolarPanelPresenter
+--- !u!114 &1566422103
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1566422087}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: aaa15d4ee76d4badbe202ee2a82d8548, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PowerGeneratorPresenter
+--- !u!114 &1566422104
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1566422087}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8406324ed58548429880a9759b565ca0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ModuleProcessingPresenter
+--- !u!114 &1566422105
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1566422087}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 70e3024f20e7abb4ebed0540e1dc87ed, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ModuleInventoryPresenter
+--- !u!114 &1566422106
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1566422087}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 35979f792f5f4d44be2ea147bbbf14f2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SolarTurbinePresenter
+--- !u!114 &1566422107
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1566422087}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 94c31efa701845569d6707ac81a846f4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PipePresenter
 --- !u!1 &1981877679
 GameObject:
   m_ObjectHideFlags: 0
@@ -1182,6 +1288,8 @@ MonoBehaviour:
   removeDisconnectedPartsAfterDeletion: 0
   debugPipePlacement: 0
   debugHoverCellPortMapping: 0
+  debugConnectionGraph: 1
+  debugActiveSplitGraph: 1
   enableInputPortAutoMapping: 0
 --- !u!114 &2022692989
 MonoBehaviour:

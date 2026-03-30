@@ -5,7 +5,7 @@ using UnityEngine;
 public class OutputPortProductionState : MonoBehaviour
 {
     private const float ConsumptionIntervalSeconds = 1f;
-    private const float TravelSecondsPerSegment = 1f;
+    private const float DefaultTravelSecondsPerSegment = 1f;
     private const float TargetTokenWorldSize = 0.075f;
     private const int TokenSortingOrder = 80;
     private const string TokenRootName = "__ProductionTokens";
@@ -19,7 +19,10 @@ public class OutputPortProductionState : MonoBehaviour
     private const string NoMaterialStatus = "NO MATERIAL";
     private const string ReceiverFullStatus = "INPUT FULL";
     private const string NoInventoryStatus = "NO INVENTORY";
-
+    private const string PipeBlockedStatus = "PIPE BLOCKED";
+    private const float PacketPointOccupancyToleranceSqr = 0.000001f;
+    private const float CellSize = 0.1f;
+    private const int GridSize = 99;
     private sealed class TransitPacket
     {
         public InventoryResourceType resourceType;
@@ -30,8 +33,16 @@ public class OutputPortProductionState : MonoBehaviour
         public int segmentIndex;
         public float segmentProgress;
         public bool waitingForDelivery;
+        public bool holdsAtPoint;
+        public int firstPipePointIndex;
+        public int lastPipePointIndex;
+        public List<Vector2Int> pipeCellPath = new List<Vector2Int>();
+        public Vector2Int sourceTerminalDirection;
         public StructureResourceInventory destinationInventory;
         public AssemblyPartFocus destinationPartFocus;
+        public Transform destinationPortTransform;
+        public Vector2Int destinationReceiverTerminalDirection;
+        public float segmentTravelSeconds = DefaultTravelSecondsPerSegment;
     }
 
     [SerializeField] private bool hasAssignedResource;
@@ -58,6 +69,14 @@ public class OutputPortProductionState : MonoBehaviour
     public int PipeCellCount => Mathf.Max(0, lastResolvedPipeCellCount);
     public bool HasProducedResource => hasLastTransferredResource;
     public InventoryResourceType ProducedResourceType => hasLastTransferredResource ? lastTransferredResourceType : assignedResourceType;
+    public AssemblyOutputPortFocus OutputPortFocus
+    {
+        get
+        {
+            BindReferences();
+            return outputPortFocus;
+        }
+    }
 
     private void Awake()
     {
@@ -139,7 +158,13 @@ public class OutputPortProductionState : MonoBehaviour
             out AssemblyPartFocus receiverPartFocus,
             out InventoryResourceType transferResource,
             out _,
-            out int pipeCellCount))
+            out int pipeCellCount,
+            out _,
+            out _,
+            out _,
+            out _,
+            out _,
+            out _) || ShouldKeepRunningOnFlowBlock(failureReason))
         {
             disabledReason = string.Empty;
             return true;
@@ -173,7 +198,13 @@ public class OutputPortProductionState : MonoBehaviour
             out AssemblyPartFocus receiverPartFocus,
             out InventoryResourceType transferResource,
             out _,
-            out int pipeCellCount))
+            out int pipeCellCount,
+            out _,
+            out _,
+            out _,
+            out _,
+            out _,
+            out _))
         {
             return isRunning
                 ? BuildRunningDescription(receiverPartFocus, transferResource, pipeCellCount)
@@ -206,6 +237,50 @@ public class OutputPortProductionState : MonoBehaviour
         RequestStart();
     }
 
+
+    public bool TryRecallPacketsToCoreLogistics(out int recalledCount)
+    {
+        recalledCount = 0;
+        BindReferences();
+        isRunning = false;
+        spawnTimer = 0f;
+
+        if (activePackets.Count <= 0)
+        {
+            RefreshIdleStatus();
+            return false;
+        }
+
+        List<StructureResourceInventory> logisticsInventories = new List<StructureResourceInventory>();
+        CollectCoreLogisticsInventories(outputPortFocus != null ? outputPortFocus.OwnerSatellite : null, logisticsInventories);
+        if (logisticsInventories.Count <= 0)
+        {
+            RefreshIdleStatus();
+            return false;
+        }
+
+        for (int i = activePackets.Count - 1; i >= 0; i--)
+        {
+            TransitPacket packet = activePackets[i];
+            if (packet == null)
+            {
+                activePackets.RemoveAt(i);
+                continue;
+            }
+
+            if (!TryStorePacketInCoreLogistics(packet.resourceType, logisticsInventories))
+            {
+                continue;
+            }
+
+            DestroyPacket(packet);
+            activePackets.RemoveAt(i);
+            recalledCount++;
+        }
+
+        RefreshIdleStatus();
+        return recalledCount > 0;
+    }
     public bool RequestStart()
     {
         if (!CanSpawnNextPacket(
@@ -215,8 +290,21 @@ public class OutputPortProductionState : MonoBehaviour
             out AssemblyPartFocus receiverPartFocus,
             out _,
             out _,
-            out int pipeCellCount))
+            out int pipeCellCount,
+            out _,
+            out _,
+            out _,
+            out _,
+            out _,
+            out _))
         {
+            if (ShouldKeepRunningOnFlowBlock(failureReason))
+            {
+                isRunning = true;
+                statusLabel = failureReason;
+                return true;
+            }
+
             StopTransfer(failureReason);
             return false;
         }
@@ -229,6 +317,8 @@ public class OutputPortProductionState : MonoBehaviour
 
     private void UpdateTransfer(float deltaTime)
     {
+        spawnTimer = Mathf.Min(ConsumptionIntervalSeconds, spawnTimer + deltaTime);
+
         if (!CanSpawnNextPacket(
             out string failureReason,
             out _,
@@ -236,8 +326,20 @@ public class OutputPortProductionState : MonoBehaviour
             out AssemblyPartFocus receiverPartFocus,
             out _,
             out _,
-            out int pipeCellCount))
+            out int pipeCellCount,
+            out _,
+            out _,
+            out _,
+            out _,
+            out _,
+            out _))
         {
+            if (ShouldKeepRunningOnFlowBlock(failureReason))
+            {
+                statusLabel = failureReason;
+                return;
+            }
+
             StopTransfer(failureReason);
             return;
         }
@@ -245,15 +347,23 @@ public class OutputPortProductionState : MonoBehaviour
         lastResolvedReceiverLabel = ResolvePartLabel(receiverPartFocus);
         lastResolvedPipeCellCount = pipeCellCount;
 
-        spawnTimer += deltaTime;
         while (spawnTimer >= ConsumptionIntervalSeconds)
         {
-            spawnTimer -= ConsumptionIntervalSeconds;
             if (!TrySpawnPacket())
             {
-                spawnTimer = 0f;
+                if (!isRunning)
+                {
+                    spawnTimer = 0f;
+                }
+                else
+                {
+                    spawnTimer = ConsumptionIntervalSeconds;
+                }
+
                 break;
             }
+
+            spawnTimer -= ConsumptionIntervalSeconds;
         }
     }
 
@@ -266,8 +376,20 @@ public class OutputPortProductionState : MonoBehaviour
             out AssemblyPartFocus receiverPartFocus,
             out InventoryResourceType transferResource,
             out List<Vector3> pathPoints,
-            out int pipeCellCount))
+            out int pipeCellCount,
+            out OutputPortTransferUtility.TransferRouteSelection routeSelection,
+            out int firstPipePointIndex,
+            out int lastPipePointIndex,
+            out Transform receiverPortTransform,
+            out Vector2Int receiverTerminalDirection,
+            out List<Vector2Int> pipeCellPath))
         {
+            if (ShouldKeepRunningOnFlowBlock(failureReason))
+            {
+                statusLabel = failureReason;
+                return false;
+            }
+
             StopTransfer(failureReason);
             return false;
         }
@@ -278,15 +400,25 @@ public class OutputPortProductionState : MonoBehaviour
             return false;
         }
 
+        routeSelection.Commit();
+
         TransitPacket packet = new TransitPacket
         {
             resourceType = transferResource,
             pathPointsLocal = new List<Vector3>(pathPoints),
-            segmentIndex = 0,
+            segmentIndex = Mathf.Max(0, firstPipePointIndex - 1),
             segmentProgress = 0f,
             waitingForDelivery = false,
+            holdsAtPoint = false,
+            firstPipePointIndex = firstPipePointIndex,
+            lastPipePointIndex = lastPipePointIndex,
+            pipeCellPath = pipeCellPath != null ? new List<Vector2Int>(pipeCellPath) : new List<Vector2Int>(),
+            sourceTerminalDirection = ResolveSenderTerminalDirection(),
             destinationInventory = receiverInputInventory,
-            destinationPartFocus = receiverPartFocus
+            destinationPartFocus = receiverPartFocus,
+            destinationPortTransform = receiverPortTransform,
+            destinationReceiverTerminalDirection = receiverTerminalDirection,
+            segmentTravelSeconds = ResolvePipeTransmitTimeSeconds()
         };
 
         CreatePacketVisual(packet);
@@ -308,7 +440,13 @@ public class OutputPortProductionState : MonoBehaviour
         out AssemblyPartFocus receiverPartFocus,
         out InventoryResourceType transferResource,
         out List<Vector3> pathPoints,
-        out int pipeCellCount)
+        out int pipeCellCount,
+        out OutputPortTransferUtility.TransferRouteSelection routeSelection,
+            out int firstPipePointIndex,
+            out int lastPipePointIndex,
+            out Transform receiverPortTransform,
+            out Vector2Int receiverTerminalDirection,
+            out List<Vector2Int> pipeCellPath)
     {
         failureReason = ReadyStatus;
         senderOutputInventory = null;
@@ -317,6 +455,12 @@ public class OutputPortProductionState : MonoBehaviour
         transferResource = assignedResourceType;
         pathPoints = pathBuffer;
         pipeCellCount = 0;
+        routeSelection = default;
+        firstPipePointIndex = -1;
+        lastPipePointIndex = -1;
+        receiverPortTransform = null;
+        receiverTerminalDirection = Vector2Int.zero;
+        pipeCellPath = null;
         pathBuffer.Clear();
 
         if (!OutputPortTransferUtility.SupportsTransfer(outputPortFocus))
@@ -344,13 +488,21 @@ public class OutputPortProductionState : MonoBehaviour
             return false;
         }
 
-        if (!OutputPortTransferUtility.TryResolveTransferRoute(
+        if (!OutputPortTransferUtility.TryResolveTransferRouteDetailed(
             outputPortFocus,
             pathBuffer,
             out pipeCellCount,
             out receiverInputInventory,
-            out receiverPartFocus) ||
-            receiverInputInventory == null)
+            out receiverPartFocus,
+            out routeSelection,
+            out firstPipePointIndex,
+            out lastPipePointIndex,
+            out receiverPortTransform,
+            out receiverTerminalDirection,
+            out pipeCellPath) ||
+            receiverInputInventory == null ||
+            firstPipePointIndex < 0 ||
+            lastPipePointIndex < firstPipePointIndex)
         {
             failureReason = NoRouteStatus;
             return false;
@@ -359,10 +511,15 @@ public class OutputPortProductionState : MonoBehaviour
         lastResolvedPipeCellCount = pipeCellCount;
         lastResolvedReceiverLabel = ResolvePartLabel(receiverPartFocus);
 
-        int reservedAmount = CountReservedPackets(receiverInputInventory);
-        if (receiverInputInventory.TotalAmount + reservedAmount + 1 > receiverInputInventory.Capacity)
+        if (pipeCellCount <= 0 && receiverInputInventory.FreeCapacity <= 0)
         {
             failureReason = ReceiverFullStatus;
+            return false;
+        }
+
+        if (IsRouteEntryOccupied(pathBuffer, firstPipePointIndex))
+        {
+            failureReason = PipeBlockedStatus;
             return false;
         }
 
@@ -377,21 +534,100 @@ public class OutputPortProductionState : MonoBehaviour
         }
 
         int reservedAmount = 0;
-        for (int i = 0; i < activePackets.Count; i++)
+        OutputPortProductionState[] states = ResolveProductionStatesInOwnerSatellite();
+        for (int stateIndex = 0; stateIndex < states.Length; stateIndex++)
         {
-            TransitPacket packet = activePackets[i];
-            if (packet != null && packet.destinationInventory == destinationInventory)
+            OutputPortProductionState state = states[stateIndex];
+            if (state == null)
             {
-                reservedAmount++;
+                continue;
+            }
+
+            for (int i = 0; i < state.activePackets.Count; i++)
+            {
+                TransitPacket packet = state.activePackets[i];
+                if (packet != null && packet.destinationInventory == destinationInventory)
+                {
+                    reservedAmount++;
+                }
             }
         }
 
         return reservedAmount;
     }
 
+    private bool IsRouteEntryOccupied(List<Vector3> pathPoints, int firstPipePointIndex)
+    {
+        if (pathPoints == null || pathPoints.Count <= 0 || firstPipePointIndex < 0 || firstPipePointIndex >= pathPoints.Count)
+        {
+            return false;
+        }
+
+        OutputPortProductionState[] states = ResolveProductionStatesInOwnerSatellite();
+        if (firstPipePointIndex > 0)
+        {
+            Vector3 entryStartPoint = pathPoints[firstPipePointIndex - 1];
+            Vector3 entryEndPoint = pathPoints[firstPipePointIndex];
+            for (int stateIndex = 0; stateIndex < states.Length; stateIndex++)
+            {
+                OutputPortProductionState state = states[stateIndex];
+                if (state == null)
+                {
+                    continue;
+                }
+
+                for (int i = 0; i < state.activePackets.Count; i++)
+                {
+                    TransitPacket packet = state.activePackets[i];
+                    if (packet == null)
+                    {
+                        continue;
+                    }
+
+                    if (TryGetOccupiedSegment(packet, out Vector3 occupiedSegmentStart, out Vector3 occupiedSegmentEnd) &&
+                        ArePointsEquivalent(occupiedSegmentStart, entryStartPoint) &&
+                        ArePointsEquivalent(occupiedSegmentEnd, entryEndPoint))
+                    {
+                        return true;
+                    }
+                }
+            }
+        }
+
+        Vector3 firstPipePoint = pathPoints[firstPipePointIndex];
+        for (int stateIndex = 0; stateIndex < states.Length; stateIndex++)
+        {
+            OutputPortProductionState state = states[stateIndex];
+            if (state == null)
+            {
+                continue;
+            }
+
+            for (int i = 0; i < state.activePackets.Count; i++)
+            {
+                TransitPacket packet = state.activePackets[i];
+                if (packet == null || !packet.holdsAtPoint)
+                {
+                    continue;
+                }
+
+                if (!TryGetHeldPoint(packet, out Vector3 occupiedPoint))
+                {
+                    continue;
+                }
+
+                if (ArePointsEquivalent(occupiedPoint, firstPipePoint))
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
     private void UpdateTransitPackets(float deltaTime)
     {
-        for (int i = activePackets.Count - 1; i >= 0; i--)
+        for (int i = 0; i < activePackets.Count;)
         {
             TransitPacket packet = activePackets[i];
             if (packet == null)
@@ -400,55 +636,763 @@ public class OutputPortProductionState : MonoBehaviour
                 continue;
             }
 
-            if (packet.waitingForDelivery)
+            if (UpdateTransitPacket(packet, deltaTime))
             {
-                if (TryDeliverPacket(packet))
-                {
-                    DestroyPacket(packet);
-                    activePackets.RemoveAt(i);
-                }
-                else
-                {
-                    UpdatePacketVisual(packet);
-                }
-
+                DestroyPacket(packet);
+                activePackets.RemoveAt(i);
                 continue;
-            }
-
-            if (packet.pathPointsLocal == null || packet.pathPointsLocal.Count < 2)
-            {
-                packet.waitingForDelivery = true;
-                UpdatePacketVisual(packet);
-                continue;
-            }
-
-            packet.segmentProgress += deltaTime / TravelSecondsPerSegment;
-            while (packet.segmentProgress >= 1f && !packet.waitingForDelivery)
-            {
-                packet.segmentProgress -= 1f;
-                packet.segmentIndex++;
-                if (packet.segmentIndex >= packet.pathPointsLocal.Count - 1)
-                {
-                    packet.segmentIndex = packet.pathPointsLocal.Count - 1;
-                    packet.segmentProgress = 0f;
-                    packet.waitingForDelivery = true;
-                }
-            }
-
-            if (packet.waitingForDelivery)
-            {
-                if (TryDeliverPacket(packet))
-                {
-                    DestroyPacket(packet);
-                    activePackets.RemoveAt(i);
-                    continue;
-                }
             }
 
             UpdatePacketVisual(packet);
+            i++;
         }
     }
 
+    private bool UpdateTransitPacket(TransitPacket packet, float deltaTime)
+    {
+        if (packet == null)
+        {
+            return true;
+        }
+
+        if (packet.pathPointsLocal == null || packet.pathPointsLocal.Count < 2)
+        {
+            packet.segmentIndex = 0;
+            packet.segmentProgress = 0f;
+            packet.waitingForDelivery = false;
+            packet.holdsAtPoint = true;
+            return TryDeliverPacket(packet);
+        }
+
+        packet.segmentIndex = Mathf.Clamp(packet.segmentIndex, 0, GetLastPipePointIndex(packet));
+        packet.segmentProgress = Mathf.Clamp01(packet.segmentProgress);
+        packet.waitingForDelivery = false;
+
+        float remainingTime = Mathf.Max(0f, deltaTime);
+        int safetyCounter = Mathf.Max(1, packet.pathPointsLocal.Count + activePackets.Count + 1);
+
+        while (remainingTime > 0.0001f && safetyCounter-- > 0)
+        {
+            bool isFinalDeliverySegment = IsFinalDeliverySegment(packet);
+            float segmentTravelSeconds = ResolveSegmentTravelSeconds(packet, isFinalDeliverySegment);
+            if (!packet.holdsAtPoint && packet.segmentProgress > 0.0001f)
+            {
+                if (isFinalDeliverySegment)
+                {
+                    if (!CanPacketAdvanceToReceiver(packet))
+                    {
+                        packet.segmentProgress = 0f;
+                        packet.holdsAtPoint = true;
+                        return false;
+                    }
+                }
+                else if (!CanPacketAdvanceToNextPoint(packet))
+                {
+                    packet.segmentProgress = 0f;
+                    packet.holdsAtPoint = true;
+                    return false;
+                }
+            }
+
+            if (packet.holdsAtPoint)
+            {
+                if (isFinalDeliverySegment)
+                {
+                    if (!CanPacketAdvanceToReceiver(packet))
+                    {
+                        packet.segmentProgress = 0f;
+                        return false;
+                    }
+                }
+                else if (!CanPacketAdvanceToNextPoint(packet))
+                {
+                    packet.segmentProgress = 0f;
+                    return false;
+                }
+
+                packet.holdsAtPoint = false;
+            }
+
+            if (packet.segmentProgress <= 0.0001f)
+            {
+                if (isFinalDeliverySegment)
+                {
+                    if (!CanPacketAdvanceToReceiver(packet))
+                    {
+                        packet.segmentProgress = 0f;
+                        packet.holdsAtPoint = true;
+                        return false;
+                    }
+                }
+                else if (!CanPacketAdvanceToNextPoint(packet))
+                {
+                    packet.segmentProgress = 0f;
+                    packet.holdsAtPoint = true;
+                    return false;
+                }
+            }
+
+            float remainingSegmentTime = Mathf.Max(0f, (1f - packet.segmentProgress) * segmentTravelSeconds);
+            if (remainingTime + 0.0001f < remainingSegmentTime)
+            {
+                packet.segmentProgress += remainingTime / Mathf.Max(0.01f, segmentTravelSeconds);
+                packet.segmentProgress = Mathf.Clamp01(packet.segmentProgress);
+                return false;
+            }
+
+            remainingTime = Mathf.Max(0f, remainingTime - remainingSegmentTime);
+            packet.segmentProgress = 1f;
+
+            if (isFinalDeliverySegment)
+            {
+                if (TryDeliverPacket(packet))
+                {
+                    return true;
+                }
+
+                packet.segmentProgress = 0f;
+                packet.holdsAtPoint = true;
+                return false;
+            }
+
+            CommitMergeEntrySelectionIfNeeded(packet);
+            packet.segmentIndex = Mathf.Min(packet.segmentIndex + 1, GetLastPipePointIndex(packet));
+            packet.segmentProgress = 0f;
+            RefreshPacketOccupancyAfterArrival(packet);
+        }
+
+        return false;
+    }
+
+    private float ResolveSegmentTravelSeconds(TransitPacket packet, bool isFinalDeliverySegment)
+    {
+        float baseSeconds = Mathf.Max(0.01f, packet != null ? packet.segmentTravelSeconds : DefaultTravelSecondsPerSegment);
+        return IsMergePipeTransitSegment(packet, isFinalDeliverySegment)
+            ? Mathf.Max(0.01f, baseSeconds * 0.5f)
+            : baseSeconds;
+    }
+
+    private bool IsMergePipeTransitSegment(TransitPacket packet, bool isFinalDeliverySegment)
+    {
+        ArtificialSatellite ownerSatellite = ResolveOwnerSatellite();
+        if (packet == null || ownerSatellite == null || packet.pathPointsLocal == null || packet.pathPointsLocal.Count < 2)
+        {
+            return false;
+        }
+
+        int firstPipePointIndex = GetFirstPipePointIndex(packet);
+        int lastPipePointIndex = GetLastPipePointIndex(packet);
+        if (isFinalDeliverySegment)
+        {
+            return IsMergePipePathPoint(ownerSatellite, packet, lastPipePointIndex);
+        }
+
+        int currentPointIndex = Mathf.Clamp(packet.segmentIndex, 0, packet.pathPointsLocal.Count - 2);
+        int nextPointIndex = currentPointIndex + 1;
+        return (currentPointIndex >= firstPipePointIndex && currentPointIndex <= lastPipePointIndex && IsMergePipePathPoint(ownerSatellite, packet, currentPointIndex))
+            || (nextPointIndex >= firstPipePointIndex && nextPointIndex <= lastPipePointIndex && IsMergePipePathPoint(ownerSatellite, packet, nextPointIndex));
+    }
+
+    private bool IsMergePipePathPoint(ArtificialSatellite ownerSatellite, TransitPacket packet, int pointIndex)
+    {
+        if (ownerSatellite == null || packet == null)
+        {
+            return false;
+        }
+
+        if (!TryGetPathPoint(packet, pointIndex, out Vector3 point))
+        {
+            return false;
+        }
+
+        return MergePipeUtility.TryResolveStateForCell(ownerSatellite, LocalPositionToGrid(point), out _);
+    }
+
+    private void RefreshPacketOccupancyAfterArrival(TransitPacket packet)
+    {
+        if (packet == null)
+        {
+            return;
+        }
+
+        if (IsFinalDeliverySegment(packet))
+        {
+            packet.holdsAtPoint = !CanPacketAdvanceToReceiver(packet);
+            return;
+        }
+
+        packet.holdsAtPoint = !CanPacketAdvanceToNextPoint(packet);
+    }
+
+    private bool CanPacketAdvanceToNextPoint(TransitPacket packet)
+    {
+        if (packet == null || packet.pathPointsLocal == null || packet.pathPointsLocal.Count < 2)
+        {
+            return false;
+        }
+
+        int currentSegmentIndex = Mathf.Clamp(packet.segmentIndex, 0, GetLastPipePointIndex(packet));
+        int nextPointIndex = Mathf.Clamp(currentSegmentIndex + 1, 0, GetLastPipePointIndex(packet));
+        return IsPacketSegmentPhysicallyLinked(packet, currentSegmentIndex)
+            && !IsPathSegmentOccupiedByOtherPacket(packet, currentSegmentIndex)
+            && !IsHoldingPointOccupiedByOtherPacket(packet, nextPointIndex)
+            && IsMergeEntryAllowed(packet);
+    }
+
+    private bool IsPacketSegmentPhysicallyLinked(TransitPacket packet, int segmentIndex)
+    {
+        if (packet == null || packet.pathPointsLocal == null || packet.pathPointsLocal.Count < 2)
+        {
+            return false;
+        }
+
+        int currentPointIndex = Mathf.Clamp(segmentIndex, 0, packet.pathPointsLocal.Count - 2);
+        int nextPointIndex = currentPointIndex + 1;
+        if (currentPointIndex < GetFirstPipePointIndex(packet) || nextPointIndex > GetLastPipePointIndex(packet))
+        {
+            return true;
+        }
+
+        if (!TryGetPathPoint(packet, currentPointIndex, out Vector3 currentPoint) || !TryGetPathPoint(packet, nextPointIndex, out Vector3 nextPoint))
+        {
+            return false;
+        }
+
+        ArtificialSatellite ownerSatellite = ResolveOwnerSatellite();
+        if (ownerSatellite == null)
+        {
+            return false;
+        }
+
+        Vector2Int currentCell = LocalPositionToGrid(currentPoint);
+        Vector2Int nextCell = LocalPositionToGrid(nextPoint);
+        return PipeConnectivityUtility.CanTraversePhysicalDirection(ownerSatellite, currentCell, nextCell);
+    }
+    private bool IsPacketReceiverLinkStillAttached(TransitPacket packet)
+    {
+        if (packet == null || packet.destinationPartFocus == null || packet.destinationPortTransform == null || packet.destinationReceiverTerminalDirection == Vector2Int.zero)
+        {
+            return false;
+        }
+
+        ArtificialSatellite ownerSatellite = ResolveOwnerSatellite();
+        if (ownerSatellite == null)
+        {
+            return false;
+        }
+
+        if (!TryGetPathPoint(packet, GetLastPipePointIndex(packet), out Vector3 lastPipePoint))
+        {
+            return false;
+        }
+
+        Vector2Int lastPipeCell = LocalPositionToGrid(lastPipePoint);
+        return OutputPortTransferUtility.IsReceiverInputAttachedToPipeCell(
+            ownerSatellite,
+            packet.destinationPartFocus,
+            packet.destinationPortTransform,
+            lastPipeCell,
+            packet.destinationReceiverTerminalDirection);
+    }
+
+    private bool CanPacketAdvanceToReceiver(TransitPacket packet)
+    {
+        if (packet == null || packet.destinationInventory == null || packet.destinationInventory.FreeCapacity <= 0)
+        {
+            return false;
+        }
+
+        if (!IsPacketReceiverLinkStillAttached(packet))
+        {
+            return false;
+        }
+
+        return !IsPathSegmentOccupiedByOtherPacket(packet, GetLastPipePointIndex(packet));
+    }
+
+    private bool IsPathSegmentOccupiedByOtherPacket(TransitPacket packet, int segmentIndex)
+    {
+        if (!TryGetPathSegment(packet, segmentIndex, out Vector3 targetStartPoint, out Vector3 targetEndPoint))
+        {
+            return false;
+        }
+
+        OutputPortProductionState[] states = ResolveProductionStatesInOwnerSatellite();
+        for (int stateIndex = 0; stateIndex < states.Length; stateIndex++)
+        {
+            OutputPortProductionState state = states[stateIndex];
+            if (state == null)
+            {
+                continue;
+            }
+
+            for (int i = 0; i < state.activePackets.Count; i++)
+            {
+                TransitPacket otherPacket = state.activePackets[i];
+                if (otherPacket == null || otherPacket == packet)
+                {
+                    continue;
+                }
+
+                if (!TryGetOccupiedSegment(otherPacket, out Vector3 occupiedStartPoint, out Vector3 occupiedEndPoint))
+                {
+                    continue;
+                }
+
+                if (ArePointsEquivalent(occupiedStartPoint, targetStartPoint) &&
+                    ArePointsEquivalent(occupiedEndPoint, targetEndPoint))
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    private bool IsHoldingPointOccupiedByOtherPacket(TransitPacket packet, int pointIndex)
+    {
+        if (!TryGetPathPoint(packet, pointIndex, out Vector3 targetPoint))
+        {
+            return false;
+        }
+
+        OutputPortProductionState[] states = ResolveProductionStatesInOwnerSatellite();
+        for (int stateIndex = 0; stateIndex < states.Length; stateIndex++)
+        {
+            OutputPortProductionState state = states[stateIndex];
+            if (state == null)
+            {
+                continue;
+            }
+
+            for (int i = 0; i < state.activePackets.Count; i++)
+            {
+                TransitPacket otherPacket = state.activePackets[i];
+                if (otherPacket == null || otherPacket == packet || !otherPacket.holdsAtPoint)
+                {
+                    continue;
+                }
+
+                if (!TryGetHeldPoint(otherPacket, out Vector3 occupiedPoint))
+                {
+                    continue;
+                }
+
+                if (ArePointsEquivalent(occupiedPoint, targetPoint))
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    private bool IsMergeEntryAllowed(TransitPacket packet)
+    {
+        if (!TryResolvePendingMergeEntry(packet, out MergePipeState mergePipeState, out Vector2Int mergeCell, out Vector2Int inputSideDirection))
+        {
+            return true;
+        }
+
+        if (!TryGetPendingMergePoint(packet, out Vector3 mergePoint) || IsMergeCellOccupiedByOtherPacket(packet, mergePoint))
+        {
+            return false;
+        }
+
+        List<Vector2Int> availableDirections = new List<Vector2Int>(3);
+        CollectReadyMergeInputDirections(mergeCell, availableDirections);
+        AddUniqueDirection(availableDirections, inputSideDirection);
+        return mergePipeState.TrySelectPreviewInputDirection(availableDirections, out Vector2Int selectedDirection)
+            && selectedDirection == inputSideDirection;
+    }
+
+    private void CommitMergeEntrySelectionIfNeeded(TransitPacket packet)
+    {
+        if (!TryResolveCommittedMergeEntry(packet, out MergePipeState mergePipeState, out _, out Vector2Int inputSideDirection))
+        {
+            return;
+        }
+
+        mergePipeState.CommitSelectedInputDirection(inputSideDirection);
+    }
+
+    private bool TryResolvePendingMergeEntry(TransitPacket packet, out MergePipeState mergePipeState, out Vector2Int mergeCell, out Vector2Int inputSideDirection)
+    {
+        mergePipeState = null;
+        mergeCell = Vector2Int.zero;
+        inputSideDirection = Vector2Int.zero;
+        if (!TryGetPendingMergeEntry(packet, out mergeCell, out inputSideDirection))
+        {
+            return false;
+        }
+
+        return MergePipeUtility.TryResolveStateForCell(ResolveOwnerSatellite(), mergeCell, out mergePipeState);
+    }
+    private bool TryResolveCommittedMergeEntry(TransitPacket packet, out MergePipeState mergePipeState, out Vector2Int mergeCell, out Vector2Int inputSideDirection)
+    {
+        mergePipeState = null;
+        mergeCell = Vector2Int.zero;
+        inputSideDirection = Vector2Int.zero;
+        if (!TryResolveCurrentMergePipeCell(packet, out int mergePipeCellIndex, out mergeCell) ||
+            !TryResolveMergeInputSideDirection(packet, mergePipeCellIndex, out inputSideDirection))
+        {
+            return false;
+        }
+
+        return MergePipeUtility.TryResolveStateForCell(ResolveOwnerSatellite(), mergeCell, out mergePipeState);
+    }
+
+    private static bool TryResolveCurrentMergePipeCell(TransitPacket packet, out int mergePipeCellIndex, out Vector2Int mergeCell)
+    {
+        mergePipeCellIndex = -1;
+        mergeCell = Vector2Int.zero;
+        if (packet == null || packet.pipeCellPath == null || packet.pipeCellPath.Count <= 0)
+        {
+            return false;
+        }
+
+        int currentSegmentIndex = Mathf.Clamp(packet.segmentIndex, 0, GetLastPipePointIndex(packet));
+        int nextPointIndex = currentSegmentIndex + 1;
+        if (nextPointIndex < GetFirstPipePointIndex(packet) || nextPointIndex > GetLastPipePointIndex(packet))
+        {
+            return false;
+        }
+
+        mergePipeCellIndex = nextPointIndex - GetFirstPipePointIndex(packet);
+        if (mergePipeCellIndex < 0 || mergePipeCellIndex >= packet.pipeCellPath.Count)
+        {
+            return false;
+        }
+
+        mergeCell = packet.pipeCellPath[mergePipeCellIndex];
+        return true;
+    }
+
+    private void CollectReadyMergeInputDirections(Vector2Int mergeCell, List<Vector2Int> availableDirections)
+    {
+        if (availableDirections == null)
+        {
+            return;
+        }
+
+        availableDirections.Clear();
+        OutputPortProductionState[] states = ResolveProductionStatesInOwnerSatellite();
+        for (int stateIndex = 0; stateIndex < states.Length; stateIndex++)
+        {
+            OutputPortProductionState state = states[stateIndex];
+            if (state == null)
+            {
+                continue;
+            }
+
+            for (int i = 0; i < state.activePackets.Count; i++)
+            {
+                TransitPacket packet = state.activePackets[i];
+                if (!TryGetPendingMergeEntry(packet, out Vector2Int otherMergeCell, out Vector2Int otherInputSideDirection) ||
+                    otherMergeCell != mergeCell)
+                {
+                    continue;
+                }
+
+                AddUniqueDirection(availableDirections, otherInputSideDirection);
+            }
+        }
+    }
+    private bool TryGetPendingMergePoint(TransitPacket packet, out Vector3 mergePoint)
+    {
+        mergePoint = Vector3.zero;
+        if (packet == null || packet.pathPointsLocal == null || packet.pathPointsLocal.Count < 2)
+        {
+            return false;
+        }
+
+        if (!packet.holdsAtPoint && packet.segmentProgress > 0.0001f)
+        {
+            return false;
+        }
+
+        int currentPointIndex = Mathf.Clamp(packet.segmentIndex, 0, GetLastPipePointIndex(packet));
+        int nextPointIndex = currentPointIndex + 1;
+        if (nextPointIndex < GetFirstPipePointIndex(packet) || nextPointIndex > GetLastPipePointIndex(packet))
+        {
+            return false;
+        }
+
+        return TryGetPathPoint(packet, nextPointIndex, out mergePoint);
+    }
+
+    private bool IsMergeCellOccupiedByOtherPacket(TransitPacket packet, Vector3 mergePoint)
+    {
+        OutputPortProductionState[] states = ResolveProductionStatesInOwnerSatellite();
+        for (int stateIndex = 0; stateIndex < states.Length; stateIndex++)
+        {
+            OutputPortProductionState state = states[stateIndex];
+            if (state == null)
+            {
+                continue;
+            }
+
+            for (int i = 0; i < state.activePackets.Count; i++)
+            {
+                TransitPacket otherPacket = state.activePackets[i];
+                if (otherPacket == null || otherPacket == packet)
+                {
+                    continue;
+                }
+
+                if (TryGetHeldPoint(otherPacket, out Vector3 heldPoint) && ArePointsEquivalent(heldPoint, mergePoint))
+                {
+                    return true;
+                }
+
+                if (TryGetOccupiedSegment(otherPacket, out Vector3 occupiedStartPoint, out Vector3 occupiedEndPoint) &&
+                    (ArePointsEquivalent(occupiedStartPoint, mergePoint) || ArePointsEquivalent(occupiedEndPoint, mergePoint)))
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    private static bool TryGetPendingMergeEntry(TransitPacket packet, out Vector2Int mergeCell, out Vector2Int inputSideDirection)
+    {
+        mergeCell = Vector2Int.zero;
+        inputSideDirection = Vector2Int.zero;
+        if (packet == null || packet.pathPointsLocal == null || packet.pathPointsLocal.Count < 2)
+        {
+            return false;
+        }
+
+        if (!packet.holdsAtPoint && packet.segmentProgress > 0.0001f)
+        {
+            return false;
+        }
+
+        if (!TryResolveNextPipeCellIndex(packet, out int nextPipeCellIndex) ||
+            packet.pipeCellPath == null ||
+            nextPipeCellIndex < 0 ||
+            nextPipeCellIndex >= packet.pipeCellPath.Count)
+        {
+            return false;
+        }
+
+        mergeCell = packet.pipeCellPath[nextPipeCellIndex];
+        return TryResolveMergeInputSideDirection(packet, nextPipeCellIndex, out inputSideDirection);
+    }
+
+    private static bool TryFindMergePipeCellIndex(TransitPacket packet, Vector2Int mergeCell, out int mergePipeCellIndex)
+    {
+        mergePipeCellIndex = -1;
+        if (packet == null || packet.pipeCellPath == null)
+        {
+            return false;
+        }
+
+        for (int i = 0; i < packet.pipeCellPath.Count; i++)
+        {
+            if (packet.pipeCellPath[i] != mergeCell)
+            {
+                continue;
+            }
+
+            mergePipeCellIndex = i;
+            return true;
+        }
+
+        return false;
+    }
+
+    private static bool TryResolveNextPipeCellIndex(TransitPacket packet, out int nextPipeCellIndex)
+    {
+        nextPipeCellIndex = -1;
+        if (packet == null || packet.pipeCellPath == null || packet.pipeCellPath.Count <= 0)
+        {
+            return false;
+        }
+
+        int currentPointIndex = Mathf.Clamp(packet.segmentIndex, 0, GetLastPipePointIndex(packet));
+        int nextPointIndex = currentPointIndex + 1;
+        if (nextPointIndex < GetFirstPipePointIndex(packet) || nextPointIndex > GetLastPipePointIndex(packet))
+        {
+            return false;
+        }
+
+        nextPipeCellIndex = nextPointIndex - GetFirstPipePointIndex(packet);
+        return nextPipeCellIndex >= 0 && nextPipeCellIndex < packet.pipeCellPath.Count;
+    }
+
+    private static int GetSegmentIndexBeforePipeCell(TransitPacket packet, int pipeCellIndex)
+    {
+        if (packet == null || packet.pathPointsLocal == null || packet.pathPointsLocal.Count < 2)
+        {
+            return 0;
+        }
+
+        int segmentIndex = GetFirstPipePointIndex(packet) + pipeCellIndex - 1;
+        return Mathf.Clamp(segmentIndex, 0, packet.pathPointsLocal.Count - 2);
+    }
+
+    private static bool TryResolveMergeInputSideDirection(TransitPacket packet, int mergePipeCellIndex, out Vector2Int inputSideDirection)
+    {
+        inputSideDirection = Vector2Int.zero;
+        if (packet == null || packet.pipeCellPath == null || mergePipeCellIndex < 0 || mergePipeCellIndex >= packet.pipeCellPath.Count)
+        {
+            return false;
+        }
+
+        Vector2Int mergeCell = packet.pipeCellPath[mergePipeCellIndex];
+        Vector2Int candidateDirection = mergePipeCellIndex > 0
+            ? packet.pipeCellPath[mergePipeCellIndex - 1] - mergeCell
+            : packet.sourceTerminalDirection;
+        if (!IsCardinalCellDirection(candidateDirection))
+        {
+            return false;
+        }
+
+        inputSideDirection = candidateDirection;
+        return true;
+    }
+
+    private static bool IsCardinalCellDirection(Vector2Int direction)
+    {
+        return Mathf.Abs(direction.x) + Mathf.Abs(direction.y) == 1;
+    }
+
+    private static void AddUniqueDirection(List<Vector2Int> directions, Vector2Int direction)
+    {
+        if (directions == null || direction == Vector2Int.zero || directions.Contains(direction))
+        {
+            return;
+        }
+
+        directions.Add(direction);
+    }
+
+    private ArtificialSatellite ResolveOwnerSatellite()
+    {
+        BindReferences();
+        return outputPortFocus != null ? outputPortFocus.OwnerSatellite : null;
+    }
+
+    private OutputPortProductionState[] ResolveProductionStatesInOwnerSatellite()
+    {
+        ArtificialSatellite ownerSatellite = ResolveOwnerSatellite();
+        if (ownerSatellite == null)
+        {
+            return new[] { this };
+        }
+
+        return ownerSatellite.GetComponentsInChildren<OutputPortProductionState>(true);
+    }
+    private static bool TryGetOccupiedSegment(TransitPacket packet, out Vector3 startPoint, out Vector3 endPoint)
+    {
+        startPoint = Vector3.zero;
+        endPoint = Vector3.zero;
+        if (packet == null || packet.holdsAtPoint)
+        {
+            return false;
+        }
+
+        return TryGetPathSegment(packet, packet.segmentIndex, out startPoint, out endPoint);
+    }
+
+    private static bool TryGetHeldPoint(TransitPacket packet, out Vector3 point)
+    {
+        point = Vector3.zero;
+        if (packet == null || !packet.holdsAtPoint)
+        {
+            return false;
+        }
+
+        return TryGetPathPoint(packet, GetOccupiedPointIndex(packet), out point);
+    }
+
+    private static bool TryGetPathSegment(TransitPacket packet, int segmentIndex, out Vector3 startPoint, out Vector3 endPoint)
+    {
+        startPoint = Vector3.zero;
+        endPoint = Vector3.zero;
+        if (packet == null || packet.pathPointsLocal == null || packet.pathPointsLocal.Count < 2)
+        {
+            return false;
+        }
+
+        int clampedIndex = Mathf.Clamp(segmentIndex, 0, packet.pathPointsLocal.Count - 2);
+        startPoint = packet.pathPointsLocal[clampedIndex];
+        endPoint = packet.pathPointsLocal[clampedIndex + 1];
+        return true;
+    }
+
+    private static bool TryGetPathPoint(TransitPacket packet, int pointIndex, out Vector3 point)
+    {
+        point = Vector3.zero;
+        if (packet == null || packet.pathPointsLocal == null || packet.pathPointsLocal.Count <= 0)
+        {
+            return false;
+        }
+
+        int clampedIndex = Mathf.Clamp(pointIndex, 0, packet.pathPointsLocal.Count - 1);
+        point = packet.pathPointsLocal[clampedIndex];
+        return true;
+    }
+
+    private static int GetOccupiedPointIndex(TransitPacket packet)
+    {
+        if (packet == null || packet.pathPointsLocal == null || packet.pathPointsLocal.Count <= 0)
+        {
+            return 0;
+        }
+
+        return Mathf.Clamp(packet.segmentIndex, GetFirstPipePointIndex(packet), GetLastPipePointIndex(packet));
+    }
+
+    private static int GetFirstPipePointIndex(TransitPacket packet)
+    {
+        if (packet == null || packet.pathPointsLocal == null || packet.pathPointsLocal.Count <= 0)
+        {
+            return 0;
+        }
+
+        return Mathf.Clamp(packet.firstPipePointIndex, 0, packet.pathPointsLocal.Count - 1);
+    }
+
+    private static int GetLastPipePointIndex(TransitPacket packet)
+    {
+        if (packet == null || packet.pathPointsLocal == null || packet.pathPointsLocal.Count <= 0)
+        {
+            return 0;
+        }
+
+        int firstPipePointIndex = GetFirstPipePointIndex(packet);
+        int maxPointIndex = packet.pathPointsLocal.Count - 1;
+        return Mathf.Clamp(packet.lastPipePointIndex, firstPipePointIndex, maxPointIndex);
+    }
+
+    private static bool IsFinalDeliverySegment(TransitPacket packet)
+    {
+        if (packet == null || packet.pathPointsLocal == null || packet.pathPointsLocal.Count < 2)
+        {
+            return true;
+        }
+
+        return packet.segmentIndex >= GetLastPipePointIndex(packet);
+    }
+
+    private static bool ArePointsEquivalent(Vector3 a, Vector3 b)
+    {
+        return (a - b).sqrMagnitude <= PacketPointOccupancyToleranceSqr;
+    }
+
+    private static Vector2Int LocalPositionToGrid(Vector3 localPosition)
+    {
+        int center = GridSize / 2;
+        int x = Mathf.RoundToInt(localPosition.x / CellSize) + center;
+        int y = Mathf.RoundToInt(localPosition.y / CellSize) + center;
+        return new Vector2Int(x, y);
+    }
     private bool TryDeliverPacket(TransitPacket packet)
     {
         if (packet == null)
@@ -456,9 +1400,14 @@ public class OutputPortProductionState : MonoBehaviour
             return true;
         }
 
+        packet.segmentIndex = GetLastPipePointIndex(packet);
+        packet.segmentProgress = 0f;
+        packet.waitingForDelivery = false;
+
         if (packet.destinationInventory == null)
         {
-            StopTransfer(NoInventoryStatus);
+            packet.holdsAtPoint = true;
+            statusLabel = NoInventoryStatus;
             return false;
         }
 
@@ -469,7 +1418,7 @@ public class OutputPortProductionState : MonoBehaviour
             return true;
         }
 
-        StopTransfer(ReceiverFullStatus);
+        statusLabel = ReceiverFullStatus;
         return false;
     }
 
@@ -500,6 +1449,12 @@ public class OutputPortProductionState : MonoBehaviour
 
         statusLabel = CanSpawnNextPacket(
             out string failureReason,
+            out _,
+            out _,
+            out _,
+            out _,
+            out _,
+            out _,
             out _,
             out _,
             out _,
@@ -559,6 +1514,9 @@ public class OutputPortProductionState : MonoBehaviour
             case NoMaterialStatus:
                 return BuildNoMaterialDescription(senderOutputInventory, transferResource);
 
+            case PipeBlockedStatus:
+                return BuildPipeBlockedDescription(receiverInputInventory, receiverPartFocus, pipeCellCount);
+
             case ReceiverFullStatus:
                 return BuildReceiverFullDescription(receiverInputInventory, receiverPartFocus);
 
@@ -585,10 +1543,8 @@ public class OutputPortProductionState : MonoBehaviour
         string receiverLabel = ResolvePartLabel(receiverPartFocus);
         int senderAmount = ResolveSenderStockAmount(transferResource, senderOutputInventory);
         int reserved = CountReservedPackets(receiverInputInventory);
-        int receiverFreeSpace = receiverInputInventory != null
-            ? Mathf.Max(0, receiverInputInventory.Capacity - (receiverInputInventory.TotalAmount + reserved))
-            : 0;
-        return $"Ready. {senderLabel} will send {FormatResourceName(transferResource)} to {receiverLabel}. Pipe route: {Mathf.Max(0, pipeCellCount)} cell(s). Sender stock: {senderAmount}. Receiver input free space: {receiverFreeSpace}.";
+        int receiverFreeSpace = receiverInputInventory != null ? receiverInputInventory.FreeCapacity : 0;
+        return $"Ready. {senderLabel} will send {FormatResourceName(transferResource)} to {receiverLabel}. Pipe route: {Mathf.Max(0, pipeCellCount)} cell(s). Sender stock: {senderAmount}. Receiver input free space: {receiverFreeSpace}. In pipe: {reserved}.";
     }
 
     private string BuildRunningDescription(AssemblyPartFocus receiverPartFocus, InventoryResourceType transferResource, int pipeCellCount)
@@ -597,6 +1553,14 @@ public class OutputPortProductionState : MonoBehaviour
         string receiverLabel = ResolvePartLabel(receiverPartFocus);
         int resolvedPipeCells = pipeCellCount > 0 ? pipeCellCount : Mathf.Max(0, lastResolvedPipeCellCount);
         return $"Running. {senderLabel} is sending {FormatResourceName(transferResource)} to {receiverLabel}. Pipe route: {resolvedPipeCells} cell(s). In transit: {activePackets.Count}.";
+    }
+
+    private string BuildPipeBlockedDescription(StructureResourceInventory receiverInputInventory, AssemblyPartFocus receiverPartFocus, int pipeCellCount)
+    {
+        string receiverLabel = ResolvePartLabel(receiverPartFocus);
+        int freeSpace = receiverInputInventory != null ? receiverInputInventory.FreeCapacity : 0;
+        int resolvedPipeCells = pipeCellCount > 0 ? pipeCellCount : Mathf.Max(0, lastResolvedPipeCellCount);
+        return $"Pipe is saturated. Packets are queued toward {receiverLabel}. Pipe route: {resolvedPipeCells} cell(s). Receiver input free space: {freeSpace}. Sending resumes automatically when the line opens.";
     }
 
     private string BuildUnsupportedDescription()
@@ -661,8 +1625,7 @@ public class OutputPortProductionState : MonoBehaviour
         }
 
         int reserved = CountReservedPackets(receiverInputInventory);
-        int effectiveFreeSpace = Mathf.Max(0, receiverInputInventory.Capacity - (receiverInputInventory.TotalAmount + reserved));
-        return $"{receiverLabel} input capacity is full. Free space: {effectiveFreeSpace}. Capacity {receiverInputInventory.Capacity}, stored {receiverInputInventory.TotalAmount}, reserved in pipe {reserved}.";
+        return $"{receiverLabel} input capacity is full. Free space: {receiverInputInventory.FreeCapacity}. Capacity {receiverInputInventory.Capacity}, stored {receiverInputInventory.TotalAmount}, in pipe {reserved}.";
     }
 
     private string BuildNoInventoryDescription()
@@ -696,6 +1659,39 @@ public class OutputPortProductionState : MonoBehaviour
             : $"{ResolveModuleLabel()} output capacity";
     }
 
+    private float ResolvePipeTransmitTimeSeconds()
+    {
+        BindReferences();
+        ArtificialSatellite ownerSatellite = outputPortFocus != null ? outputPortFocus.OwnerSatellite : null;
+        if (ownerSatellite != null)
+        {
+            AssemblyPartFocus[] partFocuses = ownerSatellite.GetComponentsInChildren<AssemblyPartFocus>(true);
+            for (int i = 0; i < partFocuses.Length; i++)
+            {
+                AssemblyPartFocus partFocus = partFocuses[i];
+                if (partFocus == null || partFocus.SourcePart == null || partFocus.SourcePart.partType != PartType.Pipe)
+                {
+                    continue;
+                }
+
+                return Mathf.Max(0.01f, partFocus.SourcePart.transmitTime);
+            }
+        }
+
+        return DefaultTravelSecondsPerSegment;
+    }
+
+    private Vector2Int ResolveSenderTerminalDirection()
+    {
+        BindReferences();
+        if (outputPortFocus == null || !outputPortFocus.HasCellMapping)
+        {
+            return Vector2Int.zero;
+        }
+
+        Vector2Int direction = outputPortFocus.SourceCell - outputPortFocus.MappedCell;
+        return IsCardinalCellDirection(direction) ? direction : Vector2Int.zero;
+    }
     private int ResolveSenderStockAmount(InventoryResourceType transferResource, StructureResourceInventory senderOutputInventory)
     {
         if (UsesCoreLogisticsSender())
@@ -704,6 +1700,65 @@ public class OutputPortProductionState : MonoBehaviour
         }
 
         return senderOutputInventory != null ? senderOutputInventory.GetAmount(transferResource) : 0;
+    }
+
+    private static bool TryStorePacketInCoreLogistics(
+        InventoryResourceType resourceType,
+        List<StructureResourceInventory> logisticsInventories)
+    {
+        if (logisticsInventories == null)
+        {
+            return false;
+        }
+
+        for (int i = 0; i < logisticsInventories.Count; i++)
+        {
+            StructureResourceInventory inventory = logisticsInventories[i];
+            if (inventory != null && inventory.TryAdd(resourceType, 1))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static void CollectCoreLogisticsInventories(
+        ArtificialSatellite ownerSatellite,
+        List<StructureResourceInventory> inventories)
+    {
+        if (inventories == null)
+        {
+            return;
+        }
+
+        inventories.Clear();
+        if (ownerSatellite == null)
+        {
+            return;
+        }
+
+        StructureInstance[] instances = ownerSatellite.GetComponentsInChildren<StructureInstance>(true);
+        for (int i = 0; i < instances.Length; i++)
+        {
+            StructureInstance instance = instances[i];
+            if (instance == null || instance.SourceStructure == null || !instance.SourceStructure.UsesLogisticsHubUi)
+            {
+                continue;
+            }
+
+            StructureResourceInventory inventory = instance.GetComponent<StructureResourceInventory>();
+            if (inventory == null)
+            {
+                inventory = ComponentUtility.GetOrAddComponent<StructureResourceInventory>(instance.gameObject);
+                inventory.InitializeForStructure(instance.SourceStructure);
+            }
+
+            if (inventory != null)
+            {
+                inventories.Add(inventory);
+            }
+        }
     }
 
     private static string ResolvePartLabel(AssemblyPartFocus partFocus)
@@ -748,6 +1803,9 @@ public class OutputPortProductionState : MonoBehaviour
             case NoMaterialStatus:
                 return "Selected resource is unavailable in output capacity.";
 
+            case PipeBlockedStatus:
+                return "Pipe is full; waiting for space.";
+
             case ReceiverFullStatus:
                 return "Receiver input capacity is full.";
 
@@ -766,6 +1824,12 @@ public class OutputPortProductionState : MonoBehaviour
         }
 
         return rawStatus;
+    }
+
+    private static bool ShouldKeepRunningOnFlowBlock(string failureReason)
+    {
+        return string.Equals(failureReason, PipeBlockedStatus, System.StringComparison.Ordinal)
+            || string.Equals(failureReason, ReceiverFullStatus, System.StringComparison.Ordinal);
     }
 
     private void StopTransfer(string reason)
@@ -858,13 +1922,7 @@ public class OutputPortProductionState : MonoBehaviour
             return;
         }
 
-        if (packet.waitingForDelivery)
-        {
-            packet.visualTransform.localPosition = packet.pathPointsLocal[packet.pathPointsLocal.Count - 1];
-            return;
-        }
-
-        int currentIndex = Mathf.Clamp(packet.segmentIndex, 0, packet.pathPointsLocal.Count - 1);
+        int currentIndex = Mathf.Clamp(packet.segmentIndex, 0, GetLastPipePointIndex(packet));
         int nextIndex = Mathf.Clamp(currentIndex + 1, 0, packet.pathPointsLocal.Count - 1);
         Vector3 currentPoint = packet.pathPointsLocal[currentIndex];
         Vector3 nextPoint = packet.pathPointsLocal[nextIndex];
@@ -892,4 +1950,16 @@ public class OutputPortProductionState : MonoBehaviour
         Object.Destroy(packet.visualObject);
     }
 }
+
+
+
+
+
+
+
+
+
+
+
+
 

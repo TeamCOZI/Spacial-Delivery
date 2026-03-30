@@ -38,6 +38,11 @@ public static class OutputPortProductionUtility
             return false;
         }
 
+        if (PowerGeneratorRecipeCatalog.IsGeneratorPart(sourcePart) || SolarPanelUtility.IsSolarPanelPart(sourcePart) || SolarTurbineUtility.IsSolarTurbinePart(sourcePart))
+        {
+            return false;
+        }
+
         return !string.Equals(sourcePart.partName, LauncherPartName, StringComparison.OrdinalIgnoreCase);
     }
 
@@ -585,7 +590,7 @@ public static class OutputPortProductionUtility
         for (int i = 0; i < ownerPorts.Count; i++)
         {
             AssemblyPartPortLayout.PortEntry ownerPort = ownerPorts[i];
-            if (ownerPort == null || ownerPort.portType != AssemblyPortType.Input || ownerPort.portTransform == null)
+            if (ownerPort == null || !AssemblyPortTypeUtility.IsInputCompatible(ownerPort.portType) || ownerPort.portTransform == null)
             {
                 continue;
             }

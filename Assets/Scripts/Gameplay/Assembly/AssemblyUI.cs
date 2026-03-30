@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.InputSystem;
 using UnityEngine.UIElements;
 
 public partial class AssemblyUI : MonoBehaviour
@@ -43,7 +44,7 @@ public partial class AssemblyUI : MonoBehaviour
     private bool lastHasSelection;
     private bool assemblyUiVisibleRequested;
 
-    public bool IsWorldInputBlockedByPopup => IsPopupVisible(parts) || IsPopupVisible(structuresPopup) || IsPopupVisible(fabricatorPopup);
+    public bool IsWorldInputBlockedByUi => TryGetHoveredAssemblyUiElement(out _);
 
     private void Awake()
     {
@@ -328,9 +329,27 @@ public partial class AssemblyUI : MonoBehaviour
 
     private static Color GetPartRepresentativeColor(Part part)
     {
-        if (part == null || part.partPrefab == null) return Color.white;
+        if (part == null)
+        {
+            return Color.white;
+        }
 
-        Renderer renderer = part.partPrefab.GetComponentInChildren<Renderer>(true);
+        GameObject prefabRoot;
+        try
+        {
+            prefabRoot = part.partPrefab;
+        }
+        catch (MissingReferenceException)
+        {
+            return Color.white;
+        }
+
+        if (prefabRoot == null)
+        {
+            return Color.white;
+        }
+
+        Renderer renderer = prefabRoot.GetComponentInChildren<Renderer>(true);
         if (renderer == null || renderer.sharedMaterial == null) return Color.white;
 
         Material shared = renderer.sharedMaterial;
@@ -527,6 +546,7 @@ public partial class AssemblyUI : MonoBehaviour
         UnregisterFabricatorCallbacks();
     }
 
+
     private static void RegisterClickCallback(VisualElement element, EventCallback<ClickEvent> callback)
     {
         if (element == null || callback == null) return;
@@ -580,9 +600,36 @@ public partial class AssemblyUI : MonoBehaviour
         return true;
     }
 
-    private static bool IsPopupVisible(VisualElement popup)
+    private bool TryGetHoveredAssemblyUiElement(out VisualElement hoveredElement)
     {
-        return popup != null && popup.resolvedStyle.display != DisplayStyle.None;
+        hoveredElement = null;
+        if (root == null || root.panel == null || Mouse.current == null)
+        {
+            return false;
+        }
+
+        if (root.resolvedStyle.display == DisplayStyle.None)
+        {
+            return false;
+        }
+
+        Vector2 panelPosition = RuntimePanelUtils.ScreenToPanel(root.panel, Mouse.current.position.ReadValue());
+        VisualElement pickedElement = root.panel.Pick(panelPosition);
+        if (pickedElement == null || pickedElement == root)
+        {
+            return false;
+        }
+
+        for (VisualElement current = pickedElement; current != null; current = current.parent)
+        {
+            if (current == root)
+            {
+                hoveredElement = pickedElement;
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private bool TryGetRootVisualElement(out VisualElement visualElement)

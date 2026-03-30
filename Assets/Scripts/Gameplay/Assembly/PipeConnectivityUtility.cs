@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 
 public static class PipeConnectivityUtility
@@ -24,15 +24,85 @@ public static class PipeConnectivityUtility
             return;
         }
 
-        adjacency.Clear();
+        Dictionary<Vector2Int, HashSet<Vector2Int>> inputDirectionsByCell = new Dictionary<Vector2Int, HashSet<Vector2Int>>();
+        Dictionary<Vector2Int, HashSet<Vector2Int>> outputDirectionsByCell = new Dictionary<Vector2Int, HashSet<Vector2Int>>();
+        Dictionary<Vector2Int, SplitPipeState> splitStatesByCell = new Dictionary<Vector2Int, SplitPipeState>();
+        BuildPipePortMaps(ownerSatellite, inputDirectionsByCell, outputDirectionsByCell, splitStatesByCell, pipeCells);
+        InitializePipeAdjacency(adjacency, pipeCells);
+        BuildUndirectedAdjacency(adjacency, pipeCells, inputDirectionsByCell, outputDirectionsByCell);
+    }
+
+    public static void BuildActivePipeAdjacency(
+        ArtificialSatellite ownerSatellite,
+        Dictionary<Vector2Int, List<Vector2Int>> adjacency,
+        HashSet<Vector2Int> pipeCells,
+        Dictionary<Vector2Int, HashSet<Vector2Int>> inputDirectionsByCell,
+        Dictionary<Vector2Int, HashSet<Vector2Int>> outputDirectionsByCell,
+        Dictionary<Vector2Int, SplitPipeState> splitStatesByCell)
+    {
+        if (adjacency == null)
+        {
+            return;
+        }
+
+        BuildPipePortMaps(ownerSatellite, inputDirectionsByCell, outputDirectionsByCell, splitStatesByCell, pipeCells);
+        InitializePipeAdjacency(adjacency, pipeCells);
+        if (pipeCells == null)
+        {
+            return;
+        }
+
+        List<Vector2Int> cells = new List<Vector2Int>(pipeCells);
+        for (int i = 0; i < cells.Count; i++)
+        {
+            Vector2Int cell = cells[i];
+            if (!adjacency.TryGetValue(cell, out List<Vector2Int> neighbors))
+            {
+                continue;
+            }
+
+            if (splitStatesByCell != null && splitStatesByCell.TryGetValue(cell, out SplitPipeState splitPipeState) && splitPipeState != null)
+            {
+                if (TryGetSelectedSplitOutputDirection(cell, splitPipeState, inputDirectionsByCell, outputDirectionsByCell, pipeCells, out Vector2Int selectedDirection))
+                {
+                    Vector2Int neighborCell = cell + selectedDirection;
+                    if (pipeCells.Contains(neighborCell))
+                    {
+                        neighbors.Add(neighborCell);
+                    }
+                }
+
+                continue;
+            }
+
+            for (int dirIndex = 0; dirIndex < CardinalDirections.Length; dirIndex++)
+            {
+                Vector2Int direction = CardinalDirections[dirIndex];
+                Vector2Int neighborCell = cell + direction;
+                if (CanTraverseDirected(cell, direction, neighborCell, inputDirectionsByCell, outputDirectionsByCell, pipeCells))
+                {
+                    neighbors.Add(neighborCell);
+                }
+            }
+        }
+    }
+
+    public static void BuildPipePortMaps(
+        ArtificialSatellite ownerSatellite,
+        Dictionary<Vector2Int, HashSet<Vector2Int>> inputDirectionsByCell,
+        Dictionary<Vector2Int, HashSet<Vector2Int>> outputDirectionsByCell,
+        Dictionary<Vector2Int, SplitPipeState> splitStatesByCell,
+        HashSet<Vector2Int> pipeCells)
+    {
+        inputDirectionsByCell?.Clear();
+        outputDirectionsByCell?.Clear();
+        splitStatesByCell?.Clear();
         pipeCells?.Clear();
         if (ownerSatellite == null)
         {
             return;
         }
 
-        Dictionary<Vector2Int, HashSet<Vector2Int>> inputDirectionsByCell = new Dictionary<Vector2Int, HashSet<Vector2Int>>();
-        Dictionary<Vector2Int, HashSet<Vector2Int>> outputDirectionsByCell = new Dictionary<Vector2Int, HashSet<Vector2Int>>();
         AssemblyPartPortLayout[] layouts = ownerSatellite.GetComponentsInChildren<AssemblyPartPortLayout>(true);
         for (int i = 0; i < layouts.Length; i++)
         {
@@ -60,7 +130,7 @@ public static class PipeConnectivityUtility
                 for (int entryIndex = 0; entryIndex < entries.Count; entryIndex++)
                 {
                     AssemblyPartPortLayout.PortEntry entry = entries[entryIndex];
-                    if (entry == null || (entry.portType != AssemblyPortType.Input && entry.portType != AssemblyPortType.Output))
+                    if (entry == null || (!AssemblyPortTypeUtility.IsInputCompatible(entry.portType) && !AssemblyPortTypeUtility.IsOutputCompatible(entry.portType)))
                     {
                         continue;
                     }
@@ -71,34 +141,120 @@ public static class PipeConnectivityUtility
                     }
 
                     addedPortMapping = true;
-                    EnsurePipeCell(adjacency, pipeCells, sourceCell);
-                    if (entry.portType == AssemblyPortType.Input)
+                    pipeCells?.Add(sourceCell);
+                    if (AssemblyPortTypeUtility.IsInputCompatible(entry.portType))
                     {
                         AddDirection(inputDirectionsByCell, sourceCell, sideDirection);
                     }
-                    else
+
+                    if (AssemblyPortTypeUtility.IsOutputCompatible(entry.portType))
                     {
                         AddDirection(outputDirectionsByCell, sourceCell, sideDirection);
+                    }
+
+                    if (splitStatesByCell != null && SplitPipeUtility.IsSplitPipePart(partFocus.SourcePart))
+                    {
+                        SplitPipeState splitPipeState = SplitPipeUtility.ResolveState(partFocus.gameObject);
+                        if (splitPipeState != null)
+                        {
+                            splitStatesByCell[sourceCell] = splitPipeState;
+                        }
                     }
                 }
             }
 
             if (!addedPortMapping && TryResolvePartCenterCell(layout, partFocus, out Vector2Int centerCell))
             {
-                EnsurePipeCell(adjacency, pipeCells, centerCell);
+                pipeCells?.Add(centerCell);
+                if (splitStatesByCell != null && SplitPipeUtility.IsSplitPipePart(partFocus.SourcePart))
+                {
+                    SplitPipeState splitPipeState = SplitPipeUtility.ResolveState(partFocus.gameObject);
+                    if (splitPipeState != null)
+                    {
+                        splitStatesByCell[centerCell] = splitPipeState;
+                    }
+                }
             }
         }
+    }
 
-        List<Vector2Int> cells = new List<Vector2Int>(adjacency.Keys);
+    public static bool TryGetSelectedSplitOutputDirection(
+        Vector2Int currentCell,
+        SplitPipeState splitPipeState,
+        Dictionary<Vector2Int, HashSet<Vector2Int>> inputDirectionsByCell,
+        Dictionary<Vector2Int, HashSet<Vector2Int>> outputDirectionsByCell,
+        HashSet<Vector2Int> pipeCells,
+        out Vector2Int selectedDirection)
+    {
+        selectedDirection = Vector2Int.zero;
+        if (splitPipeState == null || outputDirectionsByCell == null || !outputDirectionsByCell.TryGetValue(currentCell, out HashSet<Vector2Int> outputDirections) || outputDirections == null)
+        {
+            return false;
+        }
+
+        List<Vector2Int> availableDirections = new List<Vector2Int>(outputDirections.Count);
+        foreach (Vector2Int outputDirection in outputDirections)
+        {
+            Vector2Int neighborCell = currentCell + outputDirection;
+            if (!CanTraverseDirected(currentCell, outputDirection, neighborCell, inputDirectionsByCell, outputDirectionsByCell, pipeCells))
+            {
+                continue;
+            }
+
+            availableDirections.Add(outputDirection);
+        }
+
+        if (!splitPipeState.TrySelectPreviewOutputDirection(availableDirections, out selectedDirection))
+        {
+            return false;
+        }
+
+        Vector2Int selectedNeighborCell = currentCell + selectedDirection;
+        return CanTraverseDirected(currentCell, selectedDirection, selectedNeighborCell, inputDirectionsByCell, outputDirectionsByCell, pipeCells);
+    }
+
+    private static void InitializePipeAdjacency(Dictionary<Vector2Int, List<Vector2Int>> adjacency, HashSet<Vector2Int> pipeCells)
+    {
+        adjacency.Clear();
+        if (pipeCells == null)
+        {
+            return;
+        }
+
+        foreach (Vector2Int cell in pipeCells)
+        {
+            if (!adjacency.ContainsKey(cell))
+            {
+                adjacency[cell] = new List<Vector2Int>();
+            }
+        }
+    }
+
+    private static void BuildUndirectedAdjacency(
+        Dictionary<Vector2Int, List<Vector2Int>> adjacency,
+        HashSet<Vector2Int> pipeCells,
+        Dictionary<Vector2Int, HashSet<Vector2Int>> inputDirectionsByCell,
+        Dictionary<Vector2Int, HashSet<Vector2Int>> outputDirectionsByCell)
+    {
+        if (adjacency == null || pipeCells == null)
+        {
+            return;
+        }
+
+        List<Vector2Int> cells = new List<Vector2Int>(pipeCells);
         for (int i = 0; i < cells.Count; i++)
         {
             Vector2Int cell = cells[i];
-            List<Vector2Int> neighbors = adjacency[cell];
+            if (!adjacency.TryGetValue(cell, out List<Vector2Int> neighbors))
+            {
+                continue;
+            }
+
             for (int dirIndex = 0; dirIndex < CardinalDirections.Length; dirIndex++)
             {
                 Vector2Int direction = CardinalDirections[dirIndex];
                 Vector2Int neighborCell = cell + direction;
-                if (!adjacency.ContainsKey(neighborCell))
+                if (!pipeCells.Contains(neighborCell))
                 {
                     continue;
                 }
@@ -155,6 +311,28 @@ public static class PipeConnectivityUtility
         return true;
     }
 
+    public static bool CanTraversePhysicalDirection(
+        ArtificialSatellite ownerSatellite,
+        Vector2Int currentCell,
+        Vector2Int nextCell)
+    {
+        if (ownerSatellite == null)
+        {
+            return false;
+        }
+
+        Vector2Int direction = nextCell - currentCell;
+        if (Mathf.Abs(direction.x) + Mathf.Abs(direction.y) != 1)
+        {
+            return false;
+        }
+
+        Dictionary<Vector2Int, HashSet<Vector2Int>> inputDirectionsByCell = new Dictionary<Vector2Int, HashSet<Vector2Int>>();
+        Dictionary<Vector2Int, HashSet<Vector2Int>> outputDirectionsByCell = new Dictionary<Vector2Int, HashSet<Vector2Int>>();
+        HashSet<Vector2Int> pipeCells = new HashSet<Vector2Int>();
+        BuildPipePortMaps(ownerSatellite, inputDirectionsByCell, outputDirectionsByCell, null, pipeCells);
+        return CanTraverseDirected(currentCell, direction, nextCell, inputDirectionsByCell, outputDirectionsByCell, pipeCells);
+    }
     private static bool ArePipeCellsLinked(
         Vector2Int cell,
         Vector2Int direction,
@@ -166,6 +344,23 @@ public static class PipeConnectivityUtility
         bool canReceiveFromNeighbor = HasDirection(inputDirectionsByCell, cell, direction) && HasDirection(outputDirectionsByCell, neighborCell, oppositeDirection);
         bool canSendToNeighbor = HasDirection(outputDirectionsByCell, cell, direction) && HasDirection(inputDirectionsByCell, neighborCell, oppositeDirection);
         return canReceiveFromNeighbor || canSendToNeighbor;
+    }
+
+    private static bool CanTraverseDirected(
+        Vector2Int currentCell,
+        Vector2Int outputDirection,
+        Vector2Int neighborCell,
+        Dictionary<Vector2Int, HashSet<Vector2Int>> inputDirectionsByCell,
+        Dictionary<Vector2Int, HashSet<Vector2Int>> outputDirectionsByCell,
+        HashSet<Vector2Int> pipeCells)
+    {
+        if (outputDirection == Vector2Int.zero || pipeCells == null || !pipeCells.Contains(neighborCell))
+        {
+            return false;
+        }
+
+        return HasDirection(outputDirectionsByCell, currentCell, outputDirection)
+            && HasDirection(inputDirectionsByCell, neighborCell, -outputDirection);
     }
 
     private static bool HasDirection(Dictionary<Vector2Int, HashSet<Vector2Int>> map, Vector2Int cell, Vector2Int direction)
@@ -187,16 +382,6 @@ public static class PipeConnectivityUtility
         }
 
         directions.Add(direction);
-    }
-
-    private static void EnsurePipeCell(Dictionary<Vector2Int, List<Vector2Int>> adjacency, HashSet<Vector2Int> pipeCells, Vector2Int cell)
-    {
-        if (!adjacency.ContainsKey(cell))
-        {
-            adjacency[cell] = new List<Vector2Int>();
-        }
-
-        pipeCells?.Add(cell);
     }
 
     private static Vector2 GetSnapOffsetFromPartFocus(AssemblyPartFocus partFocus, AssemblyPartPortLayout layout)

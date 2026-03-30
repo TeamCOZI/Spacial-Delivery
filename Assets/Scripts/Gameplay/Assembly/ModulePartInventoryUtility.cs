@@ -26,11 +26,22 @@ public static class ModulePartInventoryUtility
         {
             return;
         }
-
         if (!UsesSplitInventories(part))
         {
             StructureResourceInventory inventory = GetOrCreateInventory(ownerObject, part, StructureResourceInventoryKind.General);
             inventory.InitializeForPart(part, StructureResourceInventoryKind.General);
+            return;
+        }
+
+        if (SolarPanelUtility.IsSolarPanelPart(part))
+        {
+            _ = ComponentUtility.GetOrAddComponent<SolarPanelState>(ownerObject);
+            return;
+        }
+
+        if (SolarTurbineUtility.IsSolarTurbinePart(part))
+        {
+            _ = ComponentUtility.GetOrAddComponent<SolarTurbineState>(ownerObject);
             return;
         }
 
@@ -120,6 +131,18 @@ public static class ModulePartInventoryUtility
         {
             if (kind == StructureResourceInventoryKind.General)
             {
+                return false;
+            }
+
+            if (SolarPanelUtility.IsSolarPanelPart(sourcePart))
+            {
+                _ = ComponentUtility.GetOrAddComponent<SolarPanelState>(partFocus.gameObject);
+                return false;
+            }
+
+            if (SolarTurbineUtility.IsSolarTurbinePart(sourcePart))
+            {
+                _ = ComponentUtility.GetOrAddComponent<SolarTurbineState>(partFocus.gameObject);
                 return false;
             }
 

@@ -59,10 +59,14 @@
                 </ui:VisualElement>
             </ui:VisualElement>
         </ui:VisualElement>
-        <ui:Button text="X&#10;" name="Close" style="align-self: flex-end;" />
-        <ui:Button text="Parts&#10;" name="OpenParts" style="align-self: flex-start;" />
-        <ui:Button text="Structures&#10;" name="OpenStructures" style="align-self: flex-start; display: none;" />
-        <ui:Button text="Selection&#10;" name="ToggleSelection" style="align-self: flex-start;" />
-        <ui:Button text="Remove&#10;" name="RemoveSelected" style="align-self: flex-start; display: none;" />
+        <ui:VisualElement name="AssemblyCloseControls" picking-mode="Position" style="align-self: flex-end;">
+            <ui:Button text="X&#10;" name="Close" />
+        </ui:VisualElement>
+        <ui:VisualElement name="AssemblyModeControls" picking-mode="Position" style="align-self: flex-start; flex-direction: column;">
+            <ui:Button text="Parts&#10;" name="OpenParts" />
+            <ui:Button text="Structures&#10;" name="OpenStructures" style="display: none;" />
+            <ui:Button text="Selection&#10;" name="ToggleSelection" />
+            <ui:Button text="Remove&#10;" name="RemoveSelected" style="display: none;" />
+        </ui:VisualElement>
     </ui:VisualElement>
 </ui:UXML>

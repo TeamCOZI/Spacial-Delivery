@@ -43,6 +43,7 @@ public class AssemblyPartFocus : MonoBehaviour, UpdateFocusInfo
         string powerGeneration = FormatPartNumericValue(sourcePart != null ? sourcePart.powerGeneration : (float?)null);
         string powerConsumption = FormatPartNumericValue(sourcePart != null ? sourcePart.powerConsumption : (float?)null);
         string powerCapacity = FormatPartNumericValue(sourcePart != null ? sourcePart.powerCapacity : (float?)null);
+        string transmitTime = FormatPartNumericValue(sourcePart != null ? sourcePart.transmitTime : (float?)null);
         string footprint = GetFootprintLabel();
         string ownerName = OwnerSatellite != null ? OwnerSatellite.name : "N/A";
         string installedCell = GetInstalledCellLabel();
@@ -58,6 +59,11 @@ public class AssemblyPartFocus : MonoBehaviour, UpdateFocusInfo
             { "Power Consumption", powerConsumption },
             { "Power Capacity", powerCapacity }
         };
+
+        if (sourcePart != null && sourcePart.partType == PartType.Pipe)
+        {
+            focusInfo.Add("Transmit Time", transmitTime);
+        }
 
         if (IsLauncherPart(partName))
         {

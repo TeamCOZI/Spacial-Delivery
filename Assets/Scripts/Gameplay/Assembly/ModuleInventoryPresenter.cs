@@ -1181,6 +1181,11 @@ public class ModuleInventoryPresenter : FocusEventSubscriber
             return false;
         }
 
+        if (SolarPanelUtility.IsSolarPanelPart(directPart.SourcePart) || SolarTurbineUtility.IsSolarTurbinePart(directPart.SourcePart))
+        {
+            return false;
+        }
+
         partFocus = directPart;
         return true;
     }

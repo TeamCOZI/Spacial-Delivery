@@ -43,6 +43,17 @@ public partial class Assembly
         }
     }
 
+    private readonly struct PipeTerminalOpenPort
+    {
+        public readonly Vector3 ownerLocalPosition;
+        public readonly AssemblyPortType portType;
+        public PipeTerminalOpenPort(Vector3 ownerLocalPosition, AssemblyPortType portType)
+        {
+            this.ownerLocalPosition = ownerLocalPosition;
+            this.portType = portType;
+        }
+    }
+
     private void RefreshPipePathGhostEnds(Color ghostColor)
     {
         if (pipePathGhostRoot == null || part == null || artificialSatellite == null) return;
@@ -137,7 +148,7 @@ public partial class Assembly
             {
                 AssemblyPartPortLayout.PortEntry entry = entries[j];
                 if (entry == null || entry.portTransform == null) continue;
-                if (entry.portType != AssemblyPortType.Input && entry.portType != AssemblyPortType.Output) continue;
+                if (!AssemblyPortTypeUtility.IsInputCompatible(entry.portType) && !AssemblyPortTypeUtility.IsOutputCompatible(entry.portType)) continue;
                 if (!TryGetLayoutEntryBoundaryKey(layout, entry, out Vector2Int mappedCell, out CellSideMask mappedSide)) continue;
 
                 ownerLocalPortPositions.Add(ownerRoot.InverseTransformPoint(entry.portTransform.position));
@@ -193,7 +204,7 @@ public partial class Assembly
             {
                 AssemblyPartPortLayout.PortEntry entry = entries[j];
                 if (entry == null) continue;
-                if (entry.portType != AssemblyPortType.Input && entry.portType != AssemblyPortType.Output) continue;
+                if (!AssemblyPortTypeUtility.IsInputCompatible(entry.portType) && !AssemblyPortTypeUtility.IsOutputCompatible(entry.portType)) continue;
                 if (!TryGetLayoutEntryBoundaryKey(layout, entry, out Vector2Int mappedCell, out CellSideMask mappedSide)) continue;
 
                 AddBoundaryRecord(recordsByKey, mappedCell, mappedSide, layout.transform, entry.portType);
@@ -289,7 +300,7 @@ public partial class Assembly
         isCorner = false;
 
         if (ownerRoot == null) return false;
-        if (string.Equals(ownerRoot.name, PipeReplacementVisualName, System.StringComparison.Ordinal)) return false;
+        if (IsPipeReplacementVisualName(ownerRoot.name)) return false;
 
         bool hasGhostMarker = ownerRoot.GetComponentInParent<AssemblyGhostMarker>(true) != null;
         if (isGhost != hasGhostMarker) return false;
@@ -325,37 +336,20 @@ public partial class Assembly
         Color ghostColor)
     {
         if (owner.ownerRoot == null) return;
-
         Transform primaryVisual = FindPrimaryPipeVisual(owner.ownerRoot);
-        Transform existingReplacement = owner.ownerRoot.Find(PipeReplacementVisualName);
-        bool shouldUseTerminal = false;
-        Vector3 outerLocalPosition = Vector3.right;
-
-        if (TryResolvePipeTerminalState(owner.ownerRoot, inputOwnersByKey, outputOwnersByKey, coreOutputKeys, out bool foundOpenSide, out Vector3 resolvedOuterLocalPosition, out _))
+        List<PipeTerminalOpenPort> openPorts = new List<PipeTerminalOpenPort>(4);
+        _ = CollectPipeTerminalOpenPorts(owner.ownerRoot, inputOwnersByKey, outputOwnersByKey, coreOutputKeys, openPorts);
+        if (openPorts.Count <= 0 || owner.terminalTemplate == null)
         {
-            shouldUseTerminal = foundOpenSide;
-            outerLocalPosition = resolvedOuterLocalPosition;
-        }
-        else if (owner.ownerLocalPortPositions != null && owner.ownerLocalPortPositions.Length > 0)
-        {
-            outerLocalPosition = owner.ownerLocalPortPositions[0];
-        }
-
-        if (!shouldUseTerminal || owner.terminalTemplate == null)
-        {
-            if (existingReplacement != null)
-            {
-                Object.Destroy(existingReplacement.gameObject);
-            }
-
+            ClearPipeReplacementVisuals(owner.ownerRoot);
             if (primaryVisual != null && !primaryVisual.gameObject.activeSelf)
             {
                 primaryVisual.gameObject.SetActive(true);
             }
             return;
         }
-
-        if (isGhost)
+        bool keepPrimaryVisualVisible = !isGhost && ShouldKeepPipePrimaryVisualVisibleForDebug();
+        if (isGhost || keepPrimaryVisualVisible)
         {
             if (primaryVisual != null && !primaryVisual.gameObject.activeSelf)
             {
@@ -366,22 +360,48 @@ public partial class Assembly
         {
             primaryVisual.gameObject.SetActive(false);
         }
-
-        GameObject replacement = existingReplacement != null
-            ? existingReplacement.gameObject
-            : Object.Instantiate(owner.terminalTemplate, owner.ownerRoot, false);
-
-        replacement.name = PipeReplacementVisualName;
-        replacement.transform.localPosition = Vector3.zero;
-        replacement.transform.localRotation = GetPipeEndRotation(outerLocalPosition);
-        MatchWorldScale(replacement.transform, owner.terminalTemplate.transform.lossyScale);
-        SmallScaleLayerUtility.ApplyRecursively(replacement.transform);
-
-        if (isGhost)
+        List<Transform> existingReplacements = new List<Transform>(4);
+        CollectPipeReplacementVisuals(owner.ownerRoot, existingReplacements);
+        for (int i = 0; i < openPorts.Count; i++)
         {
-            EnsureRendererTransparencyRecursiveStatic(replacement.transform);
-            SetRendererColorRecursiveStatic(replacement.transform, ghostColor);
+            Transform replacementTransform = i < existingReplacements.Count && existingReplacements[i] != null
+                ? existingReplacements[i]
+                : Object.Instantiate(owner.terminalTemplate, owner.ownerRoot, false).transform;
+            PipeTerminalOpenPort openPort = openPorts[i];
+            replacementTransform.name = $"{PipeReplacementVisualName}_{i}";
+            replacementTransform.localPosition = Vector3.zero;
+            replacementTransform.localRotation = GetPipeEndRotation(openPort.ownerLocalPosition);
+            MatchWorldScale(replacementTransform, owner.terminalTemplate.transform.lossyScale);
+            SmallScaleLayerUtility.ApplyRecursively(replacementTransform);
+            if (owner.isCorner)
+            {
+                ApplyPipeCornerEndVisualLocalRotation(replacementTransform, openPort.portType);
+            }
+            if (isGhost)
+            {
+                EnsureRendererTransparencyRecursiveStatic(replacementTransform);
+                SetRendererColorRecursiveStatic(replacementTransform, ghostColor);
+            }
+            else if (TryResolvePipePartColor(owner.ownerRoot, out Color pipeColor))
+            {
+                SetRendererColorRecursiveStatic(replacementTransform, pipeColor);
+            }
         }
+        for (int i = existingReplacements.Count - 1; i >= openPorts.Count; i--)
+        {
+            if (existingReplacements[i] != null)
+            {
+                Object.Destroy(existingReplacements[i].gameObject);
+            }
+        }
+    }
+
+    private bool ShouldKeepPipePrimaryVisualVisibleForDebug()
+    {
+        return debugPipePlacement
+            || debugHoverCellPortMapping
+            || debugConnectionGraph
+            || debugActiveSplitGraph;
     }
 
     private void BuildPipeOwnerPortMaps(
@@ -413,15 +433,16 @@ public partial class Assembly
             {
                 AssemblyPartPortLayout.PortEntry entry = entries[j];
                 if (entry == null) continue;
-                if (entry.portType != AssemblyPortType.Input && entry.portType != AssemblyPortType.Output) continue;
+                if (!AssemblyPortTypeUtility.IsInputCompatible(entry.portType) && !AssemblyPortTypeUtility.IsOutputCompatible(entry.portType)) continue;
                 if (!TryGetPartLayoutEntryMapping(layout, entry, out Vector2Int sourceCell, out CellSideMask portSide)) continue;
                 if (!IsInsideGrid(sourceCell) || portSide == CellSideMask.None) continue;
 
-                if (entry.portType == AssemblyPortType.Input)
+                if (AssemblyPortTypeUtility.IsInputCompatible(entry.portType))
                 {
                     AddOwnerToPortMap(inputOwnersByKey, (sourceCell, portSide), owner);
                 }
-                else
+
+                if (AssemblyPortTypeUtility.IsOutputCompatible(entry.portType))
                 {
                     AddOwnerToPortMap(outputOwnersByKey, (sourceCell, portSide), owner);
                 }
@@ -437,6 +458,18 @@ public partial class Assembly
         }
     }
 
+    private static bool TryResolvePipePartColor(Transform ownerRoot, out Color pipeColor)
+    {
+        pipeColor = Color.white;
+        if (ownerRoot == null) return false;
+
+        AssemblyPartFocus focus = ownerRoot.GetComponent<AssemblyPartFocus>();
+        if (focus == null || focus.SourcePart == null) return false;
+
+        pipeColor = focus.SourcePart.partColor;
+        return true;
+    }
+
     private GameObject ResolvePipeMapOwner(Transform ownerRoot)
     {
         if (ownerRoot == null) return null;
@@ -450,61 +483,38 @@ public partial class Assembly
         return ownerRoot.gameObject;
     }
 
-    private bool TryResolvePipeTerminalState(
+    private bool CollectPipeTerminalOpenPorts(
         Transform ownerRoot,
         Dictionary<(Vector2Int cell, CellSideMask side), HashSet<GameObject>> inputOwnersByKey,
         Dictionary<(Vector2Int cell, CellSideMask side), HashSet<GameObject>> outputOwnersByKey,
         HashSet<(Vector2Int cell, CellSideMask side)> coreOutputKeys,
-        out bool shouldUseTerminal,
-        out Vector3 outerLocalPosition,
-        out AssemblyPortType openPortType)
+        List<PipeTerminalOpenPort> openPorts)
     {
-        shouldUseTerminal = false;
-        outerLocalPosition = Vector3.right;
-        openPortType = AssemblyPortType.Output;
+        openPorts?.Clear();
         if (ownerRoot == null) return false;
-
         AssemblyPartPortLayout layout = ownerRoot.GetComponent<AssemblyPartPortLayout>();
         if (layout == null || layout.Ports == null || layout.Ports.Count == 0) return false;
-
         GameObject ownerObject = ResolvePipeMapOwner(ownerRoot);
         bool foundAnyPort = false;
-        bool foundOpenPort = false;
-
         for (int i = 0; i < layout.Ports.Count; i++)
         {
             AssemblyPartPortLayout.PortEntry entry = layout.Ports[i];
             if (entry == null || entry.portTransform == null) continue;
-            if (entry.portType != AssemblyPortType.Input && entry.portType != AssemblyPortType.Output) continue;
+            if (!AssemblyPortTypeUtility.IsInputCompatible(entry.portType) && !AssemblyPortTypeUtility.IsOutputCompatible(entry.portType)) continue;
             if (!TryGetPartLayoutEntryMapping(layout, entry, out Vector2Int sourceCell, out CellSideMask portSide)) continue;
             if (portSide == CellSideMask.None) continue;
-
             Vector3 portLocal = ownerRoot.InverseTransformPoint(entry.portTransform.position);
-            if (!foundAnyPort)
-            {
-                outerLocalPosition = portLocal;
-                foundAnyPort = true;
-            }
-
+            foundAnyPort = true;
             if (IsPipeConnectedToPipeOwner(ownerObject, sourceCell, portSide, entry.portType, inputOwnersByKey, outputOwnersByKey))
             {
                 continue;
             }
-
             if (!HasTerminalBoundaryOwner(ownerObject, sourceCell, portSide, entry.portType, inputOwnersByKey, outputOwnersByKey, coreOutputKeys))
             {
                 continue;
             }
-
-            if (!foundOpenPort)
-            {
-                outerLocalPosition = portLocal;
-                openPortType = entry.portType;
-                foundOpenPort = true;
-            }
+            openPorts?.Add(new PipeTerminalOpenPort(portLocal, entry.portType));
         }
-
-        shouldUseTerminal = foundOpenPort;
         return foundAnyPort;
     }
 
@@ -522,13 +532,15 @@ public partial class Assembly
         CellSideMask neighborSide = OppositeSide(portSide);
         if (neighborSide == CellSideMask.None) return false;
 
-        if (portType == AssemblyPortType.Input)
+        if (AssemblyPortTypeUtility.IsInputCompatible(portType) &&
+            TryGetOwnersByPortKey(outputOwnersByKey, (neighborCell, neighborSide), out HashSet<GameObject> outputOwners) &&
+            ContainsPipeOwner(outputOwners, ownerObject))
         {
-            return TryGetOwnersByPortKey(outputOwnersByKey, (neighborCell, neighborSide), out HashSet<GameObject> outputOwners)
-                && ContainsPipeOwner(outputOwners, ownerObject);
+            return true;
         }
 
-        return TryGetOwnersByPortKey(inputOwnersByKey, (neighborCell, neighborSide), out HashSet<GameObject> inputOwners)
+        return AssemblyPortTypeUtility.IsOutputCompatible(portType)
+            && TryGetOwnersByPortKey(inputOwnersByKey, (neighborCell, neighborSide), out HashSet<GameObject> inputOwners)
             && ContainsPipeOwner(inputOwners, ownerObject);
     }
 
@@ -549,7 +561,7 @@ public partial class Assembly
         CellSideMask neighborSide = OppositeSide(portSide);
         if (neighborSide == CellSideMask.None) return false;
 
-        if (portType == AssemblyPortType.Input)
+        if (AssemblyPortTypeUtility.IsInputCompatible(portType))
         {
             if (TryGetOwnersByPortKey(outputOwnersByKey, (neighborCell, neighborSide), out HashSet<GameObject> outputOwners)
                 && ContainsNonExcludedOwner(outputOwners, ownerObject))
@@ -557,10 +569,14 @@ public partial class Assembly
                 return true;
             }
 
-            return coreOutputKeys != null && coreOutputKeys.Contains((neighborCell, neighborSide));
+            if (coreOutputKeys != null && coreOutputKeys.Contains((neighborCell, neighborSide)))
+            {
+                return true;
+            }
         }
 
-        return TryGetOwnersByPortKey(inputOwnersByKey, (neighborCell, neighborSide), out HashSet<GameObject> inputOwners)
+        return AssemblyPortTypeUtility.IsOutputCompatible(portType)
+            && TryGetOwnersByPortKey(inputOwnersByKey, (neighborCell, neighborSide), out HashSet<GameObject> inputOwners)
             && ContainsNonExcludedOwner(inputOwners, ownerObject);
     }
 
@@ -612,11 +628,38 @@ public partial class Assembly
             Transform child = ownerRoot.GetChild(i);
             if (child == null) continue;
             if (string.Equals(child.name, RuntimePortsRootName, System.StringComparison.Ordinal)) continue;
-            if (string.Equals(child.name, PipeReplacementVisualName, System.StringComparison.Ordinal)) continue;
+            if (IsPipeReplacementVisualName(child.name)) continue;
             return child;
         }
 
         return null;
+    }
+
+    private static bool IsPipeReplacementVisualName(string objectName)
+    {
+        return !string.IsNullOrWhiteSpace(objectName)
+            && objectName.StartsWith(PipeReplacementVisualName, System.StringComparison.Ordinal);
+    }
+    private static void CollectPipeReplacementVisuals(Transform ownerRoot, List<Transform> results)
+    {
+        if (results == null)
+        {
+            return;
+        }
+        results.Clear();
+        if (ownerRoot == null)
+        {
+            return;
+        }
+        for (int i = 0; i < ownerRoot.childCount; i++)
+        {
+            Transform child = ownerRoot.GetChild(i);
+            if (child == null || !IsPipeReplacementVisualName(child.name))
+            {
+                continue;
+            }
+            results.Add(child);
+        }
     }
 
     private static void ApplyPipeCornerEndVisualLocalRotation(
@@ -642,7 +685,7 @@ public partial class Assembly
             Transform current = allTransforms[i];
             if (current == null) continue;
             if (current == containerRoot) continue;
-            if (!string.Equals(current.name, PipeReplacementVisualName, System.StringComparison.Ordinal)) continue;
+            if (!IsPipeReplacementVisualName(current.name)) continue;
 
             Transform ownerRoot = current.parent;
             Object.Destroy(current.gameObject);
@@ -717,14 +760,3 @@ public partial class Assembly
         }
     }
 }
-
-
-
-
-
-
-
-
-
-
-

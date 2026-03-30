@@ -1,4 +1,4 @@
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -79,6 +79,8 @@ public partial class Assembly : MonoBehaviour
     [SerializeField] private bool removeDisconnectedPartsAfterDeletion = false;
     [SerializeField] private bool debugPipePlacement = true;
     [SerializeField] private bool debugHoverCellPortMapping = true;
+    [SerializeField] private bool debugConnectionGraph = true;
+    [SerializeField] private bool debugActiveSplitGraph = true;
     [SerializeField] private bool enableInputPortAutoMapping = false;
     private bool hasPipeDebugState = false;
     private Vector2Int lastPipeDebugCell;
@@ -170,6 +172,7 @@ public partial class Assembly : MonoBehaviour
         if (artificialSatellite != null && assemblyPlaneCreated)
         {
             DebugLogHoveredCellPortMapping();
+            DrawDebugConnectionGraph();
         }
 
         if (isSelectionMode)
@@ -190,13 +193,18 @@ public partial class Assembly : MonoBehaviour
 
         UpdateGhost();
 
+        if (UserInput.IsWorldInputBlockedByUiPanels())
+        {
+            return;
+        }
+
         if (Mouse.current.leftButton.wasPressedThisFrame)
         {
             if (HasActiveStructurePlacement())
             {
                 ApplyStructure();
             }
-            else if (IsPipePart(part))
+            else if (UsesPipePathPlacement(part))
             {
                 HandlePipeLeftClick();
             }
@@ -312,7 +320,7 @@ public partial class Assembly : MonoBehaviour
         isSnapped = true;
         UpdateOutputCycleSelection(centerCell);
 
-        if (IsPipePart(part) && pipePathStartSelected)
+        if (UsesPipePathPlacement(part) && pipePathStartSelected)
         {
             UpdatePipePathPreview();
             return;
@@ -321,7 +329,7 @@ public partial class Assembly : MonoBehaviour
         bool areaFree = IsCurrentGhostPlacementAreaFree();
         if (!areaFree)
         {
-            if (IsPipePart(part) && !pipePathStartSelected && partGhost != null)
+            if (UsesPipePathPlacement(part) && !pipePathStartSelected && partGhost != null)
             {
                 partGhost.transform.localRotation = initialGhostRotation;
             }
@@ -333,7 +341,7 @@ public partial class Assembly : MonoBehaviour
         }
         SetGhostPlacementVisual(canPlace);
 
-        if (IsPipePart(part) && !pipePathStartSelected)
+        if (UsesPipePathPlacement(part) && !pipePathStartSelected)
         {
             RefreshCurrentPipePlacementGhostEnds(canPlace ? GhostValidColor : GhostInvalidColor);
         }
@@ -345,9 +353,15 @@ public partial class Assembly : MonoBehaviour
 
         Vector3 finalLocalPos = partGhost.transform.localPosition;
         Quaternion finalLocalRot = partGhost.transform.localRotation;
-        GameObject placedObject = AddPartToSatellite(artificialSatellite, part, finalLocalPos, finalLocalRot);
-
+        Vector2Int gridPos = GetCurrentGhostCenterCell();
         ArtificialSatellite sourceSatellite = ResolveSourceSatelliteForAssemblyTarget(artificialSatellite);
+
+        if (TryCollectPipeReplacementRoots(gridPos, finalLocalRot, out List<GameObject> replacementRoots))
+        {
+            RemoveReplacementPipeRoots(artificialSatellite, sourceSatellite, replacementRoots);
+        }
+
+        GameObject placedObject = AddPartToSatellite(artificialSatellite, part, finalLocalPos, finalLocalRot);
 
         if (ShouldMirrorToSourceSatellite(artificialSatellite, sourceSatellite))
         {
@@ -358,7 +372,6 @@ public partial class Assembly : MonoBehaviour
 
         Debug.Log($"Applied part {part.partName} to {artificialSatellite.name}.");
 
-        Vector2Int gridPos = GetCurrentGhostCenterCell();
         if (placedObject != null)
         {
             if (partGhost != null)
@@ -436,8 +449,11 @@ public partial class Assembly : MonoBehaviour
 
         AssemblyPartFocus partFocus = ComponentUtility.GetOrAddComponent<AssemblyPartFocus>(gameObject);
         partFocus.Initialize(targetPart, targetSatellite);
+        _ = SplitPipeUtility.ResolveState(gameObject);
+        _ = MergePipeUtility.ResolveState(gameObject);
 
         ModulePartInventoryUtility.EnsurePartInventories(gameObject, targetPart);
+        ApplyPartVisualConfiguration(gameObject, targetPart);
 
         AssemblyMeshCombiner combiner = targetSatellite.GetComponent<AssemblyMeshCombiner>();
         if (combiner != null && combiner.combinedOnlyMode &&
@@ -481,6 +497,14 @@ public partial class Assembly : MonoBehaviour
         }
 
         return false;
+    }
+
+    private static void ApplyPartVisualConfiguration(GameObject root, Part targetPart)
+    {
+        if (root == null || targetPart == null) return;
+        if (targetPart.partType != PartType.Pipe) return;
+
+        SetRendererColorRecursiveStatic(root.transform, targetPart.partColor);
     }
 
     private static bool ContainsNameTokenInHierarchy(Transform t, string token)
@@ -937,6 +961,56 @@ public partial class Assembly : MonoBehaviour
         return false;
     }
 
+    private void RemoveReplacementPipeRoots(
+        ArtificialSatellite assemblyTarget,
+        ArtificialSatellite sourceSatellite,
+        List<GameObject> replacementRoots)
+    {
+        if (assemblyTarget == null || replacementRoots == null || replacementRoots.Count == 0)
+        {
+            return;
+        }
+
+        List<(Vector2Int centerCell, string partName, bool hasCenterCell)> removedPartInfos =
+            new List<(Vector2Int centerCell, string partName, bool hasCenterCell)>();
+        HashSet<GameObject> removedRoots = new HashSet<GameObject>();
+        for (int i = 0; i < replacementRoots.Count; i++)
+        {
+            GameObject removableRoot = replacementRoots[i];
+            if (removableRoot == null || !removedRoots.Add(removableRoot))
+            {
+                continue;
+            }
+
+            bool hasCenterCell = TryGetPartCenterCell(removableRoot, out Vector2Int centerCell);
+            removedPartInfos.Add((centerCell, GetPartName(removableRoot), hasCenterCell));
+            RemovePartObjectFromSatellite(assemblyTarget, removableRoot);
+        }
+
+        if (!ShouldMirrorToSourceSatellite(assemblyTarget, sourceSatellite))
+        {
+            return;
+        }
+
+        HashSet<GameObject> removedMirroredParts = new HashSet<GameObject>();
+        for (int i = 0; i < removedPartInfos.Count; i++)
+        {
+            (Vector2Int centerCell, string partName, bool hasCenterCell) partInfo = removedPartInfos[i];
+            if (!partInfo.hasCenterCell)
+            {
+                continue;
+            }
+
+            GameObject mirrored = FindMatchingPartOnSatellite(sourceSatellite, partInfo.centerCell, partInfo.partName);
+            if (mirrored == null || !removedMirroredParts.Add(mirrored))
+            {
+                continue;
+            }
+
+            RemovePartObjectFromSatellite(sourceSatellite, mirrored);
+        }
+    }
+
     private GameObject FindMatchingPartOnSatellite(ArtificialSatellite satellite, Vector2Int centerCell, string partName)
     {
         if (satellite == null || !IsInsideGrid(centerCell)) return null;
@@ -1241,17 +1315,17 @@ public partial class Assembly : MonoBehaviour
             {
                 AssemblyPartPortLayout.PortEntry entry = entries[j];
                 if (entry == null) continue;
-                if (entry.portType != AssemblyPortType.Input && entry.portType != AssemblyPortType.Output) continue;
+                if (!AssemblyPortTypeUtility.IsInputCompatible(entry.portType) && !AssemblyPortTypeUtility.IsOutputCompatible(entry.portType)) continue;
                 if (!TryGetPartLayoutEntryMapping(layout, entry, out Vector2Int sourceCell, out CellSideMask portSide)) continue;
                 if (!IsInsideGrid(sourceCell) || portSide == CellSideMask.None) continue;
 
                 (Vector2Int cell, CellSideMask side) key = (sourceCell, portSide);
-                if (entry.portType == AssemblyPortType.Input)
+                if (AssemblyPortTypeUtility.IsInputCompatible(entry.portType) && ownerSelectable)
                 {
-                    if (!ownerSelectable) continue;
                     AddOwnerToPortMap(inputOwnersByKey, key, owner);
                 }
-                else
+
+                if (AssemblyPortTypeUtility.IsOutputCompatible(entry.portType))
                 {
                     if (ownerSelectable)
                     {
@@ -1396,7 +1470,7 @@ public partial class Assembly : MonoBehaviour
             for (int i = 0; i < layout.Ports.Count; i++)
             {
                 AssemblyPartPortLayout.PortEntry entry = layout.Ports[i];
-                if (entry == null || entry.portType != AssemblyPortType.Input) continue;
+                if (entry == null || !AssemblyPortTypeUtility.IsInputCompatible(entry.portType)) continue;
                 if (!TryGetPartLayoutEntryMapping(layout, entry, out Vector2Int sourceCell, out CellSideMask portSide)) continue;
 
                 Vector2Int outputDir = SideToCellOffset(portSide);
@@ -1567,7 +1641,8 @@ public partial class Assembly : MonoBehaviour
 
         Vector2Int centerCell = GetCurrentGhostCenterCell();
         bool isPipe = IsPipePart(part);
-        if (!isPipe || !pipePathStartSelected)
+        bool usesPipePathPlacement = UsesPipePathPlacement(part);
+        if (!usesPipePathPlacement || !pipePathStartSelected)
         {
             Quaternion originalRotation = partGhost.transform.localRotation;
             if (!enableInputPortAutoMapping)
@@ -1576,7 +1651,7 @@ public partial class Assembly : MonoBehaviour
                     centerCell,
                     out AssemblyPort candidatePort,
                     logPipeDebug: isPipe,
-                    requirePipeSource: !isPipe))
+                    requirePipeSource: !isPipe && !SolarPanelUtility.IsSolarPanelPart(part) && !SolarTurbineUtility.IsSolarTurbinePart(part)))
                 {
                     matchedOutputPort = candidatePort;
                     return true;
@@ -1586,7 +1661,7 @@ public partial class Assembly : MonoBehaviour
                 return false;
             }
 
-            if (BuildAvailableOutputSideOrder(centerCell, requirePipeSource: !isPipe))
+            if (BuildAvailableOutputSideOrder(centerCell, requirePipeSource: !isPipe && !SolarPanelUtility.IsSolarPanelPart(part) && !SolarTurbineUtility.IsSolarTurbinePart(part)))
             {
                 int startIndex = PositiveModulo(outputSideCycleOffset, availableOutputSides.Count);
                 for (int sidePass = 0; sidePass < availableOutputSides.Count; sidePass++)
@@ -1600,7 +1675,7 @@ public partial class Assembly : MonoBehaviour
                             preferredSide,
                             out AssemblyPort candidatePort,
                             logPipeDebug: isPipe,
-                            requirePipeSource: !isPipe))
+                            requirePipeSource: !isPipe && !SolarPanelUtility.IsSolarPanelPart(part) && !SolarTurbineUtility.IsSolarTurbinePart(part)))
                         {
                             matchedOutputPort = candidatePort;
                             return true;
@@ -1638,6 +1713,8 @@ public partial class Assembly : MonoBehaviour
         }
         if (inputRequirements.Count == 0) return false;
 
+        bool ignoreOccupiedOutputs = CanReplaceInstalledPipe(part)
+            && TryCollectPipeReplacementRoots(centerCell, partGhost.transform.localRotation, out _);
         HashSet<AssemblyPort> usedPorts = new HashSet<AssemblyPort>();
         AssemblyPort firstMatchedPort = null;
 
@@ -1647,7 +1724,7 @@ public partial class Assembly : MonoBehaviour
             CellSideMask inputSide = requirement.side;
             if (inputSide == CellSideMask.None) return false;
 
-            if (!TryGetAvailableOutputPort(requirement.cell, inputSide, out AssemblyPort outputPort))
+            if (!TryGetAvailableOutputPort(requirement.cell, inputSide, out AssemblyPort outputPort, ignoreOccupiedOutputs))
             {
                 if (logPipeDebug) DebugLogPipeStartMatch(requirement.cell, inputSide, CellSideMask.None, null);
                 continue;
@@ -1671,7 +1748,8 @@ public partial class Assembly : MonoBehaviour
 
         if (firstMatchedPort == null) return false;
 
-        if (requirePipeSource &&
+        if (!ignoreOccupiedOutputs &&
+            requirePipeSource &&
             TryCollectGhostOutputRequirements(centerCell, out List<(Vector2Int cell, CellSideMask side)> outputRequirements) &&
             HasPipeOutputConflictForPlacement(inputRequirements, outputRequirements))
         {
@@ -1699,6 +1777,8 @@ public partial class Assembly : MonoBehaviour
         }
         if (inputRequirements.Count == 0) return false;
 
+        bool ignoreOccupiedOutputs = CanReplaceInstalledPipe(part)
+            && TryCollectPipeReplacementRoots(centerCell, partGhost.transform.localRotation, out _);
         AssemblyPort preferredSidePort = null;
         HashSet<AssemblyPort> usedPorts = new HashSet<AssemblyPort>();
         bool hasAnyValidInputMatch = false;
@@ -1709,7 +1789,7 @@ public partial class Assembly : MonoBehaviour
             CellSideMask inputSide = requirement.side;
             if (inputSide == CellSideMask.None) return false;
 
-            if (!TryGetAvailableOutputPort(requirement.cell, inputSide, out AssemblyPort outputPort))
+            if (!TryGetAvailableOutputPort(requirement.cell, inputSide, out AssemblyPort outputPort, ignoreOccupiedOutputs))
             {
                 if (logPipeDebug) DebugLogPipeStartMatch(requirement.cell, inputSide, requiredOutputSide, null);
                 continue;
@@ -1740,7 +1820,8 @@ public partial class Assembly : MonoBehaviour
         if (!hasAnyValidInputMatch) return false;
         if (preferredSidePort == null) return false;
 
-        if (requirePipeSource &&
+        if (!ignoreOccupiedOutputs &&
+            requirePipeSource &&
             TryCollectGhostOutputRequirements(centerCell, out List<(Vector2Int cell, CellSideMask side)> outputRequirements) &&
             HasPipeOutputConflictForPlacement(inputRequirements, outputRequirements))
         {
@@ -1794,7 +1875,7 @@ public partial class Assembly : MonoBehaviour
             for (int i = 0; i < layout.Ports.Count; i++)
             {
                 AssemblyPartPortLayout.PortEntry entry = layout.Ports[i];
-                if (entry == null || entry.portType != AssemblyPortType.Input) continue;
+                if (entry == null || !AssemblyPortTypeUtility.IsInputCompatible(entry.portType)) continue;
 
                 Vector2Int rotatedCell = RotateCellOffset(entry.relativeSourceCell, quarterTurns);
                 CellSideMask rotatedSide = RotateSide(ConvertPartLayoutSide(entry.side), quarterTurns);
@@ -1834,7 +1915,7 @@ public partial class Assembly : MonoBehaviour
             for (int i = 0; i < layout.Ports.Count; i++)
             {
                 AssemblyPartPortLayout.PortEntry entry = layout.Ports[i];
-                if (entry == null || entry.portType != AssemblyPortType.Output) continue;
+                if (entry == null || !AssemblyPortTypeUtility.IsOutputCompatible(entry.portType)) continue;
 
                 Vector2Int rotatedCell = RotateCellOffset(entry.relativeSourceCell, quarterTurns);
                 CellSideMask rotatedSide = RotateSide(ConvertPartLayoutSide(entry.side), quarterTurns);
@@ -1895,14 +1976,9 @@ public partial class Assembly : MonoBehaviour
         if (outputPort == null) return false;
 
         AssemblyPartFocus partFocus = outputPort.GetComponentInParent<AssemblyPartFocus>(true);
-        if (partFocus != null && partFocus.SourcePart != null)
+        if (partFocus != null && PipePartUtility.IsPipePart(partFocus.SourcePart))
         {
-            string partName = partFocus.SourcePart.partName;
-            if (!string.IsNullOrWhiteSpace(partName) &&
-                string.Equals(partName, "Pipe", System.StringComparison.OrdinalIgnoreCase))
-            {
-                return true;
-            }
+            return true;
         }
 
         // Fallback for runtime objects where SourcePart binding can be delayed/missing.
@@ -1923,10 +1999,12 @@ public partial class Assembly : MonoBehaviour
             return true;
         }
 
+        bool ignoreOccupiedOutputs = CanReplaceInstalledPipe(part)
+            && TryCollectPipeReplacementRoots(centerCell, partGhost != null ? partGhost.transform.localRotation : Quaternion.identity, out _);
         for (int i = 0; i < OutputSidePriorityOrder.Length; i++)
         {
             CellSideMask side = OutputSidePriorityOrder[i];
-            if (!TryGetAvailableOutputPort(centerCell, side, out AssemblyPort outputPort)) continue;
+            if (!TryGetAvailableOutputPort(centerCell, side, out AssemblyPort outputPort, ignoreOccupiedOutputs)) continue;
             if (requirePipeSource && !IsPipeOwnedOutputPort(outputPort)) continue;
             availableOutputSides.Add(side);
         }
@@ -2090,8 +2168,5 @@ public partial class Assembly : MonoBehaviour
 
 
 }
-
-
-
 
 
