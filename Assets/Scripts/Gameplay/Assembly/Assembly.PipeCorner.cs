@@ -21,33 +21,45 @@ public partial class Assembly
             Vector2Int cell = path[i];
             Vector2Int previousDir = GetPathSegmentPreviousDir(path, i);
             Vector2Int nextDir = GetPathSegmentNextDir(path, i, terminalDirection);
-            bool isCorner = IsCornerSegment(previousDir, nextDir);
+            bool isCross = TryResolvePipePathCrossPlacementAtIndex(path, i, terminalDirection, out CrossPipePlacementData crossPlacement);
+            bool isCorner = !isCross && IsCornerSegment(previousDir, nextDir);
             Quaternion rot = isCorner
                 ? GetPipeCornerRotation(previousDir, nextDir)
                 : GetPipeSegmentRotation(previousDir, nextDir);
             Vector3 localPos = GridToLocalPosition(cell, snapOffset);
 
-            GameObject ghostSegment = isCorner
-                ? CreatePipeCornerObject(GetPipeCornerTemplate(part, true), part.ghostPrefab, true, previousDir, nextDir)
-                : Instantiate(part.ghostPrefab);
+            GameObject ghostSegment = isCross
+                ? CreateCrossPipeGhost(crossPlacement)
+                : isCorner
+                    ? CreatePipeCornerObject(GetPipeCornerTemplate(part, true), part.ghostPrefab, true, previousDir, nextDir)
+                    : Instantiate(part.ghostPrefab);
 
-            ghostSegment.name = isCorner ? "PipeCornerGhost" : "PipeGhost";
+            if (ghostSegment == null)
+            {
+                continue;
+            }
+
+            ghostSegment.name = isCross ? "CrossPipeGhost" : isCorner ? "PipeCornerGhost" : "PipeGhost";
             ghostSegment.transform.SetParent(pipePathGhostRoot.transform, false);
             ghostSegment.transform.localPosition = localPos;
-            ghostSegment.transform.localRotation = rot;
+            ghostSegment.transform.localRotation = isCross ? Quaternion.identity : rot;
 
             _ = ComponentUtility.GetOrAddComponent<AssemblyGhostMarker>(ghostSegment);
             SmallScaleLayerUtility.ApplyRecursively(ghostSegment.transform);
             SetRendererColorRecursive(ghostSegment.transform, ghostColor);
             EnsureRendererTransparencyRecursive(ghostSegment.transform);
-            ConfigurePipeGhostPortsLikePlacedSegment(
-                ghostSegment,
-                isCorner,
-                previousDir,
-                nextDir,
-                rot,
-                showInputPort: i == 0,
-                showOutputPort: i == path.Count - 1);
+
+            if (!isCross)
+            {
+                ConfigurePipeGhostPortsLikePlacedSegment(
+                    ghostSegment,
+                    isCorner,
+                    previousDir,
+                    nextDir,
+                    rot,
+                    showInputPort: i == 0,
+                    showOutputPort: i == path.Count - 1);
+            }
         }
 
         RefreshPipePathGhostEnds(ghostColor);
@@ -253,4 +265,3 @@ public partial class Assembly
         SmallScaleLayerUtility.ApplyRecursively(ghostSegment.transform);
     }
 }
-

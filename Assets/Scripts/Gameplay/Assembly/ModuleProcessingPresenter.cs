@@ -679,7 +679,7 @@ public class ModuleProcessingPresenter : FocusEventSubscriber
             return false;
         }
 
-        if (PowerGeneratorRecipeCatalog.IsGeneratorPart(partFocus.SourcePart) || SolarPanelUtility.IsSolarPanelPart(partFocus.SourcePart) || SolarTurbineUtility.IsSolarTurbinePart(partFocus.SourcePart))
+        if (PowerGeneratorRecipeCatalog.IsGeneratorPart(partFocus.SourcePart) || SolarPanelUtility.IsSolarPanelPart(partFocus.SourcePart) || SolarTurbineUtility.IsSolarTurbinePart(partFocus.SourcePart) || WarehouseUtility.IsWarehousePart(partFocus.SourcePart))
         {
             partFocus = null;
             return false;
@@ -862,5 +862,6 @@ public class ModuleProcessingPresenter : FocusEventSubscriber
         return cachedCircularButtonSprite;
     }
 }
+
 
 

@@ -1,0 +1,47 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 59f19fe2b77c6f844a88f265bd180602, type: 3}
+  m_Name: Warehouse
+  m_EditorClassIdentifier: Assembly-CSharp::Part
+  partName: Warehouse
+  partIcon: {fileID: 10913, guid: 0000000000000000f000000000000000, type: 0}
+  partType: 3
+  partPrefab: {fileID: 1000000000000000000, guid: cdc1ab9155f84eb18576c21e66625c73, type: 3}
+  ghostPrefab: {fileID: 1000000000000000000, guid: 8afbb3be6c84434cb70a31513817bf2e, type: 3}
+  cornerPrefab: {fileID: 0}
+  cornerGhostPrefab: {fileID: 0}
+  cornerEndPrefab: {fileID: 0}
+  cornerEndGhostPrefab: {fileID: 0}
+  endPrefab: {fileID: 0}
+  endGhostPrefab: {fileID: 0}
+  gridWidth: 3
+  gridHeight: 3
+  mass: 900
+  durability: 900
+  inventory: 900
+  inputCapacity: 0
+  outputCapacity: 0
+  powerGeneration: 0
+  powerConsumption: 10
+  powerCapacity: 0
+  transmitTime: 1
+  transitCoreTime: 10
+  partColor: {r: 0.83137256, g: 0.60784316, b: 0.34901962, a: 1}
+  usesFixedPipePorts: 0
+  topPortType: 2
+  bottomPortType: 2
+  leftPortType: 2
+  rightPortType: 2
+  lightPowerRatio: 0
+  windPowerRatio: 0
+  generationTime: 0
+  autoCalculateMass: 0

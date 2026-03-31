@@ -1146,7 +1146,7 @@ public class ModuleInventoryPresenter : FocusEventSubscriber
 
         if (directStructure != null)
         {
-            if (directStructure.UsesLogisticsHubUi || directStructure.UsesFabricatorUi)
+            if (directStructure.UsesLogisticsHubUi || directStructure.UsesFabricatorUi || CorePowerControlUtility.IsCorePowerControlFocus(directStructure))
             {
                 return false;
             }

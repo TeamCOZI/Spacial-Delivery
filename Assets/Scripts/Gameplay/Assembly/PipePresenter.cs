@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -536,7 +536,7 @@ public class PipePresenter : FocusEventSubscriber
             return false;
         }
 
-        if (partFocus.SourcePart.partType != PartType.Pipe || SplitPipeUtility.IsSplitPipePart(partFocus.SourcePart) || MergePipeUtility.IsMergePipePart(partFocus.SourcePart))
+        if (partFocus.SourcePart.partType != PartType.Pipe || SplitPipeUtility.IsSplitPipePart(partFocus.SourcePart) || MergePipeUtility.IsMergePipePart(partFocus.SourcePart) || FilterPipeUtility.IsFilterPipePart(partFocus.SourcePart))
         {
             partFocus = null;
             return false;
@@ -735,4 +735,3 @@ public class PipePresenter : FocusEventSubscriber
         return gameObject;
     }
 }
-

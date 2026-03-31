@@ -36,6 +36,7 @@ public class Part : ScriptableObject
     [Min(0f)] public float powerConsumption;
     [Min(0f)] public float powerCapacity;
     [Min(0f)] public float transmitTime = 1f;
+    [Min(0f)] public float transitCoreTime;
     public Color partColor = Color.white;
     public bool usesFixedPipePorts;
     public AssemblyPortType topPortType = AssemblyPortType.Neutral;
@@ -55,6 +56,7 @@ public class Part : ScriptableObject
         }
 
         transmitTime = Mathf.Max(0f, transmitTime);
+        transitCoreTime = Mathf.Max(0f, transitCoreTime);
     }
 
     private int CalculateMassFromScaleOrGrid()

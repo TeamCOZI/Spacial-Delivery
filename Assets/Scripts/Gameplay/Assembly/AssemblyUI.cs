@@ -8,6 +8,7 @@ public partial class AssemblyUI : MonoBehaviour
 {
     private const string CorePartName = "Core";
     private const string LauncherPartName = "Launcher";
+    private const string CrossPipePartName = "Cross Pipe";
     private const string RootElementName = "Root";
     private const string CloseButtonName = "Close";
     private const string OpenPartsButtonName = "OpenParts";
@@ -201,6 +202,7 @@ public partial class AssemblyUI : MonoBehaviour
         if (part == null) return false;
         if (string.Equals(part.partName, CorePartName, StringComparison.OrdinalIgnoreCase)) return false;
         if (string.Equals(part.partName, LauncherPartName, StringComparison.OrdinalIgnoreCase)) return false;
+        if (string.Equals(part.partName, CrossPipePartName, StringComparison.OrdinalIgnoreCase)) return false;
         return true;
     }
 
@@ -798,7 +800,3 @@ public partial class AssemblyUI : MonoBehaviour
         element.style.display = visible ? DisplayStyle.Flex : DisplayStyle.None;
     }
 }
-
-
-
-

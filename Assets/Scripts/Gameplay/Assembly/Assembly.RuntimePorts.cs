@@ -23,7 +23,7 @@ public partial class Assembly
         // Keep prefab-authored profile so auto-orientation can use real input direction.
         if (targetPart.partType != PartType.Pipe) return;
 
-        if (PipePartUtility.UsesFixedPipePorts(targetPart))
+        if (PipePartUtility.UsesFixedPipePorts(targetPart) && !FilterPipeUtility.IsFilterPipePart(targetPart))
         {
             ConfigureRuntimeFixedPipePorts(root, targetPart, profile, isGhost);
             return;
@@ -54,14 +54,42 @@ public partial class Assembly
     {
         if (root == null || targetPart == null || profile == null) return;
 
+        ConfigureRuntimeCustomFixedPipePorts(
+            root,
+            profile,
+            isGhost,
+            targetPart.topPortType,
+            targetPart.bottomPortType,
+            targetPart.leftPortType,
+            targetPart.rightPortType);
+    }
+
+    private void ConfigureRuntimeCustomFixedPipePorts(
+        GameObject root,
+        AssemblyPartPortProfile profile,
+        bool isGhost,
+        AssemblyPortType topPortType,
+        AssemblyPortType bottomPortType,
+        AssemblyPortType leftPortType,
+        AssemblyPortType rightPortType)
+    {
+        if (root == null || profile == null) return;
+
         Transform runtimePortsRoot = root.transform.Find(RuntimePortsRootName);
         if (runtimePortsRoot != null)
         {
             Destroy(runtimePortsRoot.gameObject);
         }
 
-        float widthWorld = Mathf.Max(cellSize, targetPart.gridWidth * cellSize);
-        float heightWorld = Mathf.Max(cellSize, targetPart.gridHeight * cellSize);
+        float widthWorld = Mathf.Max(cellSize, cellSize);
+        float heightWorld = Mathf.Max(cellSize, cellSize);
+        AssemblyPartFocus partFocus = root.GetComponent<AssemblyPartFocus>();
+        if (partFocus != null && partFocus.SourcePart != null)
+        {
+            widthWorld = Mathf.Max(cellSize, partFocus.SourcePart.gridWidth * cellSize);
+            heightWorld = Mathf.Max(cellSize, partFocus.SourcePart.gridHeight * cellSize);
+        }
+
         float halfWidthWorld = widthWorld * 0.5f;
         float halfHeightWorld = heightWorld * 0.5f;
         float rootScaleX = Mathf.Max(0.0001f, Mathf.Abs(root.transform.localScale.x));
@@ -74,10 +102,10 @@ public partial class Assembly
         GameObject portsRootObject = new GameObject(RuntimePortsRootName);
         portsRootObject.transform.SetParent(root.transform, false);
 
-        AddFixedPipePort(entries, inputPositions, portsRootObject.transform, targetPart.leftPortType, AssemblyPartPortLayout.PortSide.Left, new Vector3(-halfWidthLocal, 0f, 0f), isGhost);
-        AddFixedPipePort(entries, inputPositions, portsRootObject.transform, targetPart.topPortType, AssemblyPartPortLayout.PortSide.Top, new Vector3(0f, halfHeightLocal, 0f), isGhost);
-        AddFixedPipePort(entries, inputPositions, portsRootObject.transform, targetPart.rightPortType, AssemblyPartPortLayout.PortSide.Right, new Vector3(halfWidthLocal, 0f, 0f), isGhost);
-        AddFixedPipePort(entries, inputPositions, portsRootObject.transform, targetPart.bottomPortType, AssemblyPartPortLayout.PortSide.Bottom, new Vector3(0f, -halfHeightLocal, 0f), isGhost);
+        AddFixedPipePort(entries, inputPositions, portsRootObject.transform, leftPortType, AssemblyPartPortLayout.PortSide.Left, new Vector3(-halfWidthLocal, 0f, 0f), isGhost);
+        AddFixedPipePort(entries, inputPositions, portsRootObject.transform, topPortType, AssemblyPartPortLayout.PortSide.Top, new Vector3(0f, halfHeightLocal, 0f), isGhost);
+        AddFixedPipePort(entries, inputPositions, portsRootObject.transform, rightPortType, AssemblyPartPortLayout.PortSide.Right, new Vector3(halfWidthLocal, 0f, 0f), isGhost);
+        AddFixedPipePort(entries, inputPositions, portsRootObject.transform, bottomPortType, AssemblyPartPortLayout.PortSide.Bottom, new Vector3(0f, -halfHeightLocal, 0f), isGhost);
 
         profile.SetInputPortLocalPositions(inputPositions.ToArray());
         ApplyRuntimePartPortLayout(root, entries);
@@ -435,4 +463,3 @@ public partial class Assembly
         return assemblyPort != null && AssemblyPortTypeUtility.IsOutputCompatible(assemblyPort.PortType);
     }
 }
-

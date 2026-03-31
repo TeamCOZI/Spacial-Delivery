@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -531,6 +531,21 @@ public partial class UserInput
         }
 
         if (MergePipePresenter.IsWorldInputBlockedByPanel)
+        {
+            return true;
+        }
+
+        if (FilterPipePresenter.IsWorldInputBlockedByPanel)
+        {
+            return true;
+        }
+
+        if (WarehousePresenter.IsWorldInputBlockedByPanel)
+        {
+            return true;
+        }
+
+        if (CorePowerControlPresenter.IsWorldInputBlockedByPanel)
         {
             return true;
         }
@@ -1334,12 +1349,4 @@ public partial class UserInput
         return hitTransform == satellite.transform || hitTransform.IsChildOf(satellite.transform);
     }
 }
-
-
-
-
-
-
-
-
 

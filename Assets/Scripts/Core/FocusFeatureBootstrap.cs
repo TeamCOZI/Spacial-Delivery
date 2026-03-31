@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 
 [DefaultExecutionOrder(33980)]
 [DisallowMultipleComponent]
@@ -17,6 +17,9 @@
 [RequireComponent(typeof(PipePresenter))]
 [RequireComponent(typeof(SplitPipePresenter))]
 [RequireComponent(typeof(MergePipePresenter))]
+[RequireComponent(typeof(FilterPipePresenter))]
+[RequireComponent(typeof(WarehousePresenter))]
+[RequireComponent(typeof(CorePowerControlPresenter))]
 [RequireComponent(typeof(ModuleOutputPortSelectorPresenter))]
 [RequireComponent(typeof(AssemblyFocusedPartHighlightPresenter))]
 public class FocusFeatureBootstrap : MonoBehaviour
@@ -34,6 +37,9 @@ public class FocusFeatureBootstrap : MonoBehaviour
         _ = ComponentUtility.GetOrAddComponent<PipePresenter>(gameObject);
         _ = ComponentUtility.GetOrAddComponent<SplitPipePresenter>(gameObject);
         _ = ComponentUtility.GetOrAddComponent<MergePipePresenter>(gameObject);
+        _ = ComponentUtility.GetOrAddComponent<FilterPipePresenter>(gameObject);
+        _ = ComponentUtility.GetOrAddComponent<WarehousePresenter>(gameObject);
+        _ = ComponentUtility.GetOrAddComponent<CorePowerControlPresenter>(gameObject);
         _ = ComponentUtility.GetOrAddComponent<ModuleOutputPortSelectorPresenter>(gameObject);
         _ = ComponentUtility.GetOrAddComponent<AssemblyFocusedPartHighlightPresenter>(gameObject);
 
@@ -51,6 +57,3 @@ public class FocusFeatureBootstrap : MonoBehaviour
         }
     }
 }
-
-
-

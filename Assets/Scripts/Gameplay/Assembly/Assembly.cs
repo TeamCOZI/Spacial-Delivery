@@ -1,4 +1,4 @@
-﻿using System.Collections;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -451,6 +451,7 @@ public partial class Assembly : MonoBehaviour
         partFocus.Initialize(targetPart, targetSatellite);
         _ = SplitPipeUtility.ResolveState(gameObject);
         _ = MergePipeUtility.ResolveState(gameObject);
+        _ = FilterPipeUtility.ResolveState(gameObject);
 
         ModulePartInventoryUtility.EnsurePartInventories(gameObject, targetPart);
         ApplyPartVisualConfiguration(gameObject, targetPart);
@@ -2126,6 +2127,35 @@ public partial class Assembly : MonoBehaviour
         if (pipePreviewPath.Count == 0) return;
 
         ArtificialSatellite sourceSatellite = ResolveSourceSatelliteForAssemblyTarget(artificialSatellite);
+        Vector2Int continuationStartCell = pipePreviewPath[pipePreviewPath.Count - 1];
+        Vector2Int continuationIncomingDir = GetPathSegmentPreviousDir(pipePreviewPath, pipePreviewPath.Count - 1);
+        bool canContinueFromEndpoint = pipePathTerminalDirection == Vector2Int.zero && IsCardinalDirection(continuationIncomingDir);
+
+        Dictionary<Vector2Int, CrossPipePlacementData> crossPlacements = new Dictionary<Vector2Int, CrossPipePlacementData>();
+        HashSet<GameObject> uniqueReplacementRoots = new HashSet<GameObject>();
+        List<GameObject> replacementRoots = new List<GameObject>();
+        if (TryResolvePipePathStartReplacementRoot(out GameObject startReplacementRoot) && startReplacementRoot != null && uniqueReplacementRoots.Add(startReplacementRoot))
+        {
+            replacementRoots.Add(startReplacementRoot);
+        }
+
+        if (TryCollectCrossPipePlacements(pipePreviewPath, pipePathTerminalDirection, out Dictionary<Vector2Int, CrossPipePlacementData> resolvedCrossPlacements, out List<GameObject> crossReplacementRoots))
+        {
+            crossPlacements = resolvedCrossPlacements;
+            for (int i = 0; i < crossReplacementRoots.Count; i++)
+            {
+                GameObject replacementRoot = crossReplacementRoots[i];
+                if (replacementRoot != null && uniqueReplacementRoots.Add(replacementRoot))
+                {
+                    replacementRoots.Add(replacementRoot);
+                }
+            }
+        }
+
+        if (replacementRoots.Count > 0)
+        {
+            RemoveReplacementPipeRoots(artificialSatellite, sourceSatellite, replacementRoots);
+        }
 
         for (int i = 0; i < pipePreviewPath.Count; i++)
         {
@@ -2133,19 +2163,26 @@ public partial class Assembly : MonoBehaviour
             Vector2Int previousDir = GetPathSegmentPreviousDir(pipePreviewPath, i);
             Vector2Int nextDir = GetPathSegmentNextDir(pipePreviewPath, i, pipePathTerminalDirection);
             Vector3 localPos = GridToLocalPosition(cell, GetCurrentPartSnapOffset());
-            bool isCorner = IsCornerSegment(previousDir, nextDir);
+            bool isCross = crossPlacements.TryGetValue(cell, out CrossPipePlacementData crossPlacement);
+            bool isCorner = !isCross && IsCornerSegment(previousDir, nextDir);
             Quaternion localRot = isCorner
                 ? GetPipeCornerRotation(previousDir, nextDir)
                 : GetPipeSegmentRotation(previousDir, nextDir);
-            GameObject placed = isCorner
-                ? AddPipeCornerToSatellite(artificialSatellite, part, localPos, localRot, previousDir, nextDir)
-                : AddPartToSatellite(artificialSatellite, part, localPos, localRot);
+            GameObject placed = isCross
+                ? AddCrossPipeToSatellite(artificialSatellite, localPos, crossPlacement)
+                : isCorner
+                    ? AddPipeCornerToSatellite(artificialSatellite, part, localPos, localRot, previousDir, nextDir)
+                    : AddPartToSatellite(artificialSatellite, part, localPos, localRot);
 
             occupiedCells[cell] = placed != null ? placed : artificialSatellite.gameObject;
 
             if (ShouldMirrorToSourceSatellite(artificialSatellite, sourceSatellite))
             {
-                if (isCorner)
+                if (isCross)
+                {
+                    AddCrossPipeToSatellite(sourceSatellite, localPos, crossPlacement);
+                }
+                else if (isCorner)
                 {
                     AddPipeCornerToSatellite(sourceSatellite, part, localPos, localRot, previousDir, nextDir);
                 }
@@ -2159,14 +2196,94 @@ public partial class Assembly : MonoBehaviour
         if (pipeStartOutputPort != null) pipeStartOutputPort.SetOccupied(true);
 
         RebuildMeshesForAssemblyTargets(artificialSatellite, sourceSatellite);
+        RefreshOutputPortsNow();
 
         Debug.Log($"Applied pipe path with {pipePreviewPath.Count} segments.");
 
-        Cancel();
-        RequestRefreshOutputPorts();
+        if (canContinueFromEndpoint)
+        {
+            PrepareForPipePathContinuation(continuationStartCell, continuationIncomingDir);
+            return;
+        }
+
+        PrepareForNextPipePathStartSelection();
+    }
+
+    private void RemoveExistingPipeAtPathStartIfNeeded(ArtificialSatellite assemblyTarget, ArtificialSatellite sourceSatellite)
+    {
+        if (assemblyTarget == null || pipePreviewPath.Count <= 0)
+        {
+            return;
+        }
+
+        Vector2Int startCell = pipePreviewPath[0];
+        if (!occupiedCells.TryGetValue(startCell, out GameObject owner) || owner == null)
+        {
+            return;
+        }
+
+        GameObject removableRoot = ResolveRemovablePartRoot(owner);
+        AssemblyPartFocus removableFocus = removableRoot != null ? removableRoot.GetComponent<AssemblyPartFocus>() : null;
+        if (removableFocus == null || !PipePartUtility.IsPipePart(removableFocus.SourcePart))
+        {
+            return;
+        }
+
+        List<GameObject> replacementRoots = new List<GameObject> { removableRoot };
+        RemoveReplacementPipeRoots(assemblyTarget, sourceSatellite, replacementRoots);
+    }
+
+    private void PrepareForPipePathContinuation(Vector2Int startCell, Vector2Int incomingDir)
+    {
+        pipePathStartSelected = true;
+        pipePathStartCell = startCell;
+        pipePathStartIncomingDir = incomingDir;
+        pipePreviewPath.Clear();
+        pipePreviewPath.Add(startCell);
+        hasLastPipeHoverCell = false;
+        pipePathTerminalDirection = Vector2Int.zero;
+        matchedOutputPort = null;
+        canPlace = false;
+        isSnapped = true;
+        pipeStartOutputPort = ResolvePipePathStartOutputPort(startCell, incomingDir);
+
+        if (partGhost != null)
+        {
+            partGhost.SetActive(false);
+        }
+
+        UpdatePipePathPreview();
+    }
+
+    private void PrepareForNextPipePathStartSelection()
+    {
+        ClearPipePathGhosts();
+        ResetPipePathSelectionState();
+        ResetGhostPlacementState();
+
+        if (partGhost != null)
+        {
+            partGhost.SetActive(true);
+        }
+
+        SetGhostPlacementVisual(false);
+    }
+
+    private AssemblyPort ResolvePipePathStartOutputPort(Vector2Int startCell, Vector2Int incomingDir)
+    {
+        if (!IsCardinalDirection(incomingDir))
+        {
+            return null;
+        }
+
+        CellSideMask inputSide = DirectionToSideMask(new Vector3(-incomingDir.x, -incomingDir.y, 0f));
+        if (inputSide == CellSideMask.None)
+        {
+            return null;
+        }
+
+        return TryGetMappedOutputPort(startCell, inputSide, out AssemblyPort outputPort) ? outputPort : null;
     }
 
 
 }
-
-

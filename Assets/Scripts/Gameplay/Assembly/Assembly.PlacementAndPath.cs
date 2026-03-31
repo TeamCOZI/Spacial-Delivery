@@ -705,79 +705,70 @@ public partial class Assembly
         path = new List<Vector2Int>();
         if (!IsInsideGrid(start) || !IsInsideGrid(goal)) return false;
 
-        if (goal != start && occupiedCells.ContainsKey(goal)) return false;
-
-        if (start == goal)
+        if (goal == start)
         {
             if (occupiedCells.ContainsKey(start)) return false;
             path.Add(start);
             return true;
         }
 
-        List<Vector2Int> open = new List<Vector2Int> { start };
-        HashSet<Vector2Int> closed = new HashSet<Vector2Int>();
-        Dictionary<Vector2Int, Vector2Int> cameFrom = new Dictionary<Vector2Int, Vector2Int>();
-        Dictionary<Vector2Int, int> gScore = new Dictionary<Vector2Int, int> { [start] = 0 };
-        Dictionary<Vector2Int, int> fScore = new Dictionary<Vector2Int, int> { [start] = Manhattan(start, goal) };
+        Vector2Int startIncomingDirection = pipePathStartSelected && IsCardinalDirection(pipePathStartIncomingDir)
+            ? pipePathStartIncomingDir
+            : Vector2Int.zero;
+        PipePathNode startNode = new PipePathNode(start, startIncomingDirection);
+        Queue<PipePathNode> open = new Queue<PipePathNode>();
+        HashSet<PipePathNode> visited = new HashSet<PipePathNode>();
+        Dictionary<PipePathNode, PipePathNode> cameFrom = new Dictionary<PipePathNode, PipePathNode>();
+        open.Enqueue(startNode);
+        visited.Add(startNode);
+
+        Vector2Int[] directions =
+        {
+            Vector2Int.right,
+            Vector2Int.left,
+            Vector2Int.up,
+            Vector2Int.down
+        };
 
         while (open.Count > 0)
         {
-            int currentIndex = 0;
-            Vector2Int current = open[0];
-            int currentF = fScore.TryGetValue(current, out int score) ? score : int.MaxValue;
-
-            for (int i = 1; i < open.Count; i++)
+            PipePathNode current = open.Dequeue();
+            if (current.Cell == goal)
             {
-                Vector2Int candidate = open[i];
-                int candidateF = fScore.TryGetValue(candidate, out int f) ? f : int.MaxValue;
-                if (candidateF < currentF)
-                {
-                    current = candidate;
-                    currentF = candidateF;
-                    currentIndex = i;
-                }
-            }
-
-            if (current == goal)
-            {
-                ReconstructPath(cameFrom, current, path);
+                ReconstructPipePath(cameFrom, current, path);
                 return path.Count > 0;
             }
 
-            open.RemoveAt(currentIndex);
-            closed.Add(current);
-
-            Vector2Int[] neighbors =
+            bool hasForcedOutputDirection = TryGetForcedPipePathOutputDirection(current.Cell, current.IncomingSideDirection, out Vector2Int forcedOutputDirection);
+            for (int i = 0; i < directions.Length; i++)
             {
-                current + Vector2Int.right,
-                current + Vector2Int.left,
-                current + Vector2Int.up,
-                current + Vector2Int.down
-            };
+                Vector2Int stepDirection = directions[i];
+                if (hasForcedOutputDirection && stepDirection != forcedOutputDirection)
+                {
+                    continue;
+                }
 
-            for (int i = 0; i < neighbors.Length; i++)
-            {
-                Vector2Int neighbor = neighbors[i];
+                Vector2Int neighbor = current.Cell + stepDirection;
                 if (!IsInsideGrid(neighbor)) continue;
-                if (closed.Contains(neighbor)) continue;
+                if (visited.Contains(new PipePathNode(neighbor, -stepDirection))) continue;
 
-                bool isBlocked = occupiedCells.ContainsKey(neighbor) && neighbor != goal && neighbor != start;
-                if (isBlocked) continue;
+                bool isOccupied = occupiedCells.TryGetValue(neighbor, out GameObject owner) && owner != null;
+                if (isOccupied && !CanEnterPipePathCell(neighbor, -stepDirection))
+                {
+                    continue;
+                }
 
-                int currentG = gScore.TryGetValue(current, out int cg) ? cg : int.MaxValue;
-                int tentativeG = currentG + 1;
-                int neighborG = gScore.TryGetValue(neighbor, out int ng) ? ng : int.MaxValue;
+                PipePathNode neighborNode = new PipePathNode(neighbor, -stepDirection);
+                if (!visited.Add(neighborNode))
+                {
+                    continue;
+                }
 
-                if (tentativeG >= neighborG) continue;
-
-                cameFrom[neighbor] = current;
-                gScore[neighbor] = tentativeG;
-                fScore[neighbor] = tentativeG + Manhattan(neighbor, goal);
-                if (!open.Contains(neighbor)) open.Add(neighbor);
+                cameFrom[neighborNode] = current;
+                open.Enqueue(neighborNode);
             }
         }
 
         return false;
     }
 }
-

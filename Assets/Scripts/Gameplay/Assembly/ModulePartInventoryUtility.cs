@@ -17,6 +17,11 @@ public static class ModulePartInventoryUtility
             return false;
         }
 
+        if (WarehouseUtility.IsWarehousePart(part))
+        {
+            return false;
+        }
+
         return !string.Equals(part.partName, LauncherPartName, StringComparison.OrdinalIgnoreCase);
     }
 
@@ -26,10 +31,15 @@ public static class ModulePartInventoryUtility
         {
             return;
         }
+
         if (!UsesSplitInventories(part))
         {
             StructureResourceInventory inventory = GetOrCreateInventory(ownerObject, part, StructureResourceInventoryKind.General);
             inventory.InitializeForPart(part, StructureResourceInventoryKind.General);
+            if (WarehouseUtility.IsWarehousePart(part))
+            {
+                _ = ComponentUtility.GetOrAddComponent<WarehouseState>(ownerObject);
+            }
             return;
         }
 
@@ -127,6 +137,14 @@ public static class ModulePartInventoryUtility
         }
 
         Part sourcePart = partFocus.SourcePart;
+        if (WarehouseUtility.IsWarehousePart(sourcePart))
+        {
+            inventory = GetOrCreateInventory(partFocus.gameObject, sourcePart, StructureResourceInventoryKind.General);
+            return kind == StructureResourceInventoryKind.General ||
+                   kind == StructureResourceInventoryKind.Input ||
+                   kind == StructureResourceInventoryKind.Output;
+        }
+
         if (UsesSplitInventories(sourcePart))
         {
             if (kind == StructureResourceInventoryKind.General)
